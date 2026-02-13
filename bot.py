@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = "PUT_YOUR_TOKEN_HERE"  # Bedel token-kaaga
+TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ"  # Bedel token-kaaga
 ADMIN_ID = 7983838654          # Bedel admin ID (int)
 
 bot = TeleBot(TOKEN)

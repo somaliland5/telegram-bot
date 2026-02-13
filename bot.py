@@ -2,7 +2,6 @@ import os
 import json
 import random
 from telebot import TeleBot, types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ---------------- CONFIG ----------------
 TOKEN = os.environ.get("TOKEN")
@@ -24,9 +23,7 @@ def load_users():
     try:
         with open(DATA_FILE, "r") as f:
             data = json.load(f)
-            if data is None:
-                return {}
-            return data
+            return data if data else {}
     except:
         return {}
 
@@ -50,10 +47,10 @@ def main_menu(chat_id):
 
     # Admin panel inline buttons
     if chat_id == ADMIN_ID:
-        admin_kb = InlineKeyboardMarkup()
+        admin_kb = types.InlineKeyboardMarkup()
         admin_kb.row(
-            InlineKeyboardButton("💰 Add Balance", callback_data="admin_addbalance"),
-            InlineKeyboardButton("🎁 Random Gift", callback_data="admin_randomgift")
+            types.InlineKeyboardButton("💰 Add Balance", callback_data="admin_addbalance"),
+            types.InlineKeyboardButton("🎁 Random Gift", callback_data="admin_randomgift")
         )
         bot.send_message(chat_id, "Admin Panel", reply_markup=admin_kb)
 
@@ -159,13 +156,13 @@ def withdraw_address(message, amount):
     save_users(users)
 
     # Admin buttons Confirm / Reject / Ban
-    kb = InlineKeyboardMarkup()
+    kb = types.InlineKeyboardMarkup()
     kb.row(
-        InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_{uid}_{amount}_{wid}"),
-        InlineKeyboardButton("❌ Reject", callback_data=f"reject_{uid}_{amount}_{wid}")
+        types.InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_{uid}_{amount}_{wid}"),
+        types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{uid}_{amount}_{wid}")
     )
     kb.row(
-        InlineKeyboardButton("🚫 Ban", callback_data=f"ban_{uid}")
+        types.InlineKeyboardButton("🚫 Ban", callback_data=f"ban_{uid}")
     )
 
     bot.send_message(
@@ -199,14 +196,14 @@ def callbacks(call):
         save_users(users)
         bot.send_message(uid, "🚫 You have been banned.")
 
-    # ---------------- Admin Panel ----------------
+    # Admin Panel
     elif data[0] == "admin_addbalance":
-        msg = bot.send_message(ADMIN_ID, "Send: BOT_ID AMOUNT")
-        bot.register_next_step_handler(msg, admin_add_balance_step)
+        bot.send_message(ADMIN_ID, "Send: BOT_ID AMOUNT")
+        bot.register_next_step_handler_by_chat_id(ADMIN_ID, admin_add_balance_step)
 
     elif data[0] == "admin_randomgift":
-        msg = bot.send_message(ADMIN_ID, "Send amount for random gift")
-        bot.register_next_step_handler(msg, admin_random_gift_step)
+        bot.send_message(ADMIN_ID, "Send amount for random gift")
+        bot.register_next_step_handler_by_chat_id(ADMIN_ID, admin_random_gift_step)
 
     bot.answer_callback_query(call.id)
 

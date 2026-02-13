@@ -53,13 +53,12 @@ def menu(chat_id):
     kb.add("💸 Withdraw")
     bot.send_message(chat_id, "Main Menu", reply_markup=kb)
 
-# ---------- START COMMAND ----------
+# ---------- START ----------
 @bot.message_handler(commands=['start'])
 def start(msg):
     uid = str(msg.from_user.id)
     if check_ban(uid, msg.chat.id):
         return
-
     users = load_users()
     ref = None
     if msg.text.startswith("/start "):
@@ -148,28 +147,21 @@ def process_withdraw(msg, amount):
     users[uid]["balance"] -= amount
     users[uid]["withdrawn"] += amount
     save_users(users)
-    # ----- ADMIN BUTTONS -----
+    # ADMIN BUTTONS
     kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton("CONFIRM ✅", callback_data=f"confirm_{uid}_{amount}_{wid}")
-    )
-    kb.add(
-        InlineKeyboardButton("REJECT ❌", callback_data=f"reject_{uid}_{amount}_{wid}")
-    )
-    kb.add(
-        InlineKeyboardButton("🚫 BAN USER", callback_data=f"banuser_{uid}")
-    )
+    kb.add(InlineKeyboardButton("CONFIRM ✅", callback_data=f"confirm_{uid}_{amount}_{wid}"))
+    kb.add(InlineKeyboardButton("REJECT ❌", callback_data=f"reject_{uid}_{amount}_{wid}"))
+    kb.add(InlineKeyboardButton("🚫 BAN USER", callback_data=f"banuser_{uid}"))
     bot.send_message(ADMIN_ID,
 f"""💸 NEW WITHDRAWAL REQUEST
-
 👤 User ID: {uid}
 💰 Amount: ${amount}
 📬 Address: {address}
-🧾 ID: {wid}
-""", reply_markup=kb)
+🧾 ID: {wid}""",
+        reply_markup=kb)
     bot.send_message(msg.chat.id,"✅ Your request has been sent. It may take 2‑12 hours 🙂")
 
-# ---------- CALLBACK HANDLERS ----------
+# ---------- CALLBACKS ----------
 @bot.callback_query_handler(func=lambda c:c.data.startswith("confirm"))
 def confirm_payment(call):
     _, uid, amount, wid = call.data.split("_")
@@ -177,8 +169,7 @@ def confirm_payment(call):
 f"""💸 Payment Sent Successfully!
 🧾 Withdrawal ID: #{wid}
 💰 Amount: ${amount}
-🔄 Method: USDT-BEP20
-""")
+🔄 Method: USDT-BEP20""")
     bot.answer_callback_query(call.id,"Payment Confirmed")
 
 @bot.callback_query_handler(func=lambda c:c.data.startswith("reject"))
@@ -203,8 +194,7 @@ def ban_from_withdraw(call):
 # ---------- ADMIN COMMANDS ----------
 @bot.message_handler(commands=['addbalance'])
 def add_balance(msg):
-    if msg.from_user.id != ADMIN_ID:
-        return
+    if msg.from_user.id != ADMIN_ID: return
     try:
         _, uid, amount = msg.text.split()
         amount = float(amount)
@@ -217,8 +207,7 @@ def add_balance(msg):
 
 @bot.message_handler(commands=['randomgift'])
 def random_gift(msg):
-    if msg.from_user.id != ADMIN_ID:
-        return
+    if msg.from_user.id != ADMIN_ID: return
     try:
         amount = float(msg.text.split()[1])
     except:
@@ -231,8 +220,7 @@ def random_gift(msg):
 
 @bot.message_handler(commands=['ban'])
 def ban_user(msg):
-    if msg.from_user.id != ADMIN_ID:
-        return
+    if msg.from_user.id != ADMIN_ID: return
     try:
         _, uid = msg.text.split()
     except:
@@ -246,8 +234,7 @@ def ban_user(msg):
 
 @bot.message_handler(commands=['unban'])
 def unban_user(msg):
-    if msg.from_user.id != ADMIN_ID:
-        return
+    if msg.from_user.id != ADMIN_ID: return
     try:
         _, uid = msg.text.split()
     except:
@@ -267,20 +254,26 @@ def downloader(msg):
         return
     bot.send_message(msg.chat.id,"Downloading...")
     url = msg.text
-    # ----- TikWM API -----
+    # ----- EXPAND SHORT LINKS -----
+    try:
+        r = requests.get(url, allow_redirects=True, timeout=10)
+        url = r.url
+    except:
+        pass
+    # ----- TIKWM API -----
     try:
         api = f"https://www.tikwm.com/api/?url={url}"
-        r = requests.get(api).json()
-        if r["code"] == 0:
-            # Photos
-            if r["data"].get("images"):
-                for img in r["data"]["images"]:
+        res = requests.get(api).json()
+        if res.get("code") == 0:
+            data = res["data"]
+            if data.get("images"):
+                for img in data["images"]:
                     bot.send_photo(msg.chat.id, requests.get(img).content)
                 return
-            # Video
-            video = r["data"]["play"]
-            bot.send_video(msg.chat.id, requests.get(video).content)
-            return
+            video = data.get("play")
+            if video:
+                bot.send_video(msg.chat.id, requests.get(video).content)
+                return
     except:
         pass
     # ----- yt-dlp fallback -----
@@ -298,6 +291,6 @@ def downloader(msg):
     except:
         bot.send_message(msg.chat.id,"❌ Download failed")
 
-# ---------- MAIN POLLING ----------
+# ---------- RUN BOT ----------
 print("Bot Running...")
 bot.infinity_polling()

@@ -7,8 +7,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ"  # Bedel token
-ADMIN_ID = 7983838654
+TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ"  # Bedel token-kaaga
+ADMIN_ID = 7983838654          # Bedel admin ID (int)
 
 bot = TeleBot(TOKEN)
 DATA_FILE = "users.json"
@@ -109,7 +109,6 @@ f"""📊 BOT STATS
 @bot.message_handler(func=lambda m: True)
 def handler(message):
 
-    # Ignore commands for this handler
     if message.text.startswith("/"):
         return
 
@@ -184,6 +183,7 @@ def withdraw_amount(message, method):
 def process_withdraw(message, amount, method):
     users = load_users()
     user_id = str(message.from_user.id)
+    chat_id = message.chat.id
     address = message.text
     withdrawal_id = random.randint(10000, 99999)
 
@@ -214,7 +214,7 @@ f"""💸 NEW WITHDRAWAL REQUEST
 
     # Notify user
     bot.send_message(
-        message.chat.id,
+        chat_id,
         "✅ Your Request has been Sent. It may take 2-12 hours to confirm. Please wait 🙂"
     )
 

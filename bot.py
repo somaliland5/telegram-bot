@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import requests
 from functools import partial
 from datetime import datetime
 from telebot import TeleBot, types
@@ -9,359 +10,274 @@ import yt_dlp
 
 # -------- CONFIG --------
 TOKEN = os.environ.get("TOKEN")
+ADMIN_ID = 7983838654
+
 if not TOKEN:
-    raise ValueError("❌ Bot token not found! Please set TOKEN environment variable.")
-ADMIN_ID = 7983838654  # Admin Telegram ID
+    raise ValueError("TOKEN not found")
 
 bot = TeleBot(TOKEN)
 DATA_FILE = "users.json"
-BANNED_FILE = "banned.json"
 
-# -------- INIT FILES --------
-for file in [DATA_FILE, BANNED_FILE]:
-    if not os.path.exists(file):
-        with open(file, "w") as f:
-            json.dump({} if file==DATA_FILE else [], f)
+# -------- INIT FILE --------
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump({}, f)
 
-# -------- USERS FUNCTIONS --------
+# -------- USER DATABASE --------
 def load_users():
     try:
         with open(DATA_FILE, "r") as f:
-            data = json.load(f)
-            return data if data else {}
+            return json.load(f)
     except:
         return {}
 
-def save_users(users):
+def save_users(data):
     with open(DATA_FILE, "w") as f:
-        json.dump(users, f, indent=4)
+        json.dump(data, f, indent=4)
 
-def load_banned():
-    try:
-        with open(BANNED_FILE, "r") as f:
-            data = json.load(f)
-            return data if data else []
-    except:
-        return []
-
-def save_banned(banned):
-    with open(BANNED_FILE, "w") as f:
-        json.dump(banned, f, indent=4)
-
-def generate_ref_id():
+def generate_ref():
     return str(random.randint(1000000, 9999999))
 
-# -------- MAIN MENU --------
-def main_menu(chat_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("💰 Balance", "🔗 Referral Link", "💸 Withdraw")
-    bot.send_message(chat_id, "Main Menu", reply_markup=markup)
+# -------- MENU --------
+def menu(chat_id):
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("💰 Balance", "🔗 Referral Link")
+    kb.add("💸 Withdraw")
+    bot.send_message(chat_id, "Main Menu", reply_markup=kb)
 
-# -------- START COMMAND --------
+# -------- START + REFERRAL --------
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(msg):
+
     users = load_users()
-    user_id = str(message.from_user.id)
-    ref_id = None
-    parts = message.text.split()
-    if len(parts) > 1:
-        ref_id = parts[1]
+    uid = str(msg.from_user.id)
 
-    # Add user new
-    new_user = False
-    if user_id not in users:
-        users[user_id] = {
-            "balance": 0.0,
+    ref = None
+    if msg.text.startswith("/start "):
+        ref = msg.text.split()[1]
+
+    if uid not in users:
+        users[uid] = {
+            "balance": 0,
+            "withdrawn": 0,
             "referrals": 0,
-            "withdrawn": 0.0,
-            "ref_id": generate_ref_id(),
-            "created_at": datetime.now().strftime("%Y-%m-%d")
+            "ref_id": generate_ref()
         }
-        new_user = True
 
-    # Credit referral AFTER new user created
-    if new_user and ref_id and ref_id in users and ref_id != user_id:
-        users[ref_id]["balance"] += 0.5
-        users[ref_id]["referrals"] += 1
-        bot.send_message(
-            int(ref_id),
-f"🎉 You earned $0.5! New referral: {user_id}"
-        )
+        # referral reward
+        if ref:
+            for u in users:
+                if users[u]["ref_id"] == ref:
+                    users[u]["balance"] += 0.5
+                    users[u]["referrals"] += 1
+                    bot.send_message(int(u),
+                        f"🎉 New referral joined!\nYou earned $0.5")
 
     save_users(users)
 
-    # ----- WELCOME MESSAGE -----
-    welcome_text = f"""
-👋 Welcome {message.from_user.first_name}!
+    bot.send_message(msg.chat.id,
+        "👋 Welcome!\nSend any TikTok / YouTube / Facebook / Pinterest link to download.")
+    menu(msg.chat.id)
 
-This bot allows you to:
-💰 Check your balance
-🔗 Get referral link and earn rewards
-💸 Request withdrawals
-📹 Download videos or photos from TikTok, YouTube, Pinterest, Facebook
-
-Start exploring now!
-"""
-    bot.send_message(message.chat.id, welcome_text)
-    main_menu(message.chat.id)
-
-# -------- ADMIN COMMANDS --------
-@bot.message_handler(commands=['randomgift'])
-def random_gift(message):
-    if message.from_user.id != ADMIN_ID:
-        return
+# -------- BALANCE --------
+@bot.message_handler(func=lambda m: m.text=="💰 Balance")
+def balance(msg):
     users = load_users()
-    if not users:
-        bot.send_message(message.chat.id, "No users found")
-        return
-    user_id = random.choice(list(users.keys()))
-    users[user_id]["balance"] += 1
-    save_users(users)
-    bot.send_message(user_id,
-f"""🎁 RANDOM GIFT
-You received $1!"""
-    )
-    bot.send_message(message.chat.id,
-f"""✅ Gift Sent
-User: {user_id}
-Amount: $1"""
-    )
+    uid = str(msg.from_user.id)
 
-@bot.message_handler(commands=['addbalance'])
-def add_balance(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        parts = message.text.split()
-        target_id = parts[1]
-        amount = float(parts[2])
-    except:
-        bot.send_message(message.chat.id, "Usage: /addbalance <user_id> <amount>")
-        return
+    bot.send_message(msg.chat.id,
+        f"💰 Balance: ${users[uid]['balance']}")
+
+# -------- REFERRAL --------
+@bot.message_handler(func=lambda m: m.text=="🔗 Referral Link")
+def ref(msg):
+
     users = load_users()
-    if target_id not in users:
-        users[target_id] = {
-            "balance": 0.0,
-            "referrals": 0,
-            "withdrawn": 0.0,
-            "ref_id": generate_ref_id(),
-            "created_at": datetime.now().strftime("%Y-%m-%d")
-        }
-    users[target_id]["balance"] += amount
-    save_users(users)
-    bot.send_message(message.chat.id,
-f"✅ Successfully added ${amount} to user {target_id}")
-    bot.send_message(target_id,
-f"🎁 You received a gift! Your balance has been changed by ${amount}")
+    uid = str(msg.from_user.id)
 
-@bot.message_handler(commands=['stats'])
-def stats(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    users = load_users()
-    total_users = len(users)
-    total_balance = sum(u.get("balance",0) for u in users.values())
-    total_withdrawn = sum(u.get("withdrawn",0) for u in users.values())
-    bot.send_message(message.chat.id,
-f"""📊 BOT STATS
+    ref = users[uid]["ref_id"]
+    link = f"https://t.me/{bot.get_me().username}?start={ref}"
 
-👥 Total Users: {total_users}
-💰 Total Balance: ${total_balance}
-💸 Total Paid Out: ${total_withdrawn}"""
-    )
-
-@bot.message_handler(commands=['unban'])
-def unban_user(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        target_id = message.text.split()[1]
-    except:
-        bot.send_message(message.chat.id, "Usage: /unban <user_id>")
-        return
-    banned = load_banned()
-    if target_id in banned:
-        banned.remove(target_id)
-        save_banned(banned)
-        bot.send_message(message.chat.id, f"✅ User {target_id} has been unbanned.")
-        bot.send_message(target_id, "✅ You have been unbanned. You can now use the bot.")
-    else:
-        bot.send_message(message.chat.id, "❌ User is not banned.")
-
-# -------- MAIN HANDLER --------
-@bot.message_handler(func=lambda m: True)
-def handler(message):
-    banned = load_banned()
-    user_id = str(message.from_user.id)
-    if user_id in banned:
-        bot.send_message(message.chat.id, "❌ You are banned from using this bot.")
-        return
-    users = load_users()
-    if user_id not in users:
-        users[user_id] = {
-            "balance": 0.0,
-            "referrals": 0,
-            "withdrawn": 0.0,
-            "ref_id": generate_ref_id(),
-            "created_at": datetime.now().strftime("%Y-%m-%d")
-        }
-        save_users(users)
-
-    if message.text == "💰 Balance":
-        bot.send_message(message.chat.id,
-                         f"💰 Balance: ${users[user_id].get('balance',0)}")
-    elif message.text == "🔗 Referral Link":
-        ref = users[user_id]["ref_id"]
-        link = f"https://t.me/{bot.get_me().username}?start={ref}"
-        bot.send_message(message.chat.id,
-f"""🔗 Your Referral Link:
+    bot.send_message(msg.chat.id,
+f"""🔗 Your referral link:
 {link}
 
-👥 Referrals: {users[user_id].get('referrals',0)}
-💰 Earn $0.5 per referral"""
-        )
-    elif message.text == "💸 Withdraw":
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("USDT-BEP20")
-        markup.add("🔙 Back")
-        bot.send_message(message.chat.id,
-                         "Select Withdrawal Method",
-                         reply_markup=markup)
-    elif message.text == "USDT-BEP20":
-        msg = bot.send_message(message.chat.id,
-                               "Enter withdrawal amount (Min $1):")
-        bot.register_next_step_handler(msg, partial(withdraw_amount, method="USDT-BEP20"))
-    elif message.text == "🔙 Back":
-        main_menu(message.chat.id)
-    elif message.text.startswith("http"):
-        download_video(message)
-    else:
-        bot.send_message(message.chat.id,
-                         "❌ Unknown command. Use buttons or send video/photo link.")
+👥 Referrals: {users[uid]['referrals']}
+💰 Earn $0.5 each
+""")
 
-# -------- WITHDRAWAL --------
-def withdraw_amount(message, method):
+# -------- WITHDRAW --------
+@bot.message_handler(func=lambda m: m.text=="💸 Withdraw")
+def withdraw_menu(msg):
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("USDT-BEP20", "🔙 Back")
+
+    bot.send_message(msg.chat.id,
+        "Select method",
+        reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text=="USDT-BEP20")
+def withdraw_amount(msg):
+
+    ask = bot.send_message(msg.chat.id,
+        "Enter withdrawal amount (Min $1)")
+    bot.register_next_step_handler(ask, withdraw_address)
+
+def withdraw_address(msg):
+
     users = load_users()
-    user_id = str(message.from_user.id)
-    chat_id = message.chat.id
+    uid = str(msg.from_user.id)
+
     try:
-        amount = float(message.text)
+        amount = float(msg.text)
     except:
-        bot.send_message(chat_id, "❌ Invalid amount")
+        bot.send_message(msg.chat.id,"Invalid amount")
         return
-    if amount < 1:
-        bot.send_message(chat_id, "❌ Minimum withdrawal is $1")
-        return
-    if users[user_id].get("balance",0) < amount:
-        bot.send_message(chat_id, "❌ Not enough balance")
-        return
-    msg = bot.send_message(chat_id,
-                           "Enter your USDT-BEP20 wallet address (must start with 0):")
-    bot.register_next_step_handler(msg, partial(process_withdraw, amount=amount, method=method))
 
-def process_withdraw(message, amount, method):
+    if users[uid]["balance"] < amount:
+        bot.send_message(msg.chat.id,"Not enough balance")
+        return
+
+    ask = bot.send_message(msg.chat.id,"Enter wallet address")
+    bot.register_next_step_handler(ask, process_withdraw, amount)
+
+def process_withdraw(msg, amount):
+
     users = load_users()
-    user_id = str(message.from_user.id)
-    chat_id = message.chat.id
-    address = message.text
-    withdrawal_id = random.randint(10000, 99999)
-    users[user_id]["balance"] -= amount
-    users[user_id]["withdrawn"] += amount
-    save_users(users)
-    referral_count = users[user_id].get("referrals",0)
+    uid = str(msg.from_user.id)
 
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        InlineKeyboardButton("CONFIRM ✅", callback_data=f"withdraw_confirm_{user_id}_{amount}_{withdrawal_id}"),
-        InlineKeyboardButton("REJECT ❌", callback_data=f"withdraw_reject_{user_id}_{amount}_{withdrawal_id}"),
-        InlineKeyboardButton("BAN 🚫", callback_data=f"withdraw_ban_{user_id}_{amount}_{withdrawal_id}")
+    address = msg.text
+    wid = random.randint(10000,99999)
+
+    users[uid]["balance"] -= amount
+    users[uid]["withdrawn"] += amount
+    save_users(users)
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton("CONFIRM ✅",
+            callback_data=f"confirm_{uid}_{amount}_{wid}"),
+        InlineKeyboardButton("REJECT ❌",
+            callback_data=f"reject_{uid}_{amount}_{wid}")
     )
 
-    bot.send_message(
-        ADMIN_ID,
+    bot.send_message(ADMIN_ID,
 f"""💸 NEW WITHDRAWAL REQUEST
 
-👤 User ID: {user_id}
-💰 Amount: ${amount}
-🪙 Coin: {method}
-📬 Address: {address}
-🧾 Withdrawal ID: #{withdrawal_id}
-👥 Referrals: {referral_count}
-""",
-        reply_markup=markup
-    )
+User: {uid}
+Amount: ${amount}
+Address: {address}
+ID: {wid}
+""", reply_markup=kb)
 
-    bot.send_message(chat_id,
-                     "✅ Your Request has been Sent. It may take 2-12 hours to confirm. Please wait 🙂")
+    bot.send_message(msg.chat.id,
+        "✅ Request sent. It may take 2-12 hours 🙂")
 
-# -------- CONFIRM / REJECT / BAN --------
-@bot.callback_query_handler(func=lambda call: call.data.startswith("withdraw"))
-def withdraw_actions(call):
-    parts = call.data.split("_")
-    action = parts[1]
-    user_id = parts[2]
-    amount = float(parts[3])
-    wid = parts[4]
+# -------- CONFIRM --------
+@bot.callback_query_handler(func=lambda c:c.data.startswith("confirm"))
+def confirm(call):
+
+    _,uid,amount,wid = call.data.split("_")
+
+    bot.send_message(uid,
+f"""💸 Payment Sent Successfully!
+
+ID: {wid}
+Amount: ${amount}
+Method: USDT-BEP20
+""")
+
+# -------- REJECT --------
+@bot.callback_query_handler(func=lambda c:c.data.startswith("reject"))
+def reject(call):
+
+    _,uid,amount,wid = call.data.split("_")
 
     users = load_users()
-    banned = load_banned()
+    users[uid]["balance"] += float(amount)
+    save_users(users)
 
-    if action == "confirm":
-        bot.send_message(user_id,
-f"""💸 Payment Sent Successfully!
-🧾 Withdrawal ID: #{wid}
-💰 Amount: ${amount}
-🔄 Method: USDT-BEP20
-🆓 Fee (0.00%): $0.00
-📤 Amount Sent: ${amount}"""
-        )
-        bot.answer_callback_query(call.id, "Payment Confirmed ✅")
-    elif action == "reject":
-        users[user_id]["balance"] += amount
-        save_users(users)
-        bot.send_message(user_id,
-f"""❌ Withdrawal Rejected
-🧾 Withdrawal ID: #{wid}
-💰 Amount Refunded: ${amount}"""
-        )
-        bot.answer_callback_query(call.id, "Withdrawal Rejected ❌")
-    elif action == "ban":
-        if user_id not in banned:
-            banned.append(user_id)
-            save_banned(banned)
-        bot.send_message(user_id, "❌ You have been banned from using this bot.")
-        bot.answer_callback_query(call.id, "User has been banned 🚫")
+    bot.send_message(uid,
+        f"❌ Withdrawal rejected. ${amount} returned to balance.")
 
-# -------- VIDEO & PHOTO DOWNLOADER --------
-def download_video(message):
-    bot.send_message(message.chat.id, "Downloading...")
+# -------- ADMIN ADD BALANCE --------
+@bot.message_handler(commands=['addbalance'])
+def add_balance(msg):
+
+    if msg.from_user.id != ADMIN_ID:
+        return
+
     try:
-        url = message.text
+        _,uid,amount = msg.text.split()
+        amount=float(amount)
+    except:
+        return bot.send_message(msg.chat.id,"Usage /addbalance user amount")
+
+    users = load_users()
+    users[uid]["balance"] += amount
+    save_users(users)
+
+    bot.send_message(uid,f"💰 Admin updated your balance by ${amount}")
+
+# -------- RANDOM GIFT --------
+@bot.message_handler(commands=['randomgift'])
+def randomgift(msg):
+
+    if msg.from_user.id != ADMIN_ID:
+        return
+
+    amount=float(msg.text.split()[1])
+    users=load_users()
+
+    uid=random.choice(list(users.keys()))
+    users[uid]["balance"]+=amount
+    save_users(users)
+
+    bot.send_message(uid,f"🎁 You received random gift ${amount}")
+
+# -------- VIDEO + PHOTO DOWNLOADER --------
+def download_media(msg):
+
+    url = msg.text
+
+    try:
         ydl_opts = {
-            'format': 'best',
-            'outtmpl': 'downloaded_media.%(ext)s',
+            "outtmpl": "media.%(ext)s",
+            "format": "best"
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            ext = info.get('ext', 'mp4')
+            ext = info["ext"]
 
-        file_name = f"downloaded_media.{ext}"
+        file = f"media.{ext}"
 
-        if ext in ['mp4', 'webm']:
-            with open(file_name, "rb") as f:
-                bot.send_video(message.chat.id, f)
-        elif ext in ['jpg', 'png', 'webp']:
-            with open(file_name, "rb") as f:
-                bot.send_photo(message.chat.id, f)
+        if ext in ["mp4","webm"]:
+            bot.send_video(msg.chat.id, open(file,"rb"))
         else:
-            bot.send_message(message.chat.id, "❌ Unknown media type.")
+            bot.send_photo(msg.chat.id, open(file,"rb"))
 
-        os.remove(file_name)
+        os.remove(file)
 
-    except Exception as e:
-        bot.send_message(message.chat.id, f"Download failed: {str(e)}")
+    except Exception:
 
-# -------- RUN BOT --------
-print("Bot Running")
+        # TikTok photo fallback
+        try:
+            r=requests.get(url)
+            with open("photo.jpg","wb") as f:
+                f.write(r.content)
+            bot.send_photo(msg.chat.id, open("photo.jpg","rb"))
+            os.remove("photo.jpg")
+        except:
+            bot.send_message(msg.chat.id,"Download failed")
+
+# -------- LINK DETECTOR --------
+@bot.message_handler(func=lambda m:m.text.startswith("http"))
+def downloader(msg):
+    bot.send_message(msg.chat.id,"Downloading...")
+    download_media(msg)
+
+# -------- RUN --------
+print("Bot running...")
 bot.infinity_polling()

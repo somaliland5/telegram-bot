@@ -48,7 +48,7 @@ def main_menu(chat_id):
     kb.row("❌ Cancel")
     bot.send_message(chat_id, "📋 Main Menu", reply_markup=kb)
 
-    # Admin only: show Add Balance / Random Gift buttons
+    # Admin panel inline buttons
     if chat_id == ADMIN_ID:
         admin_kb = InlineKeyboardMarkup()
         admin_kb.row(
@@ -199,7 +199,7 @@ def callbacks(call):
         save_users(users)
         bot.send_message(uid, "🚫 You have been banned.")
 
-    # Admin panel buttons
+    # ---------------- Admin Panel ----------------
     elif data[0] == "admin_addbalance":
         msg = bot.send_message(ADMIN_ID, "Send: BOT_ID AMOUNT")
         bot.register_next_step_handler(msg, admin_add_balance_step)

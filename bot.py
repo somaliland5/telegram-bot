@@ -40,7 +40,7 @@ def main_menu(chat_id):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 Balance", "🔗 Referral")
     kb.add("💸 Withdraw", "🆔 Get My ID")
-    kb.add("🎥 Download")
+    kb.add("Rate🌟")
 
     if chat_id == ADMIN_ID:
         kb.add("⚙ Admin Panel")

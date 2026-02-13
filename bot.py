@@ -39,11 +39,15 @@ def generate_ref():
 
 # -------- MENU --------
 def main_menu(chat_id):
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💰 Balance", "🔗 Referral Link")
-    kb.add("💸 Withdraw", "🆔 Get My ID")
-    bot.send_message(chat_id, "Main Menu", reply_markup=kb)
 
+    bot.send_message(chat_id, "Loading menu...")
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    kb.row("💰 Balance", "🔗 Referral Link")
+    kb.row("💸 Withdraw", "🆔 Get My ID")
+
+    bot.send_message(chat_id, "Main Menu", reply_markup=kb)
 # -------- START --------
 @bot.message_handler(commands=['start'])
 def start(message):

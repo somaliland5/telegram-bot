@@ -114,7 +114,15 @@ f"""📊 BOT STATS
 # ---------- BUTTON HANDLER ----------
 @bot.message_handler(func=lambda m: True)
 def handler(message):
+elif message.text == "💸 Withdraw":
 
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("USDT-BEP20")
+    markup.add("🔙 Back")
+
+    bot.send_message(message.chat.id,
+                     "Select Withdrawal Method",
+                     reply_markup=markup)
     # Allow commands
     if message.text.startswith("/"):
         return
@@ -203,7 +211,30 @@ f"""💸 NEW WITHDRAWAL REQUEST
 
     bot.send_message(message.chat.id,
                      "Your Request has been Sent. It can take 2-12 hours 🙂")
+def withdraw_amount(message, method):
+    users = load_users()
+    user_id = str(message.from_user.id)
 
+    try:
+        amount = float(message.text)
+    except:
+        bot.send_message(message.chat.id, "❌ Invalid amount")
+        return
+
+    if amount < 1:
+        bot.send_message(message.chat.id, "❌ Minimum withdrawal is $1")
+        return
+
+    if users[user_id]["balance"] < amount:
+        bot.send_message(message.chat.id, "❌ Not enough balance")
+        return
+
+    msg = bot.send_message(message.chat.id,
+                           "Enter your USDT-BEP20 Address:")
+    bot.register_next_step_handler(msg,
+                                   process_withdraw,
+                                   amount,
+                                   method)
 # ---------- CONFIRM PAYMENT ----------
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
 def confirm_payment(call):

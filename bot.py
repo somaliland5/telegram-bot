@@ -63,9 +63,12 @@ def start(message):
     users = load_users()
     user_id = str(message.from_user.id)
     ref_id = None
-    if message.text.startswith("/start "):
-        ref_id = message.text.split()[1]
+    parts = message.text.split()
+    if len(parts) > 1:
+        ref_id = parts[1]
 
+    # Add user new
+    new_user = False
     if user_id not in users:
         users[user_id] = {
             "balance": 0.0,
@@ -74,17 +77,32 @@ def start(message):
             "ref_id": generate_ref_id(),
             "created_at": datetime.now().strftime("%Y-%m-%d")
         }
+        new_user = True
 
-        # Credit referral
-        if ref_id and ref_id in users:
-            users[ref_id]["balance"] += 0.5
-            users[ref_id]["referrals"] += 1
-            bot.send_message(
-                int(ref_id),
-f"""🎉 You earned $0.5! New referral: {user_id}"""
-            )
+    # Credit referral AFTER new user created
+    if new_user and ref_id and ref_id in users and ref_id != user_id:
+        users[ref_id]["balance"] += 0.5
+        users[ref_id]["referrals"] += 1
+        bot.send_message(
+            int(ref_id),
+f"🎉 You earned $0.5! New referral: {user_id}"
+        )
 
     save_users(users)
+
+    # ----- WELCOME MESSAGE -----
+    welcome_text = f"""
+👋 Welcome {message.from_user.first_name}!
+
+This bot allows you to:
+💰 Check your balance
+🔗 Get referral link and earn rewards
+💸 Request withdrawals
+📹 Download videos from TikTok, YouTube, Pinterest, Facebook
+
+Start exploring now!
+"""
+    bot.send_message(message.chat.id, welcome_text)
     main_menu(message.chat.id)
 
 # -------- ADMIN COMMANDS --------
@@ -134,7 +152,7 @@ def add_balance(message):
     bot.send_message(message.chat.id,
 f"✅ Successfully added ${amount} to user {target_id}")
     bot.send_message(target_id,
-f"🎁 You received a gift! Your balance has been increased by ${amount}")
+f"🎁 You received a gift! Your balance has been changed by ${amount}")
 
 @bot.message_handler(commands=['stats'])
 def stats(message):

@@ -8,7 +8,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = os.environ.get("7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")
+TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("❌ Bot token not found! Please set TOKEN environment variable.")
 ADMIN_ID = 7983838654  # Admin Telegram ID

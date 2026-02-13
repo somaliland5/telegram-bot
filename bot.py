@@ -2,8 +2,8 @@ import os
 import json
 import random
 from telebot import TeleBot, types
-import yt_dlp
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import yt_dlp
 
 # ------------------------
 # Telegram Token
@@ -140,13 +140,8 @@ def ask_address(message, coin):
         main_menu(message.chat.id)
         return
 
-    if amount < 1:
-        bot.send_message(message.chat.id, "❌ Minimum withdrawal is $1")
-        main_menu(message.chat.id)
-        return
-
-    users = load_users()
     user_id = str(message.from_user.id)
+    users = load_users()
     if users[user_id]["balance"] < amount:
         bot.send_message(message.chat.id, "❌ You don't have enough balance.")
         main_menu(message.chat.id)
@@ -165,13 +160,16 @@ def process_withdrawal(message, coin, amount):
 
     users = load_users()
     user_id = str(message.from_user.id)
+
+    # Deduct balance immediately
     users[user_id]["balance"] -= amount
     save_users(users)
 
-    # Generate withdrawal ID
-    withdrawal_id = random.randint(10000, 99999)
+    # Notify user
+    bot.send_message(message.chat.id, "✅ Your Request has been Sent. It can take 2-12 hours. 🙂")
 
-    # Send admin notification with CONFIRM button
+    # Admin notification
+    withdrawal_id = random.randint(10000, 99999)
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(
         "CONFIRM ✅",
@@ -213,12 +211,11 @@ def confirm_withdraw(call):
 🆓 Fee (0.00%): $0.00
 📤 Amount Sent: ${amount}
 """
-
     bot.send_message(user_id, text)
     bot.answer_callback_query(call.id, "Payment Confirmed ✅")
 
 # ------------------------
-# ADMIN BONUS/GIFT
+# ADMIN GIFT
 # ------------------------
 @bot.message_handler(commands=['gift'])
 def gift_user(message):
@@ -232,8 +229,8 @@ def gift_user(message):
 
     target_id = args[1]
     amount = float(args[2])
-
     users = load_users()
+
     if target_id not in users:
         users[target_id] = {"balance": 0.0, "referrals": 0, "ref_id": generate_ref_id()}
 
@@ -242,6 +239,26 @@ def gift_user(message):
 
     bot.send_message(target_id, f"🎁 You received a gift of ${amount}!")
     bot.send_message(message.chat.id, f"✅ Gift of ${amount} sent to {target_id}")
+
+# ------------------------
+# ADMIN RANDOM BONUS $1
+# ------------------------
+@bot.message_handler(commands=['randomgift'])
+def random_gift(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = load_users()
+    if not users:
+        bot.send_message(message.chat.id, "No users found.")
+        return
+
+    target_id = random.choice(list(users.keys()))
+    users[target_id]["balance"] += 1.0
+    save_users(users)
+
+    bot.send_message(target_id, "🎉 Congratulations! You received a $1 bonus!")
+    bot.send_message(message.chat.id, f"✅ Random gift of $1 sent to {target_id}")
 
 # ------------------------
 # RUN BOT

@@ -2,6 +2,7 @@ import os
 import json
 import random
 from telebot import TeleBot, types
+import yt_dlp
 
 # ---------------- CONFIG ----------------
 TOKEN = os.environ.get("TOKEN")
@@ -62,6 +63,9 @@ def start(message):
     ref = None
     if " " in message.text:
         ref = message.text.split()[1]
+
+    welcome_msg = f"👋 Welcome {message.from_user.first_name}! You are now registered."
+    bot.send_message(message.chat.id, welcome_msg)
 
     if uid not in users:
         bot_id = gen_bot_id()
@@ -126,6 +130,23 @@ def handler(message):
     elif message.text == "❌ Cancel":
         main_menu(message.chat.id)
 
+    # Video download
+    elif message.text.startswith("http"):
+        download_video(message)
+
+# ---------------- VIDEO DOWNLOAD ----------------
+def download_video(message):
+    bot.send_message(message.chat.id, "⏳ Downloading...")
+    try:
+        ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([message.text])
+        with open("video.mp4", "rb") as f:
+            bot.send_video(message.chat.id, f)
+        os.remove("video.mp4")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Download failed: {str(e)}")
+
 # ---------------- WITHDRAW ----------------
 def withdraw_amount(message):
     users = load_users()
@@ -155,7 +176,6 @@ def withdraw_address(message, amount):
     users[uid]["balance"] -= amount
     save_users(users)
 
-    # Admin buttons Confirm / Reject / Ban
     kb = types.InlineKeyboardMarkup()
     kb.row(
         types.InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_{uid}_{amount}_{wid}"),

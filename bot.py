@@ -230,6 +230,34 @@ def addbalance(message):
 
     bot.send_message(message.chat.id, "❌ User not found")
 
+# -------- ADMIN ADD BALANCE --------
+@bot.message_handler(commands=["addbalance"])
+def addbalance(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        _, bot_id, amount = message.text.split()
+        amount = float(amount)
+    except:
+        bot.send_message(message.chat.id,
+                         "Usage: /addbalance BOT_ID AMOUNT")
+        return
+
+    users = load_users()
+    found = False
+
+    for uid in users:
+        if users[uid].get("bot_id") == bot_id:
+            users[uid]["balance"] += amount
+            save_users(users)
+            bot.send_message(uid, f"💰 Admin added ${amount} to your balance")
+            bot.send_message(message.chat.id, f"✅ Balance added to BOT ID {bot_id}")
+            found = True
+            break
+
+    if not found:
+        bot.send_message(message.chat.id, "❌ User not found")
 
 # -------- ADMIN RANDOM GIFT --------
 @bot.message_handler(commands=["randomgift"])
@@ -252,10 +280,11 @@ def randomgift(message):
     users[uid]["balance"] += amount
     save_users(users)
 
-    bot.send_message(uid, f"🎁 Random Gift!\nYou received ${amount}")
+    # Notify the user
+    bot.send_message(uid,
+                     f"🎁 Random Gift!\nYou received ${amount}!")
     bot.send_message(message.chat.id,
-                     f"✅ Gift sent to BOT ID {users[uid]['bot_id']}")
-
+                     f"✅ Random gift of ${amount} sent to BOT ID {users[uid]['bot_id']}")
 
 # -------- RUN BOT --------
 print("Bot Running...")

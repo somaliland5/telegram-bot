@@ -23,9 +23,6 @@ if not os.path.exists(DATA_FILE):
 
 # -------- USERS FUNCTIONS --------
 def load_users():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            json.dump({}, f)
     try:
         with open(DATA_FILE, "r") as f:
             data = json.load(f)
@@ -59,6 +56,7 @@ def start(message):
     if message.text.startswith("/start "):
         ref_id = message.text.split()[1]
 
+    # Add new user if not exists
     if user_id not in users:
         users[user_id] = {
             "balance": 0.0,
@@ -135,7 +133,15 @@ def handler(message):
     users = load_users()
     user_id = str(message.from_user.id)
     if user_id not in users:
-        return
+        # Add new user automatically
+        users[user_id] = {
+            "balance": 0.0,
+            "referrals": 0,
+            "withdrawn": 0.0,
+            "ref_id": generate_ref_id(),
+            "created_at": datetime.now().strftime("%Y-%m-%d")
+        }
+        save_users(users)
 
     # ----- BUTTONS -----
     if message.text == "💰 Balance":
@@ -206,6 +212,7 @@ def process_withdraw(message, amount, method):
     address = message.text
     withdrawal_id = random.randint(10000, 99999)
 
+    # Deduct balance first
     users[user_id]["balance"] -= amount
     users[user_id]["withdrawn"] += amount
     save_users(users)

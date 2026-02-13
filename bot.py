@@ -80,15 +80,10 @@ f"""🎉 You earned $0.5! New referral: {user_id}"""
     save_users(users)
     main_menu(message.chat.id)
 
-# -------- ADMIN RANDOM GIFT --------
+# -------- ADMIN RANDOM GIFT (HAL USER) --------
 @bot.message_handler(commands=['randomgift'])
 def random_gift(message):
     if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        amount = float(message.text.split()[1])
-    except:
-        bot.send_message(message.chat.id, "Usage: /randomgift 1")
         return
 
     users = load_users()
@@ -96,19 +91,20 @@ def random_gift(message):
         bot.send_message(message.chat.id, "No users found")
         return
 
-    user = random.choice(list(users.keys()))
-    users[user]["balance"] += amount
+    # Door hal user random ah
+    user_id = random.choice(list(users.keys()))
+    users[user_id]["balance"] += 1
     save_users(users)
 
-    bot.send_message(user,
+    bot.send_message(user_id,
 f"""🎁 RANDOM GIFT
-You received ${amount}!"""
+You received $1!"""
     )
 
     bot.send_message(message.chat.id,
 f"""✅ Gift Sent
-User: {user}
-Amount: ${amount}"""
+User: {user_id}
+Amount: $1"""
     )
 
 # -------- ADMIN STATS --------
@@ -214,12 +210,12 @@ def process_withdraw(message, amount, method):
     users[user_id]["withdrawn"] += amount
     save_users(users)
 
-    # Admin notification
+    # Admin notification with Confirm / Reject
     markup = types.InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(
-        "CONFIRM ✅",
-        callback_data=f"confirm_{user_id}_{amount}_{withdrawal_id}"
-    ))
+    markup.add(
+        InlineKeyboardButton("CONFIRM ✅", callback_data=f"confirm_confirm_{user_id}_{amount}_{withdrawal_id}"),
+        InlineKeyboardButton("REJECT ❌", callback_data=f"confirm_reject_{user_id}_{amount}_{withdrawal_id}")
+    )
 
     bot.send_message(
         ADMIN_ID,
@@ -238,24 +234,39 @@ f"""💸 NEW WITHDRAWAL REQUEST
     bot.send_message(chat_id,
                      "✅ Your Request has been Sent. It may take 2-12 hours to confirm. Please wait 🙂")
 
-# -------- CONFIRM PAYMENT --------
+# -------- CONFIRM / REJECT PAYMENT --------
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
 def confirm_payment(call):
-    data = call.data.split("_")
-    user_id = data[1]
-    amount = data[2]
-    wid = data[3]
+    parts = call.data.split("_")
+    action = parts[1]        # "confirm" or "reject"
+    user_id = parts[2]
+    amount = float(parts[3])
+    wid = parts[4]
 
-    bot.send_message(user_id,
+    users = load_users()
+
+    if action == "confirm":
+        bot.send_message(user_id,
 f"""💸 Payment Sent Successfully!
 
 🧾 Withdrawal ID: #{wid}
 💰 Amount: ${amount}
 🔄 Method: USDT-BEP20
 🆓 Fee (0.00%): $0.00
-📤 Amount Sent: ${amount}
-""")
-    bot.answer_callback_query(call.id, "Payment Confirmed")
+📤 Amount Sent: ${amount}"""
+        )
+        bot.answer_callback_query(call.id, "Payment Confirmed ✅")
+
+    elif action == "reject":
+        users[user_id]["balance"] += amount
+        save_users(users)
+        bot.send_message(user_id,
+f"""❌ Withdrawal Rejected
+
+🧾 Withdrawal ID: #{wid}
+💰 Amount Refunded: ${amount}"""
+        )
+        bot.answer_callback_query(call.id, "Withdrawal Rejected ❌")
 
 # -------- VIDEO DOWNLOADER --------
 def download_video(message):

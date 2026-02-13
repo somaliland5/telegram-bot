@@ -5,17 +5,15 @@ from telebot import TeleBot, types
 import yt_dlp
 
 # ------------------------
-# TOKEN (Environment Variable)
+# Telegram Token
 # ------------------------
-TOKEN = os.getenv("TOKEN")  # Railway environment variable
+TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ"
 bot = TeleBot(TOKEN)
 
 # ------------------------
 # Data file
 # ------------------------
 DATA_FILE = "users.json"
-
-# Ensure users.json exists
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({}, f)
@@ -23,7 +21,7 @@ if not os.path.exists(DATA_FILE):
 # ------------------------
 # Admin ID
 # ------------------------
-ADMIN_ID = 7983838654  # Your Telegram ID
+ADMIN_ID = 7983838654  # bedel adiga Telegram ID-gaaga
 
 # ------------------------
 # Helpers
@@ -37,7 +35,7 @@ def save_users(users):
         json.dump(users, f, indent=4)
 
 def generate_ref_id():
-    return str(random.randint(1000000, 9999999))
+    return str(random.randint(1000000, 10000000))
 
 def main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -45,7 +43,7 @@ def main_menu(chat_id):
     bot.send_message(chat_id, "👋 Main Menu:", reply_markup=markup)
 
 # ------------------------
-# /start command
+# START COMMAND
 # ------------------------
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -74,35 +72,32 @@ def start(message):
 
     main_menu(message.chat.id)
     bot.send_message(message.chat.id,
-        "Welcome! You can also send a public video link to download a video.")
+        "Welcome! You can also send a video link from TikTok, YouTube, Facebook, or Pinterest.")
 
 # ------------------------
-# Handle buttons and video links
+# Handle Buttons and Links
 # ------------------------
 @bot.message_handler(func=lambda message: True)
 def handle_buttons(message):
     users = load_users()
     user_id = str(message.from_user.id)
 
-    # Balance button
     if message.text == "💰 Balance":
-        bal = users[user_id]["balance"]
-        bot.send_message(message.chat.id, f"💰 Your Balance: ${bal:.2f}")
+        if user_id in users:
+            bal = users[user_id]["balance"]
+            bot.send_message(message.chat.id, f"💰 Your Balance: ${bal}")
+        else:
+            bot.send_message(message.chat.id, "❌ User not found!")
 
-    # Referral button
     elif message.text == "🔗 Referral Link":
-        user_data = users[user_id]
-        ref_id = user_data["ref_id"]
-        total_referrals = user_data["referrals"]
-        balance = user_data["balance"]
+        if user_id in users:
+            ref_id = users[user_id]["ref_id"]
+            link = f"https://t.me/{bot.get_me().username}?start={ref_id}"
+            bot.send_message(message.chat.id,
+f"🔗 Your Referral Link:\n{link}\n👥 Total Referrals: {users[user_id]['referrals']}\n💰 Earn $0.5 per user")
+        else:
+            bot.send_message(message.chat.id, "❌ User not found!")
 
-        link = f"https://t.me/{bot.get_me().username}?start={ref_id}"
-        msg = f"🔗 Your Referral Link:\n{link}\n\n" \
-              f"👥 Total Referrals: {total_referrals}\n" \
-              f"💰 Earned: ${balance:.2f} (0.5 per referral)"
-        bot.send_message(message.chat.id, msg)
-
-    # Withdraw button
     elif message.text == "💸 Withdraw":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         markup.add("USDT-BEP20", "Cancel")
@@ -115,42 +110,41 @@ def handle_buttons(message):
         bot.send_message(message.chat.id, "❌ Action cancelled.")
         main_menu(message.chat.id)
 
-    # Video links
     elif message.text.startswith("http"):
         download_video(message)
 
     else:
-        bot.send_message(message.chat.id, "❌ Unknown command. Use buttons or send a public video link.")
+        bot.send_message(message.chat.id, "❌ Unknown command. Use buttons or send a video link.")
         main_menu(message.chat.id)
 
 # ------------------------
-# Video downloader using yt-dlp
+# Video Downloader using yt-dlp
 # ------------------------
 def download_video(message):
     url = message.text.strip()
     chat_id = message.chat.id
     bot.send_message(chat_id, "⏳ Downloading video, please wait...")
 
+    ydl_opts = {
+        'format': 'best',
+        'outtmpl': 'video.mp4',
+        'noplaylist': True,
+        'quiet': True,
+        'nocheckcertificate': True
+    }
+
     try:
-        ydl_opts = {
-            'format': 'best[height<=720]/best',
-            'outtmpl': 'video.mp4',
-            'retries': 3,
-            'socket_timeout': 30
-        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
         with open("video.mp4", "rb") as f:
             bot.send_video(chat_id, f)
-
         os.remove("video.mp4")
-
     except Exception as e:
-        bot.send_message(chat_id, f"❌ Download failed: {e}")
+        bot.send_message(chat_id, f"❌ Error downloading video: {str(e)}")
 
 # ------------------------
-# Withdraw flow
+# Ask Withdrawal Amount Step
 # ------------------------
 def ask_amount(message):
     if message.text == "Cancel":
@@ -159,9 +153,13 @@ def ask_amount(message):
         return
 
     coin = message.text
-    msg = bot.send_message(message.chat.id, f"Enter amount to withdraw (minimum $1) for {coin}:")
+    msg = bot.send_message(message.chat.id,
+        f"Enter amount to withdraw (minimum $1) for {coin}:")
     bot.register_next_step_handler(msg, ask_address, coin)
 
+# ------------------------
+# Ask Address Step
+# ------------------------
 def ask_address(message, coin):
     try:
         amount = float(message.text.strip())
@@ -170,31 +168,29 @@ def ask_address(message, coin):
         main_menu(message.chat.id)
         return
 
-    if amount < 1:
-        bot.send_message(message.chat.id, "❌ Minimum withdrawal is $1")
-        main_menu(message.chat.id)
-        return
-
     users = load_users()
     user_id = str(message.from_user.id)
-    if users[user_id]["balance"] < amount:
+    if user_id not in users or users[user_id]["balance"] < amount:
         bot.send_message(message.chat.id, "❌ You don't have enough balance.")
         main_menu(message.chat.id)
         return
 
-    msg = bot.send_message(message.chat.id, f"Enter your {coin} wallet address (must start with 0):")
+    msg = bot.send_message(message.chat.id,
+        f"Enter your {coin} wallet address (must start with 0):")
     bot.register_next_step_handler(msg, process_withdrawal, coin, amount)
 
+# ------------------------
+# Process Withdrawal
+# ------------------------
 def process_withdrawal(message, coin, amount):
     address = message.text.strip()
     if not address.startswith("0"):
-        bot.send_message(message.chat.id, "❌ Invalid address. Withdrawal cancelled.")
+        bot.send_message(message.chat.id, "❌ Invalid address. Must start with 0. Withdrawal cancelled.")
         main_menu(message.chat.id)
         return
 
     users = load_users()
     user_id = str(message.from_user.id)
-
     users[user_id]["balance"] -= amount
     save_users(users)
 
@@ -206,7 +202,6 @@ f"✅ Withdrawal request sent!\nCoin: {coin}\nAmount: ${amount}\nAddress: {addre
     bot.send_message(ADMIN_ID,
 f"""
 💸 NEW WITHDRAWAL REQUEST
-
 👤 User ID: {user_id}
 💰 Amount: ${amount}
 🪙 Coin: {coin}
@@ -215,7 +210,29 @@ f"""
     main_menu(message.chat.id)
 
 # ------------------------
-# Run bot
+# Admin Gift / Bonus
+# ------------------------
+@bot.message_handler(commands=['gift'])
+def gift_user(message):
+    ADMIN_ID = 7983838654  # bedel adiga Telegram ID-gaaga
+    TARGET_ID = "7074541502"  # Telegram ID-ga qofka la siinayo gift
+    GIFT_AMOUNT = 10  # Lacagta gift-ka
+
+    if message.from_user.id != ADMIN_ID:
+        return  # Kaliya admin ayaa isticmaali kara
+
+    users = load_users()
+
+    if TARGET_ID in users:
+        users[TARGET_ID]["balance"] += GIFT_AMOUNT
+        save_users(users)
+        bot.send_message(TARGET_ID, f"🎁 You received ${GIFT_AMOUNT} gift!")
+        bot.send_message(message.chat.id, f"✅ ${GIFT_AMOUNT} added to user {TARGET_ID}")
+    else:
+        bot.send_message(message.chat.id, "❌ Target user not found!")
+
+# ------------------------
+# RUN BOT
 # ------------------------
 print("Bot Running...")
-bot.infinity_polling(timeout=60, long_polling_timeout=60)
+bot.infinity_polling()

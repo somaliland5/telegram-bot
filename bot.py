@@ -8,8 +8,10 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = os.environ.get("7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")  # Telegram token from Railway Environment
-ADMIN_ID = 7983838654            # Admin Telegram ID
+TOKEN = os.environ.get("7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")
+if not TOKEN:
+    raise ValueError("❌ Bot token not found! Please set TOKEN environment variable.")
+ADMIN_ID = 7983838654  # Admin Telegram ID
 
 bot = TeleBot(TOKEN)
 DATA_FILE = "users.json"
@@ -21,8 +23,17 @@ if not os.path.exists(DATA_FILE):
 
 # -------- USERS FUNCTIONS --------
 def load_users():
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "w") as f:
+            json.dump({}, f)
+    try:
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+            if data is None:
+                data = {}
+            return data
+    except:
+        return {}
 
 def save_users(users):
     with open(DATA_FILE, "w") as f:
@@ -108,8 +119,8 @@ def stats(message):
 
     users = load_users()
     total_users = len(users)
-    total_balance = sum(u["balance"] for u in users.values())
-    total_withdrawn = sum(u["withdrawn"] for u in users.values())
+    total_balance = sum(u.get("balance",0) for u in users.values())
+    total_withdrawn = sum(u.get("withdrawn",0) for u in users.values())
 
     bot.send_message(message.chat.id,
 f"""📊 BOT STATS
@@ -133,7 +144,7 @@ def handler(message):
     # ----- BUTTONS -----
     if message.text == "💰 Balance":
         bot.send_message(message.chat.id,
-                         f"💰 Balance: ${users[user_id]['balance']}")
+                         f"💰 Balance: ${users[user_id].get('balance',0)}")
 
     elif message.text == "🔗 Referral Link":
         ref = users[user_id]["ref_id"]
@@ -142,7 +153,7 @@ def handler(message):
 f"""🔗 Your Referral Link:
 {link}
 
-👥 Referrals: {users[user_id]['referrals']}
+👥 Referrals: {users[user_id].get('referrals',0)}
 💰 Earn $0.5 per referral"""
         )
 
@@ -184,7 +195,7 @@ def withdraw_amount(message, method):
         bot.send_message(chat_id, "❌ Minimum withdrawal is $1")
         return
 
-    if users[user_id]["balance"] < amount:
+    if users[user_id].get("balance",0) < amount:
         bot.send_message(chat_id, "❌ Not enough balance")
         return
 

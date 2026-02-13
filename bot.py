@@ -3,6 +3,7 @@ import json
 import random
 from telebot import TeleBot, types
 import yt_dlp
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ------------------------
 # Telegram Token
@@ -21,7 +22,7 @@ if not os.path.exists(DATA_FILE):
 # ------------------------
 # Admin ID
 # ------------------------
-ADMIN_ID = 7983838654  # bedel adiga Telegram ID-gaaga
+ADMIN_ID = 7983838654  # Badal adiga
 
 # ------------------------
 # Helpers
@@ -49,30 +50,16 @@ def main_menu(chat_id):
 def start(message):
     users = load_users()
     user_id = str(message.from_user.id)
-    args = message.text.split()
 
     if user_id not in users:
-        ref_id = generate_ref_id()
         users[user_id] = {
             "balance": 0.0,
             "referrals": 0,
-            "ref_id": ref_id
+            "ref_id": generate_ref_id()
         }
-
-        # Referral check
-        if len(args) > 1:
-            inviter_ref = args[1]
-            for uid, data in users.items():
-                if data["ref_id"] == inviter_ref:
-                    users[uid]["balance"] += 0.5
-                    users[uid]["referrals"] += 1
-                    bot.send_message(uid, "🎉 You got $0.5 from new referral!")
-
         save_users(users)
 
     main_menu(message.chat.id)
-    bot.send_message(message.chat.id,
-        "Welcome! You can also send a video link from TikTok, YouTube, Facebook, or Pinterest.")
 
 # ------------------------
 # Handle Buttons and Links
@@ -83,20 +70,13 @@ def handle_buttons(message):
     user_id = str(message.from_user.id)
 
     if message.text == "💰 Balance":
-        if user_id in users:
-            bal = users[user_id]["balance"]
-            bot.send_message(message.chat.id, f"💰 Your Balance: ${bal}")
-        else:
-            bot.send_message(message.chat.id, "❌ User not found!")
+        bot.send_message(message.chat.id, f"💰 Your Balance: ${users[user_id]['balance']}")
 
     elif message.text == "🔗 Referral Link":
-        if user_id in users:
-            ref_id = users[user_id]["ref_id"]
-            link = f"https://t.me/{bot.get_me().username}?start={ref_id}"
-            bot.send_message(message.chat.id,
+        ref_id = users[user_id]["ref_id"]
+        link = f"https://t.me/{bot.get_me().username}?start={ref_id}"
+        bot.send_message(message.chat.id,
 f"🔗 Your Referral Link:\n{link}\n👥 Total Referrals: {users[user_id]['referrals']}\n💰 Earn $0.5 per user")
-        else:
-            bot.send_message(message.chat.id, "❌ User not found!")
 
     elif message.text == "💸 Withdraw":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -118,22 +98,17 @@ f"🔗 Your Referral Link:\n{link}\n👥 Total Referrals: {users[user_id]['refer
         main_menu(message.chat.id)
 
 # ------------------------
-# Video Downloader using yt-dlp
+# Video Downloader
 # ------------------------
 def download_video(message):
     url = message.text.strip()
     chat_id = message.chat.id
     bot.send_message(chat_id, "⏳ Downloading video, please wait...")
 
-    ydl_opts = {
-        'format': 'best',
-        'outtmpl': 'video.mp4',
-        'noplaylist': True,
-        'quiet': True,
-        'nocheckcertificate': True
-    }
-
     try:
+        ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
+        # Optional: YouTube cookies
+        # ydl_opts['cookies'] = 'cookies.txt'
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
@@ -144,7 +119,7 @@ def download_video(message):
         bot.send_message(chat_id, f"❌ Error downloading video: {str(e)}")
 
 # ------------------------
-# Ask Withdrawal Amount Step
+# Withdrawal Flow
 # ------------------------
 def ask_amount(message):
     if message.text == "Cancel":
@@ -157,9 +132,6 @@ def ask_amount(message):
         f"Enter amount to withdraw (minimum $1) for {coin}:")
     bot.register_next_step_handler(msg, ask_address, coin)
 
-# ------------------------
-# Ask Address Step
-# ------------------------
 def ask_address(message, coin):
     try:
         amount = float(message.text.strip())
@@ -168,9 +140,14 @@ def ask_address(message, coin):
         main_menu(message.chat.id)
         return
 
+    if amount < 1:
+        bot.send_message(message.chat.id, "❌ Minimum withdrawal is $1")
+        main_menu(message.chat.id)
+        return
+
     users = load_users()
     user_id = str(message.from_user.id)
-    if user_id not in users or users[user_id]["balance"] < amount:
+    if users[user_id]["balance"] < amount:
         bot.send_message(message.chat.id, "❌ You don't have enough balance.")
         main_menu(message.chat.id)
         return
@@ -179,13 +156,10 @@ def ask_address(message, coin):
         f"Enter your {coin} wallet address (must start with 0):")
     bot.register_next_step_handler(msg, process_withdrawal, coin, amount)
 
-# ------------------------
-# Process Withdrawal
-# ------------------------
 def process_withdrawal(message, coin, amount):
     address = message.text.strip()
     if not address.startswith("0"):
-        bot.send_message(message.chat.id, "❌ Invalid address. Must start with 0. Withdrawal cancelled.")
+        bot.send_message(message.chat.id, "❌ Invalid address. Withdrawal cancelled.")
         main_menu(message.chat.id)
         return
 
@@ -194,10 +168,15 @@ def process_withdrawal(message, coin, amount):
     users[user_id]["balance"] -= amount
     save_users(users)
 
-    bot.send_message(message.chat.id,
-f"✅ Withdrawal request sent!\nCoin: {coin}\nAmount: ${amount}\nAddress: {address}")
-    bot.send_message(message.chat.id,
-"Please wait, it may take 2-5 hours to complete.")
+    # Generate withdrawal ID
+    withdrawal_id = random.randint(10000, 99999)
+
+    # Send admin notification with CONFIRM button
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton(
+        "CONFIRM ✅",
+        callback_data=f"confirm_{user_id}_{amount}_{coin}_{withdrawal_id}"
+    ))
 
     bot.send_message(ADMIN_ID,
 f"""
@@ -206,30 +185,63 @@ f"""
 💰 Amount: ${amount}
 🪙 Coin: {coin}
 📬 Address: {address}
-""")
+🧾 Withdrawal ID: #{withdrawal_id}
+""", reply_markup=markup)
+
     main_menu(message.chat.id)
 
 # ------------------------
-# Admin Gift / Bonus
+# CONFIRM CALLBACK
+# ------------------------
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_"))
+def confirm_withdraw(call):
+
+    if call.from_user.id != ADMIN_ID:
+        return
+
+    data = call.data.split("_")
+    user_id = data[1]
+    amount = data[2]
+    coin = data[3]
+    withdrawal_id = data[4]
+
+    text = f"""
+💸 Payment Sent Successfully!
+🧾 Withdrawal ID: #{withdrawal_id}
+💰 Amount: ${amount}
+🔄 Method: {coin}
+🆓 Fee (0.00%): $0.00
+📤 Amount Sent: ${amount}
+"""
+
+    bot.send_message(user_id, text)
+    bot.answer_callback_query(call.id, "Payment Confirmed ✅")
+
+# ------------------------
+# ADMIN BONUS/GIFT
 # ------------------------
 @bot.message_handler(commands=['gift'])
 def gift_user(message):
-    ADMIN_ID = 7983838654  # bedel adiga Telegram ID-gaaga
-    TARGET_ID = "7074541502"  # Telegram ID-ga qofka la siinayo gift
-    GIFT_AMOUNT = 10  # Lacagta gift-ka
-
     if message.from_user.id != ADMIN_ID:
-        return  # Kaliya admin ayaa isticmaali kara
+        return
+
+    args = message.text.split()
+    if len(args) != 3:
+        bot.send_message(message.chat.id, "Usage: /gift user_id amount")
+        return
+
+    target_id = args[1]
+    amount = float(args[2])
 
     users = load_users()
+    if target_id not in users:
+        users[target_id] = {"balance": 0.0, "referrals": 0, "ref_id": generate_ref_id()}
 
-    if TARGET_ID in users:
-        users[TARGET_ID]["balance"] += GIFT_AMOUNT
-        save_users(users)
-        bot.send_message(TARGET_ID, f"🎁 You received ${GIFT_AMOUNT} gift!")
-        bot.send_message(message.chat.id, f"✅ ${GIFT_AMOUNT} added to user {TARGET_ID}")
-    else:
-        bot.send_message(message.chat.id, "❌ Target user not found!")
+    users[target_id]["balance"] += amount
+    save_users(users)
+
+    bot.send_message(target_id, f"🎁 You received a gift of ${amount}!")
+    bot.send_message(message.chat.id, f"✅ Gift of ${amount} sent to {target_id}")
 
 # ------------------------
 # RUN BOT

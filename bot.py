@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = os.environ.get("7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")  # Get Telegram token from Railway Environment
+TOKEN = os.environ.get("TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")  # Get Telegram token from Railway Environment
 ADMIN_ID = 7983838654            # Admin Telegram ID (integer)
 
 bot = TeleBot(TOKEN)
@@ -60,8 +60,10 @@ def start(message):
         if ref_id and ref_id in users:
             users[ref_id]["balance"] += 0.5
             users[ref_id]["referrals"] += 1
-            bot.send_message(int(ref_id),
-f"🎉 You earned $0.5! New referral: {user_id}")
+            bot.send_message(
+                int(ref_id),
+f"""🎉 You earned $0.5! New referral: {user_id}"""
+            )
 
     save_users(users)
     main_menu(message.chat.id)
@@ -89,14 +91,14 @@ def random_gift(message):
 
     bot.send_message(user,
 f"""🎁 RANDOM GIFT
-You received ${amount}!
-""")
+You received ${amount}!"""
+    )
 
     bot.send_message(message.chat.id,
 f"""✅ Gift Sent
 User: {user}
-Amount: ${amount}
-""")
+Amount: ${amount}"""
+    )
 
 # -------- ADMIN STATS --------
 @bot.message_handler(commands=['stats'])
@@ -114,8 +116,8 @@ f"""📊 BOT STATS
 
 👥 Total Users: {total_users}
 💰 Total Balance: ${total_balance}
-💸 Total Paid Out: ${total_withdrawn}
-""")
+💸 Total Paid Out: ${total_withdrawn}"""
+    )
 
 # -------- MAIN HANDLER --------
 @bot.message_handler(func=lambda m: True)
@@ -143,8 +145,8 @@ f"""🔗 Your Referral Link:
 {link}
 
 👥 Referrals: {users[user_id]['referrals']}
-💰 Earn $0.5 per referral
-""")
+💰 Earn $0.5 per referral"""
+        )
 
     elif message.text == "💸 Withdraw":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -220,8 +222,7 @@ f"""💸 NEW WITHDRAWAL REQUEST
 💰 Amount: ${amount}
 🪙 Coin: {method}
 📬 Address: {address}
-🧾 Withdrawal ID: #{withdrawal_id}
-""",
+🧾 Withdrawal ID: #{withdrawal_id}""",
         reply_markup=markup
     )
 
@@ -246,8 +247,8 @@ f"""💸 Payment Sent Successfully!
 💰 Amount: ${amount}
 🔄 Method: USDT-BEP20
 🆓 Fee (0.00%): $0.00
-📤 Amount Sent: ${amount}
-""")
+📤 Amount Sent: ${amount}"""
+    )
 
     bot.answer_callback_query(call.id, "Payment Confirmed")
 

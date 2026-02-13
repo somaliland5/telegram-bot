@@ -119,6 +119,7 @@ def handler(message):
     if user_id not in users:
         return
 
+    # ----- BUTTONS -----
     if message.text == "💰 Balance":
         bot.send_message(message.chat.id,
                          f"💰 Balance: ${users[user_id]['balance']}")
@@ -146,6 +147,9 @@ f"""🔗 Your Referral Link:
         msg = bot.send_message(message.chat.id,
                                "Enter withdrawal amount (Min $1):")
         bot.register_next_step_handler(msg, withdraw_amount, "USDT-BEP20")
+
+    elif message.text == "🔙 Back":
+        main_menu(message.chat.id)
 
     elif message.text.startswith("http"):
         download_video(message)
@@ -189,7 +193,7 @@ def process_withdraw(message, amount, method):
     save_users(users)
 
     # Admin notification
-    markup = InlineKeyboardMarkup()
+    markup = types.InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(
         "CONFIRM ✅",
         callback_data=f"confirm_{user_id}_{amount}_{withdrawal_id}"
@@ -208,7 +212,7 @@ f"""💸 NEW WITHDRAWAL REQUEST
         reply_markup=markup
     )
 
-    # User confirmation message
+    # Notify user
     bot.send_message(
         message.chat.id,
         "✅ Your Request has been Sent. It may take 2-12 hours to confirm. Please wait 🙂"
@@ -234,7 +238,7 @@ f"""💸 Payment Sent Successfully!
 
     bot.answer_callback_query(call.id, "Payment Confirmed")
 
-# -------- VIDEO DOWNLOADER (TikTok, YouTube, Facebook, Pinterest) --------
+# -------- VIDEO DOWNLOADER --------
 def download_video(message):
     bot.send_message(message.chat.id, "Downloading...")
 

@@ -98,7 +98,7 @@ This bot allows you to:
 💰 Check your balance
 🔗 Get referral link and earn rewards
 💸 Request withdrawals
-📹 Download videos from TikTok, YouTube, Pinterest, Facebook
+📹 Download videos or photos from TikTok, YouTube, Pinterest, Facebook
 
 Start exploring now!
 """
@@ -237,7 +237,7 @@ f"""🔗 Your Referral Link:
         download_video(message)
     else:
         bot.send_message(message.chat.id,
-                         "❌ Unknown command. Use buttons or send video link.")
+                         "❌ Unknown command. Use buttons or send video/photo link.")
 
 # -------- WITHDRAWAL --------
 def withdraw_amount(message, method):
@@ -332,16 +332,33 @@ f"""❌ Withdrawal Rejected
         bot.send_message(user_id, "❌ You have been banned from using this bot.")
         bot.answer_callback_query(call.id, "User has been banned 🚫")
 
-# -------- VIDEO DOWNLOADER --------
+# -------- VIDEO & PHOTO DOWNLOADER --------
 def download_video(message):
     bot.send_message(message.chat.id, "Downloading...")
     try:
-        ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
+        url = message.text
+        ydl_opts = {
+            'format': 'best',
+            'outtmpl': 'downloaded_media.%(ext)s',
+        }
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([message.text])
-        with open("video.mp4", "rb") as f:
-            bot.send_video(message.chat.id, f)
-        os.remove("video.mp4")
+            info = ydl.extract_info(url, download=True)
+            ext = info.get('ext', 'mp4')
+
+        file_name = f"downloaded_media.{ext}"
+
+        if ext in ['mp4', 'webm']:
+            with open(file_name, "rb") as f:
+                bot.send_video(message.chat.id, f)
+        elif ext in ['jpg', 'png', 'webp']:
+            with open(file_name, "rb") as f:
+                bot.send_photo(message.chat.id, f)
+        else:
+            bot.send_message(message.chat.id, "❌ Unknown media type.")
+
+        os.remove(file_name)
+
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {str(e)}")
 

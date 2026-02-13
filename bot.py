@@ -7,8 +7,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = os.environ.get("TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ")  # Get Telegram token from Railway Environment
-ADMIN_ID = 7983838654            # Admin Telegram ID (integer)
+TOKEN = "PUT_YOUR_TOKEN_HERE"  # Bedel token-kaaga
+ADMIN_ID = 7983838654          # Bedel admin ID (int)
 
 bot = TeleBot(TOKEN)
 DATA_FILE = "users.json"
@@ -18,7 +18,7 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({}, f)
 
-# -------- USERS FUNCTIONS --------
+# -------- USERS --------
 def load_users():
     with open(DATA_FILE, "r") as f:
         return json.load(f)
@@ -42,11 +42,6 @@ def start(message):
     users = load_users()
     user_id = str(message.from_user.id)
 
-    # Extract referral code if present
-    ref_id = None
-    if message.text.startswith("/start "):
-        ref_id = message.text.split()[1]
-
     if user_id not in users:
         users[user_id] = {
             "balance": 0.0,
@@ -55,17 +50,8 @@ def start(message):
             "ref_id": generate_ref_id(),
             "created_at": datetime.now().strftime("%Y-%m-%d")
         }
+        save_users(users)
 
-        # Credit referral if valid
-        if ref_id and ref_id in users:
-            users[ref_id]["balance"] += 0.5
-            users[ref_id]["referrals"] += 1
-            bot.send_message(
-                int(ref_id),
-f"""🎉 You earned $0.5! New referral: {user_id}"""
-            )
-
-    save_users(users)
     main_menu(message.chat.id)
 
 # -------- ADMIN RANDOM GIFT --------
@@ -91,14 +77,14 @@ def random_gift(message):
 
     bot.send_message(user,
 f"""🎁 RANDOM GIFT
-You received ${amount}!"""
-    )
+You received ${amount}!
+""")
 
     bot.send_message(message.chat.id,
 f"""✅ Gift Sent
 User: {user}
-Amount: ${amount}"""
-    )
+Amount: ${amount}
+""")
 
 # -------- ADMIN STATS --------
 @bot.message_handler(commands=['stats'])
@@ -116,8 +102,8 @@ f"""📊 BOT STATS
 
 👥 Total Users: {total_users}
 💰 Total Balance: ${total_balance}
-💸 Total Paid Out: ${total_withdrawn}"""
-    )
+💸 Total Paid Out: ${total_withdrawn}
+""")
 
 # -------- MAIN HANDLER --------
 @bot.message_handler(func=lambda m: True)
@@ -145,8 +131,8 @@ f"""🔗 Your Referral Link:
 {link}
 
 👥 Referrals: {users[user_id]['referrals']}
-💰 Earn $0.5 per referral"""
-        )
+💰 Earn $0.5 per referral
+""")
 
     elif message.text == "💸 Withdraw":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -222,11 +208,12 @@ f"""💸 NEW WITHDRAWAL REQUEST
 💰 Amount: ${amount}
 🪙 Coin: {method}
 📬 Address: {address}
-🧾 Withdrawal ID: #{withdrawal_id}""",
+🧾 Withdrawal ID: #{withdrawal_id}
+""",
         reply_markup=markup
     )
 
-    # Notify user
+    # User confirmation
     bot.send_message(
         chat_id,
         "✅ Your Request has been Sent. It may take 2-12 hours to confirm. Please wait 🙂"
@@ -247,8 +234,8 @@ f"""💸 Payment Sent Successfully!
 💰 Amount: ${amount}
 🔄 Method: USDT-BEP20
 🆓 Fee (0.00%): $0.00
-📤 Amount Sent: ${amount}"""
-    )
+📤 Amount Sent: ${amount}
+""")
 
     bot.answer_callback_query(call.id, "Payment Confirmed")
 
@@ -260,10 +247,6 @@ def download_video(message):
         ydl_opts = {
             'format': 'best',
             'outtmpl': 'video.mp4',
-            'noplaylist': True,
-            'quiet': True,
-            'no_warnings': True,
-            'retries': 3
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -279,9 +262,4 @@ def download_video(message):
 
 # -------- RUN BOT --------
 print("Bot Running")
-
-while True:
-    try:
-        bot.infinity_polling(timeout=60, long_polling_timeout=60)
-    except Exception as e:
-        print(f"Error: {e}")
+bot.infinity_polling()

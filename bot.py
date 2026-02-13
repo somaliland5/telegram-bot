@@ -4,45 +4,51 @@ import random
 from telebot import TeleBot, types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# ---------------- CONFIG ----------------
 TOKEN = os.environ.get("TOKEN")
-ADMIN_ID = 7983838654
+if not TOKEN:
+    raise ValueError("❌ Bot token not found! Set TOKEN environment variable.")
+
+ADMIN_ID = 7983838654  # Bedel ID-gaaga Telegram
 
 bot = TeleBot(TOKEN)
 DATA_FILE = "users.json"
 
-# -------- DATABASE --------
+# ---------------- INIT FILE ----------------
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({}, f)
 
-
+# ---------------- UTIL FUNCTIONS ----------------
 def load_users():
-    with open(DATA_FILE) as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+            if data is None:
+                return {}
+            return data
+    except:
+        return {}
 
-
-def save_users(data):
+def save_users(users):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
+        json.dump(users, f, indent=4)
 
 def gen_bot_id():
     return str(random.randint(1000000000, 9999999999))
 
-
 def gen_ref():
     return str(random.randint(1000000, 9999999))
 
-
-# -------- MENU --------
+# ---------------- MAIN MENU ----------------
 def main_menu(chat_id):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("💰 Balance", "🔗 Referral")
     kb.row("💸 Withdraw", "🆔 Get My ID")
+    kb.row("❌ Cancel")
     bot.send_message(chat_id, "📋 Main Menu", reply_markup=kb)
 
-
-# -------- START --------
+# ---------------- START COMMAND ----------------
 @bot.message_handler(commands=["start"])
 def start(message):
     users = load_users()
@@ -73,8 +79,7 @@ def start(message):
     save_users(users)
     main_menu(message.chat.id)
 
-
-# -------- MAIN HANDLER --------
+# ---------------- MAIN HANDLER ----------------
 @bot.message_handler(func=lambda m: True)
 def handler(message):
     users = load_users()
@@ -82,46 +87,41 @@ def handler(message):
 
     if uid not in users:
         return
-
     if users[uid]["ban"]:
         bot.send_message(message.chat.id, "❌ You are banned")
         return
 
-    # Balance
+    # ----- BALANCE -----
     if message.text == "💰 Balance":
-        bot.send_message(message.chat.id,
-                         f"💰 Balance: ${users[uid]['balance']}")
+        bot.send_message(message.chat.id, f"💰 Balance: ${users[uid]['balance']}")
 
-    # Referral
+    # ----- REFERRAL -----
     elif message.text == "🔗 Referral":
         link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref_id']}"
         bot.send_message(message.chat.id,
                          f"🔗 Your Referral Link\n{link}\n👥 Referrals: {users[uid]['referrals']}\nEarn $0.5 per referral")
 
-    # Get ID
+    # ----- GET MY ID -----
     elif message.text == "🆔 Get My ID":
         bot.send_message(message.chat.id,
                          f"🆔 YOUR IDS\n\nTelegram ID: {uid}\nBOT ID: {users[uid]['bot_id']}")
 
-    # Withdraw menu
+    # ----- WITHDRAW MENU -----
     elif message.text == "💸 Withdraw":
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
         kb.row("USDT-BEP20")
         kb.row("❌ Cancel")
-        bot.send_message(message.chat.id,
-                         "Select withdrawal method", reply_markup=kb)
+        bot.send_message(message.chat.id, "Select withdrawal method", reply_markup=kb)
 
-    # Withdraw method
+    # ----- WITHDRAW METHOD -----
     elif message.text == "USDT-BEP20":
-        msg = bot.send_message(message.chat.id,
-                               "Enter withdrawal amount (Min $1)")
+        msg = bot.send_message(message.chat.id, "Enter withdrawal amount (Min $1)")
         bot.register_next_step_handler(msg, withdraw_amount)
 
     elif message.text == "❌ Cancel":
         main_menu(message.chat.id)
 
-
-# -------- WITHDRAW --------
+# ---------------- WITHDRAW FUNCTIONS ----------------
 def withdraw_amount(message):
     users = load_users()
     uid = str(message.from_user.id)
@@ -140,10 +140,8 @@ def withdraw_amount(message):
         bot.send_message(message.chat.id, "❌ Insufficient balance")
         return
 
-    msg = bot.send_message(message.chat.id,
-                           "Send USDT-BEP20 address")
+    msg = bot.send_message(message.chat.id, "Send USDT-BEP20 address")
     bot.register_next_step_handler(msg, withdraw_address, amount)
-
 
 def withdraw_address(message, amount):
     users = load_users()
@@ -155,17 +153,13 @@ def withdraw_address(message, amount):
     users[uid]["balance"] -= amount
     save_users(users)
 
-    # Admin buttons Confirm / Reject / Ban
     kb = InlineKeyboardMarkup()
     kb.row(
-        InlineKeyboardButton("✅ Confirm",
-                             callback_data=f"confirm_{uid}_{amount}_{wid}"),
-        InlineKeyboardButton("❌ Reject",
-                             callback_data=f"reject_{uid}_{amount}_{wid}")
+        InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_{uid}_{amount}_{wid}"),
+        InlineKeyboardButton("❌ Reject", callback_data=f"reject_{uid}_{amount}_{wid}")
     )
     kb.row(
-        InlineKeyboardButton("🚫 Ban",
-                             callback_data=f"ban_{uid}")
+        InlineKeyboardButton("🚫 Ban", callback_data=f"ban_{uid}")
     )
 
     bot.send_message(
@@ -177,8 +171,7 @@ def withdraw_address(message, amount):
     bot.send_message(message.chat.id,
                      "⌛ Request sent. It may take 2-12 hours.")
 
-
-# -------- CALLBACK --------
+# ---------------- CALLBACK HANDLER ----------------
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
     users = load_users()
@@ -186,8 +179,7 @@ def callbacks(call):
 
     if data[0] == "confirm":
         uid, amount, wid = data[1], data[2], data[3]
-        bot.send_message(uid,
-                         f"✅ Payment Sent\nWithdrawal ID: {wid}\nAmount: ${amount}")
+        bot.send_message(uid, f"✅ Payment Sent\nWithdrawal ID: {wid}\nAmount: ${amount}")
 
     elif data[0] == "reject":
         uid, amount = data[1], float(data[2])
@@ -203,8 +195,7 @@ def callbacks(call):
 
     bot.answer_callback_query(call.id)
 
-
-# -------- ADMIN ADD BALANCE --------
+# ---------------- ADMIN ADD BALANCE ----------------
 @bot.message_handler(commands=["addbalance"])
 def addbalance(message):
     if message.from_user.id != ADMIN_ID:
@@ -214,34 +205,7 @@ def addbalance(message):
         _, bot_id, amount = message.text.split()
         amount = float(amount)
     except:
-        bot.send_message(message.chat.id,
-                         "Usage: /addbalance BOT_ID AMOUNT")
-        return
-
-    users = load_users()
-
-    for u in users:
-        if users[u]["bot_id"] == bot_id:
-            users[u]["balance"] += amount
-            save_users(users)
-            bot.send_message(u, f"💰 Admin added ${amount}")
-            bot.send_message(message.chat.id, "✅ Balance added")
-            return
-
-    bot.send_message(message.chat.id, "❌ User not found")
-
-# -------- ADMIN ADD BALANCE --------
-@bot.message_handler(commands=["addbalance"])
-def addbalance(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    try:
-        _, bot_id, amount = message.text.split()
-        amount = float(amount)
-    except:
-        bot.send_message(message.chat.id,
-                         "Usage: /addbalance BOT_ID AMOUNT")
+        bot.send_message(message.chat.id, "Usage: /addbalance BOT_ID AMOUNT")
         return
 
     users = load_users()
@@ -259,7 +223,7 @@ def addbalance(message):
     if not found:
         bot.send_message(message.chat.id, "❌ User not found")
 
-# -------- ADMIN RANDOM GIFT --------
+# ---------------- ADMIN RANDOM GIFT ----------------
 @bot.message_handler(commands=["randomgift"])
 def randomgift(message):
     if message.from_user.id != ADMIN_ID:
@@ -280,12 +244,10 @@ def randomgift(message):
     users[uid]["balance"] += amount
     save_users(users)
 
-    # Notify the user
-    bot.send_message(uid,
-                     f"🎁 Random Gift!\nYou received ${amount}!")
-    bot.send_message(message.chat.id,
-                     f"✅ Random gift of ${amount} sent to BOT ID {users[uid]['bot_id']}")
+    # Notify user
+    bot.send_message(uid, f"🎁 Random Gift!\nYou received ${amount}!")
+    bot.send_message(message.chat.id, f"✅ Random gift of ${amount} sent to BOT ID {users[uid]['bot_id']}")
 
-# -------- RUN BOT --------
+# ---------------- RUN BOT ----------------
 print("Bot Running...")
 bot.infinity_polling()

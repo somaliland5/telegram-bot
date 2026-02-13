@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
 # -------- CONFIG --------
-TOKEN = "import os
+TOKEN = TOKEN = "7991131193:AAEfHWU_FmkrwNLVpuW3axsEKbsqWf8WzOQ"
 import json
 import random
 from datetime import datetime

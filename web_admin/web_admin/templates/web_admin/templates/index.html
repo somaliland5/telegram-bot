@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h2>Dashboard</h2>
+    <p>Total Users: {{ total_users }}</p>
+    <p>Total Balance: ${{ total_balance }}</p>
+    <p>Total Withdrawals: ${{ total_withdrawal }}</p>
+    <p>Total Banned: {{ total_banned }}</p>
+
+    <a href="{{ url_for('users_page') }}">View Users</a> |
+    <a href="{{ url_for('broadcast') }}">Broadcast Message</a> |
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

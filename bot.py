@@ -5,28 +5,32 @@ from datetime import datetime, timedelta
 from functools import partial
 from telebot import TeleBot, types
 import yt_dlp
+import threading
+import requests
 
-# -------- CONFIG --------
+# ---------------- CONFIG ----------------
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Bot token not found!")
 ADMIN_ID = 7983838654
 DATA_FILE = "users.json"
 BOT_ID_RANGE = (1000000000, 1999999999)
-PREMIUM_PRICE = 15.0  # $15 monthly
-PREMIUM_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
+
+# Binance Payment Details
+BINANCE_API_KEY = os.environ.get("BINANCE_API_KEY")  # Private API key
+PAYMENT_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
+PREMIUM_PRICE = 15  # $15 USDT per month
 
 bot = TeleBot(TOKEN)
 
-# -------- INIT FILES --------
+# ---------------- INIT FILES ----------------
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({}, f)
 
 def load_users():
     with open(DATA_FILE, "r") as f:
-        data = json.load(f)
-        return data if data else {}
+        return json.load(f)
 
 def save_users(users):
     with open(DATA_FILE, "w") as f:
@@ -35,7 +39,7 @@ def save_users(users):
 def generate_ref_id():
     return str(random.randint(*BOT_ID_RANGE))
 
-# -------- MAIN MENU --------
+# ---------------- MAIN MENU ----------------
 def main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💰 Balance", "🔗 Referral Link", "💸 Withdraw")
@@ -47,7 +51,7 @@ def main_menu(chat_id):
         markup.add("⚙️ Admin Panel")
     bot.send_message(chat_id, "Main Menu", reply_markup=markup)
 
-# -------- START --------
+# ---------------- START ----------------
 @bot.message_handler(commands=['start'])
 def start(message):
     users = load_users()
@@ -62,11 +66,11 @@ def start(message):
             "points": 0,
             "referrals": 0,
             "withdrawn": 0.0,
+            "premium_until": None,
             "ref_id": generate_ref_id(),
             "created_at": datetime.now().strftime("%Y-%m-%d"),
             "last_random": None,
-            "banned": False,
-            "premium": False
+            "banned": False
         }
         if ref_id and ref_id in users:
             users[ref_id]["balance"] += 0.5
@@ -79,7 +83,7 @@ def start(message):
 f"Welcome {message.from_user.first_name}!\n\n🎁 Enjoy earning points, random bonus, and weekly leaderboard!")
     main_menu(message.chat.id)
 
-# -------- BUTTON HANDLER --------
+# ---------------- BUTTON HANDLER ----------------
 @bot.message_handler(func=lambda m: True)
 def handler(message):
     users = load_users()
@@ -92,11 +96,11 @@ def handler(message):
     text = message.text
     is_admin = (user_id == str(ADMIN_ID))
 
-    # -------- ADMIN PANEL --------
+    # ---------- ADMIN PANEL ----------
     if text == "⚙️ Admin Panel" and is_admin:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add("📊 Stats", "➕ Add Balance", "🎁 Random Gift")
-        markup.add("🛠️ Unban User", "📢 Broadcast", "🔙 Back to Main Menu")
+        markup.add("📢 Broadcast", "🛠️ Unban User", "🔙 Back to Main Menu")
         bot.send_message(user_id, "⚙️ Admin Panel", reply_markup=markup)
         return
 
@@ -106,10 +110,7 @@ def handler(message):
             total_balance = sum(u.get("balance",0) for u in users.values())
             total_withdrawn = sum(u.get("withdrawn",0) for u in users.values())
             bot.send_message(user_id,
-f"""📊 BOT STATS
-👥 Total Users: {total_users}
-💰 Total Balance: ${total_balance}
-💸 Total Paid Out: ${total_withdrawn}""")
+f"📊 BOT STATS\n👥 Total Users: {total_users}\n💰 Total Balance: ${total_balance}\n💸 Total Paid Out: ${total_withdrawn}")
             return
         elif text == "➕ Add Balance":
             msg = bot.send_message(user_id, "Enter User Telegram ID to add balance:")
@@ -124,62 +125,56 @@ f"""📊 BOT STATS
             bot.register_next_step_handler(msg, admin_unban_user)
             return
         elif text == "📢 Broadcast":
-            msg = bot.send_message(user_id, "Enter message to broadcast (or media URL):")
+            msg = bot.send_message(user_id, "Enter your message to broadcast:")
             bot.register_next_step_handler(msg, admin_broadcast)
             return
         elif text == "🔙 Back to Main Menu":
             main_menu(user_id)
             return
 
-    # -------- USER BUTTONS --------
+    # ---------- USER BUTTONS ----------
     if text == "💰 Balance":
-        # Dynamic Balance buttons
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add(f"💰 Balance: ${users[user_id]['balance']}")
-        markup.add("💸 Withdraw")
-        markup.add("🔙 Back")
-        bot.send_message(message.chat.id, "Your Balance", reply_markup=markup)
-    elif text == "🔙 Back":
-        main_menu(message.chat.id)
+        markup.add("💰 Show Balance", "🔙 Back")
+        bot.send_message(user_id, "Select:", reply_markup=markup)
+    elif text == "💰 Show Balance":
+        bot.send_message(user_id, f"💰 Balance: ${users[user_id]['balance']}\nPoints: {users[user_id]['points']}")
     elif text == "💸 Withdraw":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("USDT-BEP20")
-        markup.add("🔙 Back")
-        bot.send_message(message.chat.id, "Select Withdrawal Method:", reply_markup=markup)
-    elif text == "USDT-BEP20":
-        msg = bot.send_message(message.chat.id, "Enter withdrawal amount (Min $1):")
-        bot.register_next_step_handler(msg, partial(withdraw_amount, method="USDT-BEP20"))
+        markup.add("USDT-BEP20", "🔙 Back")
+        bot.send_message(user_id, "Select Withdrawal Method:", reply_markup=markup)
     elif text == "🎁 Random Bonus":
         give_random_bonus(message)
     elif text == "🏆 Weekly Rank":
         show_leaderboard(message)
     elif text == "👤 Profile":
         u = users[user_id]
-        bot.send_message(message.chat.id,
-f"👤 Profile\nTelegram ID: {user_id}\nBot ID: {u['ref_id']}\nBalance: {u['balance']}\nPoints: {u['points']}\nReferrals: {u['referrals']}")
-    elif text == "🔗 Referral Link":
-        ref = users[user_id]["ref_id"]
-        link = f"https://t.me/{bot.get_me().username}?start={ref}"
-        bot.send_message(message.chat.id,
-f"🔗 Referral Link:\n{link}\nReferrals: {users[user_id]['referrals']}\nEarn $0.5 and 5 points per referral")
+        bot.send_message(user_id,
+f"👤 Profile\nTelegram ID: {user_id}\nBot ID: {u['ref_id']}\nBalance: {u['balance']}\nPoints: {u['points']}\nReferrals: {u['referrals']}\nPremium Until: {u.get('premium_until')}")
+    elif text == "🆔 Get My ID":
+        u = users[user_id]
+        bot.send_message(user_id, f"Your IDs:\nTelegram ID: {user_id}\nBot ID: {u['ref_id']}")
     elif text == "📞 Customer":
-        bot.send_message(message.chat.id, "Contact: @scholes1")
+        bot.send_message(user_id, "Contact: @scholes1")
     elif text == "🎬 Premium Video Editing":
-        if users[user_id].get("premium"):
-            bot.send_message(message.chat.id, "🎬 You have Premium Access! Send video for editing.")
+        # Check if premium active
+        premium_until = users[user_id].get("premium_until")
+        now = datetime.now()
+        if premium_until and datetime.fromisoformat(premium_until) > now:
+            bot.send_message(user_id, "✅ Premium Access Active! Send your video now.")
         else:
             markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("PAID ✅", callback_data=f"premium_paid_{user_id}"))
+            markup.add(types.InlineKeyboardButton("PAID 💵", callback_data=f"premium_paid_{user_id}"))
             markup.add(types.InlineKeyboardButton("CANCEL ❌", callback_data=f"premium_cancel_{user_id}"))
-            bot.send_message(ADMIN_ID, f"💰 {user_id} wants Premium Video Editing. Verify payment:", reply_markup=markup)
-            bot.send_message(message.chat.id, f"💰 Premium costs ${PREMIUM_PRICE}. Waiting for admin verification.")
-
+            bot.send_message(user_id, f"💵 Premium Video Editing Subscription: ${PREMIUM_PRICE}/month\nSend payment to {PAYMENT_ADDRESS}", reply_markup=markup)
     elif text.startswith("http"):
         download_media(message)
+    elif text == "🔙 Back":
+        main_menu(user_id)
     else:
-        bot.send_message(message.chat.id, "❌ Unknown command or button.")
+        bot.send_message(user_id, "❌ Unknown command or button.")
 
-# -------- RANDOM BONUS --------
+# ---------------- RANDOM BONUS ----------------
 def give_random_bonus(message):
     users = load_users()
     user_id = str(message.from_user.id)
@@ -197,123 +192,54 @@ def give_random_bonus(message):
     save_users(users)
     bot.send_message(message.chat.id, f"🎁 You received ${bonus} and 1 point!")
 
-# -------- LEADERBOARD --------
-def show_leaderboard(message):
-    users = load_users()
-    leaderboard = sorted(users.items(), key=lambda x: x[1]["points"], reverse=True)
-    text = "🏆 Weekly Leaderboard\n\n"
-    for i, (uid, info) in enumerate(leaderboard[:100], 1):
-        text += f"{i}. {uid} | Points: {info['points']} 💎\n"
-    bot.send_message(message.chat.id, text)
-
-# -------- DOWNLOAD MEDIA --------
+# ---------------- DOWNLOAD MEDIA ----------------
 def download_media(message):
     url = message.text
+    bot.send_message(message.chat.id, "⏳ Downloading...")
     try:
-        ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
-        if any(x in url for x in ["tiktok.com", "youtube.com", "youtu.be", "facebook.com", "pinterest.com"]):
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-            with open("video.mp4","rb") as f:
-                bot.send_video(message.chat.id, f)
-            os.remove("video.mp4")
-        else:
-            bot.send_message(message.chat.id, "❌ Unsupported URL.")
+        ydl_opts = {'format':'best', 'outtmpl':'video.mp4'}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        with open("video.mp4","rb") as f:
+            bot.send_video(message.chat.id, f)
+        os.remove("video.mp4")
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {str(e)}")
 
-# -------- WITHDRAWAL --------
-def withdraw_amount(message, method):
-    users = load_users()
-    user_id = str(message.from_user.id)
-    chat_id = message.chat.id
-    try:
-        amount = float(message.text)
-    except:
-        bot.send_message(chat_id, "❌ Invalid amount")
-        return
-    if amount < 1:
-        bot.send_message(chat_id, "❌ Minimum withdrawal $1")
-        return
-    if users[user_id]["balance"] < amount:
-        bot.send_message(chat_id, "❌ Not enough balance")
-        return
-    msg = bot.send_message(chat_id, "Enter your USDT-BEP20 wallet address (must start with 0):")
-    bot.register_next_step_handler(msg, partial(process_withdraw, amount=amount, method=method))
-
-def process_withdraw(message, amount, method):
-    users = load_users()
-    user_id = str(message.from_user.id)
-    chat_id = message.chat.id
-    address = message.text
-    withdrawal_id = random.randint(10000,99999)
-    users[user_id]["balance"] -= amount
-    users[user_id]["withdrawn"] += amount
-    save_users(users)
-    bot.send_message(chat_id,
-f"""✅ Withdrawal Request Sent
-🧾 ID: #{withdrawal_id}
-💰 Amount: ${amount}
-📬 Address: {address}
-⏳ It may take 2-12 hours to confirm.""")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("CONFIRM ✅", callback_data=f"confirm_{user_id}_{amount}_{withdrawal_id}"))
-    markup.add(types.InlineKeyboardButton("REJECT ❌", callback_data=f"reject_{user_id}_{amount}_{withdrawal_id}"))
-    markup.add(types.InlineKeyboardButton("BAN 🚫", callback_data=f"ban_{user_id}_{amount}_{withdrawal_id}"))
-
-    bot.send_message(ADMIN_ID,
-f"""💸 NEW WITHDRAWAL REQUEST
-👤 Telegram ID: {user_id}
-💰 Amount: ${amount}
-📬 Address: {address}
-🧾 Withdrawal ID: #{withdrawal_id}
-👥 Referrals: {users[user_id]['referrals']}
-🆔 Bot ID: {users[user_id]['ref_id']}""",
-reply_markup=markup)
-
-# -------- CALLBACK HANDLER --------
+# ---------------- CALLBACK HANDLER ----------------
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     users = load_users()
     data = call.data.split("_")
     action = data[0]
-    
-    # WITHDRAWAL ACTIONS
-    if action in ["confirm","reject","ban"]:
-        user_id = data[1]
-        amount = data[2]
-        wid = data[3]
-        if action == "confirm":
-            bot.send_message(user_id,f"💸 Payment Sent Successfully!\n🧾 Withdrawal ID: #{wid}\n💰 Amount: ${amount}")
-        elif action == "reject":
-            users[user_id]["balance"] += float(amount)
-            save_users(users)
-            bot.send_message(user_id,f"❌ Your withdrawal #{wid} has been rejected. Amount refunded: ${amount}")
-        elif action == "ban":
-            users[user_id]["banned"] = True
-            save_users(users)
-            bot.send_message(user_id,"🚫 You have been banned by admin.")
+    user_id = data[2] if len(data) > 2 else None
 
-    # PREMIUM PAYMENT
-    if action.startswith("premium"):
-        status = data[1]
-        user_id = data[2]
-        if status=="paid":
-            payment_verified = check_binance_payment(user_id)
-            if payment_verified:
-                users[user_id]["premium"] = True
+    if action == "premium":
+        sub_action = data[1]
+        if sub_action == "paid":
+            # Verify Payment via Binance API
+            success = verify_binance_payment(user_id)
+            if success:
+                users[user_id]["premium_until"] = (datetime.now() + timedelta(days=30)).isoformat()
                 save_users(users)
-                bot.send_message(user_id, "✅ Payment confirmed! Video Editing unlocked")
-                bot.send_message(ADMIN_ID, f"💰 {user_id} payment verified, Premium granted")
+                bot.send_message(user_id, "✅ Premium Activated! You can now send your video.")
+                bot.send_message(ADMIN_ID, f"💎 User {user_id} activated Premium successfully!")
             else:
                 bot.send_message(user_id, "❌ PAYMENT FAILED !!")
-                bot.send_message(ADMIN_ID, f"❌ {user_id} tried to claim Premium but payment failed")
-        elif status=="cancel":
-            bot.send_message(user_id,"❌ Payment canceled. Returning to Main Menu")
+        elif sub_action == "cancel":
+            bot.send_message(user_id, "❌ Subscription Cancelled.")
             main_menu(user_id)
 
-# -------- ADMIN FUNCTIONS --------
+# ---------------- BINANCE PAYMENT MOCK ----------------
+def verify_binance_payment(user_id):
+    """
+    Implement Binance API check here. Return True if transaction of $15 to PAYMENT_ADDRESS exists.
+    """
+    # Placeholder: Always fail for testing
+    # Replace this with real Binance API call
+    return False
+
+# ---------------- ADMIN FUNCTIONS ----------------
 def admin_add_balance_step1(message):
     user_id_target = message.text.strip()
     msg = bot.send_message(ADMIN_ID, f"Enter amount to add to {user_id_target}:")
@@ -325,8 +251,8 @@ def admin_add_balance_step2(message, user_id_target):
     if user_id_target in users:
         users[user_id_target]["balance"] += amount
         save_users(users)
-        bot.send_message(ADMIN_ID,f"✅ Added ${amount} to {user_id_target}")
-        bot.send_message(user_id_target,f"💰 Admin added ${amount} to your balance!")
+        bot.send_message(ADMIN_ID, f"✅ Added ${amount} to {user_id_target}")
+        bot.send_message(user_id_target, f"💰 Admin added ${amount} to your balance!")
 
 def admin_random_gift(message):
     amount = float(message.text.strip())
@@ -337,8 +263,8 @@ def admin_random_gift(message):
     user = random.choice(list(users.keys()))
     users[user]["balance"] += amount
     save_users(users)
-    bot.send_message(user,f"🎁 RANDOM GIFT\nYou received ${amount}!")
-    bot.send_message(ADMIN_ID,f"✅ Gift Sent\nUser: {user}\nAmount: ${amount}")
+    bot.send_message(user, f"🎁 RANDOM GIFT\nYou received ${amount}!")
+    bot.send_message(ADMIN_ID, f"✅ Gift Sent\nUser: {user}\nAmount: ${amount}")
 
 def admin_unban_user(message):
     user_id_target = message.text.strip()
@@ -346,23 +272,30 @@ def admin_unban_user(message):
     if user_id_target in users:
         users[user_id_target]["banned"] = False
         save_users(users)
-        bot.send_message(ADMIN_ID,f"✅ Unbanned {user_id_target}")
-        bot.send_message(user_id_target,"✅ You have been unbanned by admin!")
+        bot.send_message(ADMIN_ID, f"✅ Unbanned {user_id_target}")
+        bot.send_message(user_id_target, "✅ You have been unbanned by admin!")
 
 def admin_broadcast(message):
     users = load_users()
     for uid in users:
         try:
-            bot.send_message(uid,message.text)
+            bot.send_message(uid, message.text)
         except:
             pass
-    bot.send_message(ADMIN_ID,f"✅ Broadcast sent to {len(users)} users")
+    bot.send_message(ADMIN_ID, f"✅ Broadcast sent to {len(users)} users.")
 
-# -------- BINANCE PAYMENT CHECK (pseudo) --------
-def check_binance_payment(user_id):
-    # Placeholder: implement actual Binance API verification here
-    return False
+# ---------------- LEADERBOARD ----------------
+def show_leaderboard(message):
+    users = load_users()
+    leaderboard = sorted(users.items(), key=lambda x: x[1]["points"], reverse=True)
+    text = "🏆 Weekly Leaderboard\n\n"
+    for i, (uid, info) in enumerate(leaderboard[:100], 1):
+        text += f"{i}. {uid} | Points: {info['points']} 💎\n"
+    bot.send_message(message.chat.id, text)
 
-# -------- RUN BOT --------
-print("Bot Running...")
-bot.infinity_polling()
+# ---------------- RUN BOT ----------------
+def run_bot():
+    print("Bot Running...")
+    bot.infinity_polling()
+
+threading.Thread(target=run_bot).start()

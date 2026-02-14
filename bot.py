@@ -77,7 +77,7 @@ def start(message):
 
     save_users(users)
     bot.send_message(message.chat.id,
-f"Welcome {message.from_user.first_name}!\n🎁 Enjoy earning points, referral bonus, random gift!")
+f"Hi Welcome Send a Link And You Get vedio Easy 😃 {message.from_user.first_name}!\n🎁 Enjoy earning points, referral bonus, random gift!")
     main_menu(message.chat.id)
 
 # ---------------- BUTTON HANDLER ----------------

@@ -1,0 +1,13 @@
+<h1>Users List</h1>
+<table border="1">
+<tr><th>Telegram ID</th><th>Balance</th><th>Withdrawn</th><th>Banned</th></tr>
+{% for user_id, user in users.items() %}
+<tr>
+<td>{{ user_id }}</td>
+<td>{{ user.get('balance',0) }}</td>
+<td>{{ user.get('withdrawn',0) }}</td>
+<td>{{ user.get('banned',False) }}</td>
+</tr>
+{% endfor %}
+</table>
+<a href="/">Back to Dashboard</a>

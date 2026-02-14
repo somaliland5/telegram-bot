@@ -1,0 +1,8 @@
+<h1>Dashboard</h1>
+<ul>
+<li>Total Users: {{ total_users }}</li>
+<li>Total Balance: {{ total_balance }}</li>
+<li>Total Withdrawal: {{ total_withdrawal }}</li>
+<li>Total Banned: {{ total_banned }}</li>
+</ul>
+<a href="/users">Users List</a> | <a href="/broadcast">Broadcast</a> | <a href="/logout">Logout</a>

@@ -73,7 +73,6 @@ def start(message):
     kb = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 Balance", "👥 Referral")
     kb.add("🆔 BOT ID", "💸 Withdraw")
-    kb.add("📥 Download Video")
     if message.from_user.id == ADMIN_ID:
         kb.add("⚙️ Admin Panel")
 

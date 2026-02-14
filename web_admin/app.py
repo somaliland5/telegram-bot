@@ -2,17 +2,14 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session
 import json
 import threading
-from bot import bot, load_users, save_users
+from bot import bot, load_users, save_users  # hubi path-kan inuu sax yahay
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallback_secret")
 
-ADMIN_IDS = ["7983838654"]
-
-DATA_FILE = "../users.json"
+ADMIN_IDS = ["7983838654"]  # Telegram ID-gaaga
 
 # ----------------- ROUTES -----------------
-
 @app.route('/login', methods=['GET','POST'])
 def login():
     if request.method == "POST":
@@ -40,7 +37,7 @@ def users_page():
     if 'admin' not in session:
         return redirect(url_for('login'))
     users = load_users()
-    return render_template('index.html', users=users)
+    return render_template('users.html', users=users)
 
 @app.route('/broadcast', methods=['GET','POST'])
 def broadcast():
@@ -49,12 +46,11 @@ def broadcast():
     if request.method == "POST":
         message = request.form.get("message")
         media_url = request.form.get("media_url")
-        # Broadcast via bot
         users = load_users()
         for uid in users:
             try:
                 if media_url:
-                    bot.send_message(uid, message + f"\n{media_url}")
+                    bot.send_message(uid, f"{message}\n{media_url}")
                 else:
                     bot.send_message(uid, message)
             except:
@@ -74,4 +70,4 @@ def run_bot():
 
 if __name__=="__main__":
     threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",8080)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",8080)), debug=True)

@@ -40,10 +40,10 @@ def generate_withdraw_id():
 
 # ---------------- MAIN MENU ----------------
 def main_menu(chat_id):
+    users = load_users()
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("💰 Balance")
-    markup.add("🔗 Referral Link", "🆔 Get My ID")
-    markup.add("📞 Customer")
+    markup.add("💰 Balance", "🔗 Referral Link")
+    markup.add("🆔 Get My ID", "📞 Customer")
     if str(chat_id) == str(ADMIN_ID):
         markup.add("⚙️ Admin Panel")
     bot.send_message(chat_id, "Main Menu", reply_markup=markup)
@@ -76,8 +76,11 @@ def start(message):
             bot.send_message(int(ref_id), f"🎉 Referral bonus! $0.25 and 1 point from {user_id}")
 
     save_users(users)
+
+    # Welcome message
     bot.send_message(message.chat.id,
-f"Hi Welcome Send a Link And You Get vedio Easy 😃 {message.from_user.first_name}!\n🎁 Enjoy earning points, referral bonus, random gift!")
+f"Hi Welcome! 😃\nYou can send a link and you will get the video easily!")
+
     main_menu(message.chat.id)
 
 # ---------------- BUTTON HANDLER ----------------
@@ -85,7 +88,8 @@ f"Hi Welcome Send a Link And You Get vedio Easy 😃 {message.from_user.first_na
 def handler(message):
     users = load_users()
     user_id = str(message.from_user.id)
-    if user_id not in users: return
+    if user_id not in users:
+        return
     if users[user_id].get("banned"):
         bot.send_message(user_id, "🚫 You are banned.")
         return
@@ -93,7 +97,7 @@ def handler(message):
     text = message.text
     is_admin = (user_id == str(ADMIN_ID))
 
-    # ------------- ADMIN PANEL ----------------
+    # ---------------- ADMIN PANEL ----------------
     if text == "⚙️ Admin Panel" and is_admin:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add("📊 Stats", "➕ Add Balance", "🎁 Random Gift")
@@ -139,21 +143,16 @@ f"""📊 BOT STATS
             main_menu(user_id)
             return
 
-    # ------------- USER BUTTONS ----------------
+    # ---------------- USER BUTTONS ----------------
     if text == "💰 Balance":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add("💸 Withdraw", "🔙 Back")
         bot.send_message(user_id,
 f"💰 Balance: ${users[user_id]['balance']}\nPoints: {users[user_id]['points']}", reply_markup=markup)
     elif text == "💸 Withdraw":
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("USDT-BEP20")
-        markup.add("🔙 Cancel")
-        msg = bot.send_message(user_id, "Select withdrawal method:", reply_markup=markup)
-    elif text == "USDT-BEP20":
         msg = bot.send_message(user_id, "Enter withdrawal amount (min $1):")
         bot.register_next_step_handler(msg, withdraw_request)
-    elif text == "🔙 Cancel":
+    elif text == "🔙 Back":
         main_menu(user_id)
     elif text == "🔗 Referral Link":
         bot.send_message(user_id, f"🔗 Referral Link: /start {users[user_id]['bot_id']}")
@@ -183,6 +182,141 @@ def give_random_bonus(message):
     users[user_id]["last_random"] = now.isoformat()
     save_users(users)
     bot.send_message(user_id, f"🎁 You received ${bonus} and 1 point!")
+
+# ---------------- WITHDRAWAL ----------------
+def withdraw_request(message):
+    users = load_users()
+    user_id = str(message.from_user.id)
+    chat_id = message.chat.id
+    try:
+        amount = float(message.text)
+    except:
+        bot.send_message(chat_id, "❌ Invalid amount")
+        return
+    if amount < 1:
+        bot.send_message(chat_id, "❌ Minimum withdrawal $1")
+        return
+    if users[user_id]['balance'] < amount:
+        bot.send_message(chat_id, "❌ Not enough balance")
+        return
+    withdrawal_id = str(random.randint(100000, 999999))
+    users[user_id]['balance'] -= amount
+    users[user_id]['withdrawals'][withdrawal_id] = {
+        "amount": amount,
+        "timestamp": datetime.now().isoformat(),
+        "status": "Pending"
+    }
+    save_users(users)
+    bot.send_message(chat_id,
+f"✅ Withdrawal request #{withdrawal_id} sent.\nYou can wait 2-12 hours for confirmation.\nContact Customer 👤 for help.")
+
+    bot.send_message(ADMIN_ID,
+f"💸 NEW WITHDRAWAL REQUEST\nUser Telegram ID: {user_id}\nBot ID: {users[user_id]['bot_id']}\nAmount: ${amount}\nWithdrawal ID: #{withdrawal_id}")
+
+# ---------------- ADMIN HANDLERS ----------------
+def admin_withdraw_check(message):
+    users = load_users()
+    withdraw_id = message.text.strip()
+    found = False
+    for uid, u in users.items():
+        if withdraw_id in u.get('withdrawals',{}):
+            w = u['withdrawals'][withdraw_id]
+            found = True
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("Confirm ✅", callback_data=f"confirm_{uid}_{withdraw_id}"))
+            markup.add(types.InlineKeyboardButton("Reject ❌", callback_data=f"reject_{uid}_{withdraw_id}"))
+            markup.add(types.InlineKeyboardButton("Ban 🚫", callback_data=f"ban_{uid}_{withdraw_id}"))
+            bot.send_message(ADMIN_ID,
+f"💸 Withdrawal ID: #{withdraw_id}\nUser: {uid}\nBot ID: {u['bot_id']}\nAmount: ${w['amount']}\nRequested at: {w['timestamp']}",
+reply_markup=markup)
+            break
+    if not found:
+        bot.send_message(ADMIN_ID, "❌ Withdrawal ID not found.")
+
+def admin_add_balance_step1(message):
+    uid = message.text.strip()
+    msg = bot.send_message(ADMIN_ID, f"Enter amount to add to {uid}:")
+    bot.register_next_step_handler(msg, partial(admin_add_balance_step2, uid))
+
+def admin_add_balance_step2(message, uid):
+    try:
+        amount = float(message.text.strip())
+    except:
+        bot.send_message(ADMIN_ID, "❌ Invalid amount")
+        return
+    users = load_users()
+    if uid in users:
+        users[uid]['balance'] += amount
+        save_users(users)
+        bot.send_message(ADMIN_ID, f"✅ Added ${amount} to {uid}")
+        bot.send_message(uid, f"💰 Admin added ${amount} to your balance!")
+
+def admin_random_gift(message):
+    try:
+        amount = float(message.text.strip())
+    except:
+        bot.send_message(ADMIN_ID, "❌ Invalid amount")
+        return
+    users = load_users()
+    user = random.choice(list(users.keys()))
+    users[user]['balance'] += amount
+    save_users(users)
+    bot.send_message(user, f"🎁 RANDOM GIFT: ${amount}")
+    bot.send_message(ADMIN_ID, f"✅ Gift sent to {user}")
+
+def admin_ban_unban(message):
+    uid = message.text.strip()
+    users = load_users()
+    if uid in users:
+        users[uid]['banned'] = not users[uid]['banned']
+        save_users(users)
+        status = "banned" if users[uid]['banned'] else "unbanned"
+        bot.send_message(ADMIN_ID, f"{uid} has been {status}")
+        bot.send_message(uid, f"🚫 You have been {status} by admin")
+
+def admin_broadcast(message):
+    text = message.text
+    users = load_users()
+    for uid in users:
+        try:
+            bot.send_message(uid, text)
+        except:
+            pass
+    bot.send_message(ADMIN_ID, f"✅ Broadcast sent to {len(users)} users")
+
+# ---------------- CALLBACK ----------------
+@bot.callback_query_handler(func=lambda c: True)
+def callback_handler(call):
+    users = load_users()
+    data = call.data.split("_")
+    action = data[0]
+    uid = data[1]
+    withdraw_id = data[2]
+
+    if withdraw_id not in users[uid]['withdrawals']:
+        bot.answer_callback_query(call.id, "❌ Withdrawal not found")
+        return
+
+    w = users[uid]['withdrawals'][withdraw_id]
+
+    if action == "confirm":
+        w['status'] = "Confirmed"
+        users[uid]['withdrawn'] += w['amount']
+        save_users(users)
+        bot.send_message(uid, f"✅ Your withdrawal #{withdraw_id} is confirmed! Amount: ${w['amount']}")
+        bot.answer_callback_query(call.id, "Withdrawal confirmed")
+    elif action == "reject":
+        w['status'] = "Rejected"
+        users[uid]['balance'] += w['amount']
+        save_users(users)
+        bot.send_message(uid, f"❌ Your withdrawal #{withdraw_id} is rejected. Amount refunded: ${w['amount']}")
+        bot.answer_callback_query(call.id, "Withdrawal rejected")
+    elif action == "ban":
+        users[uid]['banned'] = True
+        w['status'] = "Banned"
+        save_users(users)
+        bot.send_message(uid, f"🚫 You have been banned by admin")
+        bot.answer_callback_query(call.id, "User banned")
 
 # ---------------- DOWNLOAD MEDIA ----------------
 def download_media(message):

@@ -5,14 +5,19 @@ from datetime import datetime, timedelta
 from functools import partial
 from telebot import TeleBot, types
 import yt_dlp
+import requests
 
 # -------- CONFIG --------
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Bot token not found!")
+
 ADMIN_ID = 7983838654
 DATA_FILE = "users.json"
 BOT_ID_RANGE = (1000000000, 1999999999)
+
+# Binance API key for subscription verification
+BINANCE_API_KEY = os.environ.get("BINANCE_API_KEY")
 
 bot = TeleBot(TOKEN)
 
@@ -35,9 +40,11 @@ def generate_ref_id():
 
 # -------- MAIN MENU --------
 def main_menu(chat_id):
+    users = load_users()
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💰 Balance", "🔗 Referral Link", "💸 Withdraw")
     markup.add("🎁 Random Bonus", "🏆 Weekly Rank")
+    markup.add("🎬 Video Edit")
     markup.add("👤 Profile", "🆔 Get My ID")
     markup.add("📞 Customer")
     if str(chat_id) == str(ADMIN_ID):
@@ -59,6 +66,8 @@ def start(message):
             "points": 0,
             "referrals": 0,
             "withdrawn": 0.0,
+            "premium": False,
+            "premium_expiry": None,
             "ref_id": generate_ref_id(),
             "created_at": datetime.now().strftime("%Y-%m-%d"),
             "last_random": None,
@@ -92,7 +101,8 @@ def handler(message):
     if text == "⚙️ Admin Panel" and is_admin:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add("📊 Stats", "➕ Add Balance", "🎁 Random Gift")
-        markup.add("🛠️ Unban User", "🔙 Back to Main Menu")
+        markup.add("🛠️ Unban User", "📝 Broadcast")
+        markup.add("🔙 Back to Main Menu")
         bot.send_message(user_id, "⚙️ Admin Panel", reply_markup=markup)
         return
 
@@ -118,6 +128,10 @@ f"""📊 BOT STATS
         elif text == "🛠️ Unban User":
             msg = bot.send_message(user_id, "Enter User Telegram ID to unban:")
             bot.register_next_step_handler(msg, admin_unban_user)
+            return
+        elif text == "📝 Broadcast":
+            msg = bot.send_message(user_id, "Enter your message (or video/photo URL):")
+            bot.register_next_step_handler(msg, admin_broadcast)
             return
         elif text == "🔙 Back to Main Menu":
             main_menu(user_id)
@@ -147,17 +161,71 @@ f"🔗 Referral Link:\n{link}\nReferrals: {users[user_id]['referrals']}\nEarn $0
         show_leaderboard(message)
     elif text == "👤 Profile":
         u = users[user_id]
+        premium_text = "✅ Premium Active" if u.get("premium") else "❌ Not Premium"
         bot.send_message(message.chat.id,
-f"👤 Profile\nTelegram ID: {user_id}\nBot ID: {u['ref_id']}\nBalance: {u['balance']}\nPoints: {u['points']}\nReferrals: {u['referrals']}")
+f"""👤 Profile
+Telegram ID: {user_id}
+Bot ID: {u['ref_id']}
+Balance: {u['balance']}
+Points: {u['points']}
+Referrals: {u['referrals']}
+{premium_text}""")
     elif text == "🆔 Get My ID":
         u = users[user_id]
         bot.send_message(message.chat.id, f"Your IDs:\nTelegram ID: {user_id}\nBot ID: {u['ref_id']}")
     elif text == "📞 Customer":
         bot.send_message(message.chat.id, "Contact: @scholes1")
+    elif text == "🎬 Video Edit":
+        handle_premium_access(message)
     elif text.startswith("http"):
         download_media(message)
     else:
         bot.send_message(message.chat.id, "❌ Unknown command or button.")
+
+# -------- PREMIUM VIDEO EDIT FEATURE --------
+def handle_premium_access(message):
+    users = load_users()
+    user_id = str(message.from_user.id)
+    user = users[user_id]
+    now = datetime.now()
+    # Check if user is premium and subscription valid
+    if user.get("premium") and user.get("premium_expiry"):
+        expiry = datetime.fromisoformat(user["premium_expiry"])
+        if expiry > now:
+            bot.send_message(message.chat.id, "🎬 You have access to video editing. Send your video URL:")
+            bot.register_next_step_handler(message, download_media)
+            return
+        else:
+            # Expired
+            user["premium"] = False
+            user["premium_expiry"] = None
+            save_users(users)
+    # Not premium, ask to pay
+    bot.send_message(message.chat.id, "💳 Video editing is premium ($15/month). Send 'PAY' to pay via Binance.")
+    bot.register_next_step_handler(message, handle_binance_payment)
+
+def handle_binance_payment(message):
+    users = load_users()
+    user_id = str(message.from_user.id)
+    if message.text.upper() != "PAY":
+        bot.send_message(message.chat.id, "❌ Payment cancelled.")
+        return
+    # Simulate payment verification
+    success = simulate_binance_payment(user_id, 15)
+    if success:
+        users[user_id]["premium"] = True
+        users[user_id]["premium_expiry"] = (datetime.now() + timedelta(days=30)).isoformat()
+        save_users(users)
+        bot.send_message(message.chat.id, "✅ Payment confirmed. You can now access Video Editing.")
+    else:
+        bot.send_message(message.chat.id, "❌ Payment failed. Try again later.")
+
+def simulate_binance_payment(user_id, amount):
+    """
+    Placeholder: Implement Binance API verification here
+    """
+    # For now, we simulate always successful
+    return True
 
 # -------- RANDOM BONUS --------
 def give_random_bonus(message):
@@ -265,15 +333,15 @@ def download_media(message):
     bot.send_message(message.chat.id, "Downloading...")
     url = message.text
     try:
-        if any(x in url for x in ["tiktok.com", "youtube.com", "youtu.be", "facebook.com", "pinterest.com"]):
+        if any(x in url for x in ["tiktok.com","youtube.com","youtu.be","facebook.com","pinterest.com"]):
             ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
-            with open("video.mp4", "rb") as f:
-                bot.send_video(message.chat.id, f)
+            with open("video.mp4","rb") as f:
+                bot.send_video(message.chat.id,f)
             os.remove("video.mp4")
         else:
-            bot.send_message(message.chat.id, "❌ Unsupported URL.")
+            bot.send_message(message.chat.id,"❌ Unsupported URL.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Download failed: {str(e)}")
 
@@ -312,6 +380,18 @@ def admin_unban_user(message):
         save_users(users)
         bot.send_message(ADMIN_ID, f"✅ Unbanned {user_id_target}")
         bot.send_message(user_id_target, "✅ You have been unbanned by admin!")
+
+def admin_broadcast(message):
+    users = load_users()
+    text = message.text
+    count = 0
+    for uid in users:
+        try:
+            bot.send_message(uid,text)
+            count += 1
+        except:
+            pass
+    bot.send_message(ADMIN_ID, f"✅ Broadcast sent to {count} users")
 
 # -------- RUN BOT --------
 print("Bot Running...")

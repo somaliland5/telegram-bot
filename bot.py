@@ -1,5 +1,5 @@
 import telebot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import os
 import json
 import random
@@ -99,6 +99,51 @@ Use buttons below to navigate.
 """
 
     bot.send_message(m.chat.id,msg,reply_markup=user_menu())
+
+    # -------- Inline ADMIN PANEL Button --------
+    if m.from_user.id == ADMIN_ID:
+        im = InlineKeyboardMarkup()
+        im.add(InlineKeyboardButton("🛠 ADMIN PANEL", callback_data="admin_panel_inline"))
+        bot.send_message(m.chat.id, "Admin Quick Panel:", reply_markup=im)
+
+# ================= INLINE ADMIN PANEL =================
+
+@bot.callback_query_handler(func=lambda c: c.data == "admin_panel_inline")
+def inline_admin_panel(c):
+    if c.from_user.id != ADMIN_ID:
+        return
+    im = InlineKeyboardMarkup()
+    im.add(InlineKeyboardButton("⭐ Send Rating", callback_data="send_rate"))
+    bot.send_message(c.message.chat.id, "Inline Admin Control:", reply_markup=im)
+
+# ================= RATING SYSTEM =================
+
+@bot.callback_query_handler(func=lambda c: c.data == "send_rate")
+def send_rate(c):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    im = InlineKeyboardMarkup(row_width=5)
+    im.add(
+        InlineKeyboardButton("⭐", callback_data="rate_1"),
+        InlineKeyboardButton("⭐⭐", callback_data="rate_2"),
+        InlineKeyboardButton("⭐⭐⭐", callback_data="rate_3"),
+        InlineKeyboardButton("⭐⭐⭐⭐", callback_data="rate_4"),
+        InlineKeyboardButton("⭐⭐⭐⭐⭐", callback_data="rate_5"),
+    )
+
+    for u in users:
+        try:
+            bot.send_message(int(u), "Fadlan Bot-ka qiimee 👇", reply_markup=im)
+        except:
+            pass
+
+    bot.answer_callback_query(c.id, "Rating Sent")
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("rate_"))
+def rate_click(c):
+    # user taabtay star
+    bot.answer_callback_query(c.id, "Thanks your Rate 😍")
 
 # ================= BALANCE =================
 
@@ -302,7 +347,7 @@ def unban2(m):
             users[u]["banned"]=False
             save_users(users)
 
-# BROADCAST
+# BROADCAST (existing)
 @bot.message_handler(func=lambda m:m.text=="📢 BROADCAST")
 def bc(m):
     if m.from_user.id!=ADMIN_ID:return

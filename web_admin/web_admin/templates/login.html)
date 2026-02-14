@@ -1,5 +1,0 @@
-<h1>Admin Login</h1>
-<form method="POST">
-<input type="text" name="telegram_id" placeholder="Telegram ID">
-<button type="submit">Login</button>
-</form>

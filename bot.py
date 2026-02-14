@@ -161,7 +161,53 @@ BAN {uid}
 """)
 
 # ---------------- VIDEO / PHOTO / LINK DOWNLOAD ----------------
+def download_media(chat_id, url):
+    try:
 
+        # -------- TIKTOK PHOTO --------
+        if "tiktok.com" in url and "/photo/" in url:
+
+            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            soup = BeautifulSoup(r.text, "html.parser")
+
+            meta = soup.find("meta", property="og:image")
+
+            if not meta:
+                bot.send_message(chat_id, "❌ Photo lama helin")
+                return
+
+            image_url = meta["content"]
+
+            img = requests.get(image_url).content
+
+            filename = "tiktok_photo.jpg"
+            with open(filename, "wb") as f:
+                f.write(img)
+
+            bot.send_photo(chat_id, open(filename, "rb"))
+            os.remove(filename)
+            return
+
+        # -------- VIDEO (YouTube / TikTok / Facebook) --------
+        if "youtube.com" in url or "youtu.be" in url or "tiktok.com" in url or "facebook.com" in url:
+
+            ydl_opts = {
+                'format': 'mp4',
+                'outtmpl': 'video.%(ext)s'
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+
+            bot.send_video(chat_id, open(filename, "rb"))
+            os.remove(filename)
+
+        else:
+            bot.send_message(chat_id, "❌ Link lama taageero")
+
+    except Exception as e:
+        bot.send_message(chat_id, f"Download failed: {e}")
 @bot.message_handler(func=lambda m: m.text == "📥 Download Video")
 def download(message):
     bot.send_message(message.chat.id, "Send TikTok / YouTube / Facebook link:")

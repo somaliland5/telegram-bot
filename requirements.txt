@@ -1,4 +1,4 @@
-Flask
-gunicorn
 pyTelegramBotAPI
 yt-dlp
+requests
+beautifulsoup4

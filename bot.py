@@ -321,75 +321,97 @@ def broadcast_send(m):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, url):
-
     try:
-        # ----------- TIKTOK -----------
+        # ================= TIKTOK (API FIRST) =================
         if "tiktok.com" in url:
 
-            api = f"https://tikwm.com/api/?url={url}"
-            res = requests.get(api, timeout=20).json()
+            # ---- Try TikWM API (no watermark, photos + video) ----
+            try:
+                api = f"https://tikwm.com/api/?url={url}"
+                res = requests.get(api, timeout=20).json()
 
-            if res.get("code") != 0:
-                bot.send_message(chat_id, "❌ TikTok download failed")
+                if res.get("code") == 0 and "data" in res:
+                    data = res["data"]
+
+                    # slideshow photos
+                    if data.get("images"):
+                        for img in data["images"]:
+                            img_data = requests.get(img, timeout=20).content
+                            with open("tt.jpg","wb") as f:
+                                f.write(img_data)
+                            bot.send_photo(chat_id, open("tt.jpg","rb"))
+                            os.remove("tt.jpg")
+                        return
+
+                    # video no watermark
+                    if data.get("play"):
+                        vid_url = data["play"]
+                        vid_data = requests.get(vid_url, timeout=60).content
+                        with open("tt.mp4","wb") as f:
+                            f.write(vid_data)
+                        bot.send_video(chat_id, open("tt.mp4","rb"))
+                        os.remove("tt.mp4")
+                        return
+            except:
+                pass
+
+            # ---- Fallback yt-dlp (video/shorts) ----
+            try:
+                ydl_opts = {
+                    "outtmpl": "tiktok.%(ext)s",
+                    "format": "mp4",
+                    "quiet": True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    # slideshow entries fallback
+                    if isinstance(info, dict) and info.get("entries"):
+                        for entry in info["entries"]:
+                            file = ydl.prepare_filename(entry)
+                            bot.send_photo(chat_id, open(file, "rb"))
+                            os.remove(file)
+                    else:
+                        file = ydl.prepare_filename(info)
+                        bot.send_video(chat_id, open(file, "rb"))
+                        os.remove(file)
+                return
+            except Exception as e:
+                bot.send_message(chat_id, f"TikTok download error: {e}")
                 return
 
-            data = res.get("data", {})
-
-            # ===== PHOTO SLIDESHOW =====
-            if data.get("images"):
-                bot.send_message(chat_id, "🖼 Downloading TikTok photos...")
-
-                for img in data["images"]:
-                    img_data = requests.get(img).content
-
-                    with open("tt_photo.jpg", "wb") as f:
-                        f.write(img_data)
-
-                    bot.send_photo(chat_id, open("tt_photo.jpg", "rb"))
-                    os.remove("tt_photo.jpg")
-
-                return
-
-            # ===== VIDEO =====
-            video_url = data.get("play")
-            if video_url:
-                bot.send_message(chat_id, "🎥 Downloading TikTok video...")
-
-                vid_data = requests.get(video_url).content
-
-                with open("tt_video.mp4", "wb") as f:
-                    f.write(vid_data)
-
-                bot.send_video(chat_id, open("tt_video.mp4", "rb"))
-                os.remove("tt_video.mp4")
-
-                return
-
-        # ----------- YOUTUBE -----------
+        # ================= YOUTUBE =================
         if "youtube.com" in url or "youtu.be" in url:
+            try:
+                ydl_opts = {
+                    "outtmpl": "youtube.%(ext)s",
+                    "format": "mp4",
+                    "quiet": True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
 
-            bot.send_message(chat_id, "🎥 Downloading YouTube video...")
+                bot.send_video(chat_id, open(file, "rb"))
+                os.remove(file)
+                return
+            except Exception as e:
+                bot.send_message(chat_id, f"YouTube download error: {e}")
+                return
 
-            ydl_opts = {
-                "format": "mp4",
-                "outtmpl": "yt_video.%(ext)s",
-                "quiet": True
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                file_name = ydl.prepare_filename(info)
-
-            bot.send_video(chat_id, open(file_name, "rb"))
-            os.remove(file_name)
-
-            return
-
-        # ----------- UNSUPPORTED -----------        
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception as e:
         bot.send_message(chat_id, f"Download error: {e}")
+
+
+# ========= LINK HANDLER =========
+@bot.message_handler(func=lambda m: m.text and "http" in m.text)
+def links(m):
+    uid = str(m.from_user.id)
+    if uid in users and users[uid].get("banned"):
+        return
+    bot.send_message(m.chat.id, "⏳ Downloading...")
+    download_media(m.chat.id, m.text)
 
 # ================= RUN =================
 bot.infinity_polling(skip_pending=True)

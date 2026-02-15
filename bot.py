@@ -1,6 +1,6 @@
 import telebot
 from telebot.types import *
-import os, json, random, requests, yt_dlp
+import os, json, random, yt_dlp, requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -11,22 +11,21 @@ bot=telebot.TeleBot(TOKEN,parse_mode="HTML")
 
 # ---------------- DATABASE ----------------
 
-def load_json(name,default):
+def load(name,default):
     if not os.path.exists(name):
         return default
     return json.load(open(name))
 
-def save_json(name,data):
+def save(name,data):
     json.dump(data,open(name,"w"),indent=4)
 
-users=load_json("users.json",{})
-withdraws=load_json("withdraws.json",[])
+users=load("users.json",{})
+withdraws=load("withdraws.json",[])
 
 # ---------------- MENU ----------------
 
-def user_menu(uid):
+def menu(uid):
     kb=ReplyKeyboardMarkup(resize_keyboard=True)
-
     kb.add("💰 BALANCE","💸 WITHDRAWAL")
     kb.add("👥 REFERAL","🆔 GET MY ID")
     kb.add("☎️ COSTUMER")
@@ -51,10 +50,10 @@ def start(m):
         users[uid]={
             "balance":0,
             "refs":0,
-            "token":str(random.randint(1000000000,9999999999)),
             "ref":str(random.randint(100000,999999)),
-            "month":datetime.now().month,
-            "banned":False
+            "token":str(random.randint(1000000000,9999999999)),
+            "banned":False,
+            "month":datetime.now().month
         }
 
         if ref:
@@ -64,16 +63,24 @@ def start(m):
                     users[u]["balance"]+=0.2
                     bot.send_message(int(u),"🎉 New referral joined! You earned $0.2")
 
-        save_json("users.json",users)
+        save("users.json",users)
 
-    bot.send_message(m.chat.id,"👋 Welcome",reply_markup=user_menu(uid))
+    bot.send_message(m.chat.id,"👋 Welcome",reply_markup=menu(uid))
 
 # ---------------- BALANCE ----------------
 
 @bot.message_handler(func=lambda m:m.text=="💰 BALANCE")
-def balance(m):
+def bal(m):
     uid=str(m.from_user.id)
     bot.send_message(m.chat.id,f"💰 Balance: ${users[uid]['balance']}")
+
+# ---------------- REFERAL ----------------
+
+@bot.message_handler(func=lambda m:m.text=="👥 REFERAL")
+def ref(m):
+    uid=str(m.from_user.id)
+    link=f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
+    bot.send_message(m.chat.id,f"🔗 {link}")
 
 # ---------------- GET ID ----------------
 
@@ -91,28 +98,27 @@ def gid(m):
 def cus(m):
     bot.send_message(m.chat.id,"Support: @scholes1")
 
-# ---------------- WITHDRAW BUTTON ----------------
+# ---------------- WITHDRAW MENU ----------------
 
 @bot.message_handler(func=lambda m:m.text=="💸 WITHDRAWAL")
-def withdraw_menu(m):
+def wdmenu(m):
 
     kb=InlineKeyboardMarkup()
-
     kb.add(
-        InlineKeyboardButton("USDT BEP20",callback_data="wd_usdt"),
-        InlineKeyboardButton("Cancel",callback_data="wd_cancel")
+        InlineKeyboardButton("USDT-BEP20",callback_data="usdt"),
+        InlineKeyboardButton("CANCEL",callback_data="cancel")
     )
 
-    bot.send_message(m.chat.id,"Select withdrawal method",reply_markup=kb)
+    bot.send_message(m.chat.id,"Select method",reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c:c.data=="wd_cancel")
-def wd_cancel(c):
+@bot.callback_query_handler(func=lambda c:c.data=="cancel")
+def cancel(c):
     bot.edit_message_text("❌ Cancelled",c.message.chat.id,c.message.message_id)
 
 # ---------------- WITHDRAW PROCESS ----------------
 
-@bot.callback_query_handler(func=lambda c:c.data=="wd_usdt")
-def wd_usdt(c):
+@bot.callback_query_handler(func=lambda c:c.data=="usdt")
+def usdt(c):
 
     uid=str(c.from_user.id)
 
@@ -120,13 +126,12 @@ def wd_usdt(c):
         return bot.answer_callback_query(c.id,"Minimum $0.5")
 
     msg=bot.send_message(c.message.chat.id,"Send USDT Address")
-    bot.register_next_step_handler(msg,wd_address)
+    bot.register_next_step_handler(msg,wdaddress)
 
-def wd_address(m):
+def wdaddress(m):
 
     uid=str(m.from_user.id)
     bal=users[uid]["balance"]
-
     wid=random.randint(10000,99999)
 
     withdraws.append({
@@ -138,14 +143,12 @@ def wd_address(m):
     })
 
     users[uid]["balance"]=0
-
-    save_json("users.json",users)
-    save_json("withdraws.json",withdraws)
+    save("users.json",users)
+    save("withdraws.json",withdraws)
 
     bot.send_message(m.chat.id,f"""
 ✅ Request #{wid} Sent!
 💵 Amount: ${bal}
-💸 Fee (0.00%): -$0.00
 🧾 Net Due: ${bal}
 ⏳ Pending approval
 🕒 6–12 hours
@@ -156,7 +159,7 @@ def wd_address(m):
         InlineKeyboardButton("✅ CONFIRM",callback_data=f"confirm_{wid}"),
         InlineKeyboardButton("❌ REJECT",callback_data=f"reject_{wid}")
     )
-    kb.add(InlineKeyboardButton("🚫 BAN USER",callback_data=f"ban_{uid}"))
+    kb.add(InlineKeyboardButton("🚫 BAN",callback_data=f"ban_{uid}"))
 
     bot.send_message(ADMIN_ID,f"""
 💳 NEW WITHDRAW
@@ -164,57 +167,53 @@ def wd_address(m):
 User: {uid}
 Amount: ${bal}
 Request ID: {wid}
+Referrals: {users[uid]['refs']}
 """,reply_markup=kb)
 
-# ---------------- ADMIN PANEL ----------------
+# ---------------- ADMIN PANEL BUTTON ----------------
 
 @bot.message_handler(func=lambda m:m.text=="👑 ADMIN PANEL")
-def admin_panel(m):
+def admin(m):
 
     if m.from_user.id!=ADMIN_ID:
         return
 
     kb=InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("📊 Stats",callback_data="stats"))
-    kb.add(InlineKeyboardButton("⭐ Send Rating",callback_data="rate"))
     kb.add(InlineKeyboardButton("📢 Broadcast",callback_data="broadcast"))
-    kb.add(InlineKeyboardButton("➕ Add Balance",callback_data="addbal"))
-    kb.add(InlineKeyboardButton("🚫 Unban",callback_data="unban"))
+    kb.add(InlineKeyboardButton("⭐ Send Rating",callback_data="rating"))
     kb.add(InlineKeyboardButton("💳 Withdrawal Check",callback_data="wdcheck"))
+    kb.add(InlineKeyboardButton("🚫 Unban",callback_data="unban"))
 
-    bot.send_message(m.chat.id,"👑 ADMIN PANEL",reply_markup=kb)
+    bot.send_message(m.chat.id,"Admin Panel",reply_markup=kb)
 
-# ---------------- WITHDRAW CONTROL ----------------
+# ---------------- ADMIN ACTIONS ----------------
 
 @bot.callback_query_handler(func=lambda c:c.data.startswith("confirm"))
 def confirm(c):
     wid=int(c.data.split("_")[1])
-
     for w in withdraws:
         if w["id"]==wid:
             w["status"]="paid"
             bot.send_message(int(w["user"]),"✅ Withdrawal Approved")
-
-    save_json("withdraws.json",withdraws)
+    save("withdraws.json",withdraws)
 
 @bot.callback_query_handler(func=lambda c:c.data.startswith("reject"))
 def reject(c):
     wid=int(c.data.split("_")[1])
-
     for w in withdraws:
         if w["id"]==wid:
             w["status"]="rejected"
             users[w["user"]]["balance"]+=w["amount"]
             bot.send_message(int(w["user"]),"❌ Withdrawal Rejected")
-
-    save_json("withdraws.json",withdraws)
-    save_json("users.json",users)
+    save("withdraws.json",withdraws)
+    save("users.json",users)
 
 @bot.callback_query_handler(func=lambda c:c.data.startswith("ban"))
 def ban(c):
     uid=c.data.split("_")[1]
     users[uid]["banned"]=True
-    save_json("users.json",users)
+    save("users.json",users)
 
 # ---------------- WITHDRAW CHECK ----------------
 
@@ -225,10 +224,20 @@ def wdcheck(c):
 
 def wdcheck2(m):
     wid=int(m.text)
-
     for w in withdraws:
         if w["id"]==wid:
             bot.send_message(m.chat.id,str(w))
+
+# ---------------- UNBAN ----------------
+
+@bot.callback_query_handler(func=lambda c:c.data=="unban")
+def unban(c):
+    msg=bot.send_message(c.message.chat.id,"Send User ID")
+    bot.register_next_step_handler(msg,unban2)
+
+def unban2(m):
+    users[m.text]["banned"]=False
+    save("users.json",users)
 
 # ---------------- STATS ----------------
 
@@ -245,11 +254,10 @@ Total Balance: ${totalbal}
 
 # ---------------- RATING ----------------
 
-@bot.callback_query_handler(func=lambda c:c.data=="rate")
-def rate(c):
+@bot.callback_query_handler(func=lambda c:c.data=="rating")
+def rating(c):
 
     kb=InlineKeyboardMarkup()
-
     for i in range(1,6):
         kb.add(InlineKeyboardButton(f"{i} ⭐",callback_data=f"rate_{i}"))
 
@@ -260,10 +268,9 @@ def rate(c):
             pass
 
 @bot.callback_query_handler(func=lambda c:c.data.startswith("rate_"))
-def rate2(c):
-
+def rate(c):
     r=c.data.split("_")[1]
-    bot.send_message(ADMIN_ID,f"User {c.from_user.first_name} rated {r}")
+    bot.send_message(ADMIN_ID,f"{c.from_user.first_name} rated {r}⭐")
     bot.answer_callback_query(c.id,"Thanks 😍")
 
 # ---------------- BROADCAST ----------------
@@ -280,24 +287,18 @@ def bc2(m):
         except:
             pass
 
-# ---------------- ADD BALANCE ----------------
-
-@bot.callback_query_handler(func=lambda c:c.data=="addbal")
-def addbal(c):
-    msg=bot.send_message(c.message.chat.id,"Send user ID and amount")
-    bot.register_next_step_handler(msg,addbal2)
-
-def addbal2(m):
-    uid,amt=m.text.split()
-    users[uid]["balance"]+=float(amt)
-    save_json("users.json",users)
-
 # ---------------- DOWNLOADER ----------------
 
 def download(chat,url):
 
-    ydl={"outtmpl":"vid.%(ext)s","format":"mp4"}
+    if "tiktok.com" in url and "/photo/" in url:
+        html=requests.get(url).text
+        soup=BeautifulSoup(html,"html.parser")
+        img=soup.find("meta",property="og:image")["content"]
+        bot.send_photo(chat,img)
+        return
 
+    ydl={"outtmpl":"vid.%(ext)s","format":"mp4"}
     with yt_dlp.YoutubeDL(ydl) as y:
         info=y.extract_info(url,download=True)
         file=y.prepare_filename(info)
@@ -306,7 +307,7 @@ def download(chat,url):
     os.remove(file)
 
 @bot.message_handler(func=lambda m:"http" in m.text)
-def links(m):
+def link(m):
     bot.send_message(m.chat.id,"Downloading...")
     download(m.chat.id,m.text)
 

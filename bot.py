@@ -276,11 +276,42 @@ def broadcast_step(m):
     bot.send_message(m.chat.id,"✅ Broadcast sent")
 
 # ================= MEDIA DOWNLOAD =================
+                      os.remove(file)
 def download_media(chat_id, url):
 
     try:
 
-        # ================= TIKTOK =================
+        # ================= TIKTOK PHOTO FIX =================
+        if "tiktok.com" in url and "/photo/" in url:
+
+            html = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}).text
+            soup = BeautifulSoup(html, "html.parser")
+
+            images = []
+
+            # slideshow images TikTok
+            metas = soup.find_all("meta", property="og:image")
+
+            for m in metas:
+                if m.get("content"):
+                    images.append(m.get("content"))
+
+            if len(images) == 0:
+                bot.send_message(chat_id,"❌ TikTok photos lama helin.")
+                return
+
+            for img_url in images:
+                img_data = requests.get(img_url).content
+                with open("tt.jpg","wb") as f:
+                    f.write(img_data)
+
+                bot.send_photo(chat_id, open("tt.jpg","rb"))
+                os.remove("tt.jpg")
+
+            return
+
+
+        # ================= TIKTOK VIDEO =================
         if "tiktok.com" in url:
 
             ydl_opts = {
@@ -291,20 +322,12 @@ def download_media(chat_id, url):
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
 
-                # haddii slideshow / photos
-                if "entries" in info:
-                    for entry in info["entries"]:
-                        file = ydl.prepare_filename(entry)
-                        bot.send_photo(chat_id, open(file, "rb"))
-                        os.remove(file)
-
-                else:
-                    file = ydl.prepare_filename(info)
-                    bot.send_video(chat_id, open(file, "rb"))
-                    os.remove(file)
-
+            bot.send_video(chat_id, open(file,"rb"))
+            os.remove(file)
             return
+
 
         # ================= YOUTUBE =================
         if "youtube.com" in url or "youtu.be" in url:
@@ -319,21 +342,15 @@ def download_media(chat_id, url):
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
 
-            bot.send_video(chat_id, open(file, "rb"))
+            bot.send_video(chat_id, open(file,"rb"))
             os.remove(file)
-
             return
 
-        bot.send_message(chat_id, "❌ Link not supported")
+
+        bot.send_message(chat_id,"❌ Unsupported link")
 
     except Exception as e:
-        bot.send_message(chat_id, f"Download error: {e}")
-
-@bot.message_handler(func=lambda m: "http" in m.text)
-def links(m):
-
-    if str(m.from_user.id) in users and users[str(m.from_user.id)].get("banned"):
-        return
+        bot.send_message(chat_id,f"Download error: {e}")
 
     bot.send_message(m.chat.id, "⏳ Downloading...")
     download_media(m.chat.id, m.text)

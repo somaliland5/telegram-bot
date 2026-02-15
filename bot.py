@@ -251,9 +251,26 @@ def withdraw_amount(m):
         reply_markup=user_menu(is_admin(uid))
     )
 
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+# ===== CREATE WITHDRAWAL REQUEST =====
+wid = random.randint(10000, 99999)  # Halkan abuur ID-ka
 
-# ===== ADMIN MESSAGE INLINE BUTTON =====
+withdraws.append({
+    "id": wid,
+    "user": uid,
+    "amount": amt,
+    "blocked": amt,
+    "address": addr,
+    "status": "pending",
+    "time": str(datetime.now())
+})
+
+users[uid]["balance"] -= amt
+users[uid]["blocked"] = users[uid].get("blocked", 0.0) + amt
+
+save_users()
+save_withdraws()
+
+# ===== ADMIN INLINE BUTTONS =====
 markup = InlineKeyboardMarkup()
 markup.add(
     InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),

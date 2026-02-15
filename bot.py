@@ -1,5 +1,5 @@
 import telebot
-from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import os, json, random
 from datetime import datetime
 
@@ -33,7 +33,7 @@ def admin_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📊 STATS", "➕ ADD BALANCE")
     kb.add("📤 BROADCAST", "💳 WITHDRAW CHECK")
-    kb.add("🚫 UNBAN", "🔙 BACK")
+    kb.add("💸 UNBAN MONEY", "🔙 BACK")
     return kb
 
 # ---------------- START ----------------
@@ -46,6 +46,7 @@ def start(m):
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
             "balance":0,
+            "blocked":0,
             "refs":0,
             "ref":str(random.randint(100000,999999)),
             "token":str(random.randint(1000000000,9999999999)),
@@ -65,7 +66,9 @@ def start(m):
 @bot.message_handler(func=lambda m:m.text=="💰 BALANCE")
 def bal(m):
     uid = str(m.from_user.id)
-    bot.send_message(m.chat.id,f"💰 Balance: ${users[uid]['balance']:.2f}")
+    b = users[uid]["balance"]
+    bl = users[uid]["blocked"]
+    bot.send_message(m.chat.id,f"💰 Balance: ${b:.2f}\n⛔ Blocked: ${bl:.2f}")
 
 # ---------------- REFERRAL ----------------
 @bot.message_handler(func=lambda m:m.text=="👥 REFERRAL")
@@ -106,7 +109,8 @@ def add_bal(m):
 
 def add_bal2(m):
     uid, amt = m.text.split()
-    users[uid]["balance"] += float(amt)
+    amt = float(amt)
+    users[uid]["balance"] += amt
     save("users.json",users)
     bot.send_message(int(uid),f"💰 Admin added ${amt}")
 
@@ -117,7 +121,7 @@ def withdrawal_menu(m):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton("USDT-BEP20"), KeyboardButton("CANCEL"))
     kb.add(KeyboardButton("MAIN MENU"))
-    bot.send_message(m.chat.id,"Choose withdrawal method", reply_markup=kb)
+    bot.send_message(m.chat.id,"Select withdrawal method", reply_markup=kb)
 
 @bot.message_handler(func=lambda m:m.text=="CANCEL")
 def cancel(m):
@@ -130,8 +134,8 @@ def main_menu(m):
 @bot.message_handler(func=lambda m:m.text=="USDT-BEP20")
 def usdt_start(m):
     uid=str(m.from_user.id)
-    if users[uid]["balance"] < 0.5:
-        bot.send_message(m.chat.id,"❌ Minimum balance $0.5")
+    if users[uid]["balance"] < 1:
+        bot.send_message(m.chat.id,"❌ AMOUNT YOU WITHDRAWAL MIN: 1")
         return
     msg=bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x):")
     bot.register_next_step_handler(msg, get_address)
@@ -156,7 +160,7 @@ def get_amount(m):
         msg=bot.send_message(m.chat.id,"❌ Invalid amount")
         bot.register_next_step_handler(msg,get_amount)
         return
-    if amt>users[uid]["balance"] or amt<0.5:
+    if amt>users[uid]["balance"] or amt<1:
         msg=bot.send_message(m.chat.id,"❌ Invalid amount")
         bot.register_next_step_handler(msg,get_amount)
         return
@@ -166,11 +170,13 @@ def get_amount(m):
         "id": wid,
         "user": uid,
         "amount": amt,
+        "blocked": amt,
         "address": users[uid]["temp_addr"],
         "status":"pending",
         "time": str(datetime.now())
     })
     users[uid]["balance"]-=amt
+    users[uid]["blocked"]+=amt
     save("users.json",users)
     save("withdraws.json",withdraws)
 
@@ -199,19 +205,24 @@ def get_amount(m):
 def confirm(c):
     wid=int(c.data.split("_")[1])
     for w in withdraws:
-        if w["id"]==wid:
+        if w["id"]==wid and w["status"]=="pending":
             w["status"]="paid"
-            bot.send_message(int(w["user"]),"✅ Withdrawal Approved")
+            uid=w["user"]
+            users[uid]["blocked"]-=w["blocked"]
+            save("users.json",users)
+            bot.send_message(int(uid),"✅ Withdrawal Approved")
     save("withdraws.json",withdraws)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("reject"))
 def reject(c):
     wid=int(c.data.split("_")[1])
     for w in withdraws:
-        if w["id"]==wid:
-            users[w["user"]]["balance"]+=w["amount"]
+        if w["id"]==wid and w["status"]=="pending":
+            uid=w["user"]
+            users[uid]["balance"]+=w["blocked"]
+            users[uid]["blocked"]-=w["blocked"]
             w["status"]="rejected"
-            bot.send_message(int(w["user"]),"❌ Withdrawal Rejected")
+            bot.send_message(int(uid),"❌ Withdrawal Rejected")
     save("users.json",users)
     save("withdraws.json",withdraws)
 
@@ -220,6 +231,22 @@ def ban(c):
     uid=c.data.split("_")[1]
     users[uid]["banned"]=True
     save("users.json",users)
+
+# ---------------- UNBAN MONEY ----------------
+@bot.message_handler(func=lambda m:m.text=="💸 UNBAN MONEY")
+def unban_money(m):
+    if m.from_user.id!=ADMIN_ID: return
+    msg=bot.send_message(m.chat.id,"Send USER ID to unblock money")
+    bot.register_next_step_handler(msg,unban_money2)
+
+def unban_money2(m):
+    uid=m.text
+    if uid in users:
+        amt = users[uid]["blocked"]
+        users[uid]["balance"] += amt
+        users[uid]["blocked"] = 0
+        save("users.json",users)
+        bot.send_message(int(uid),f"💰 Your blocked money ${amt} is unblocked and available now.")
 
 # ---------------- WITHDRAW CHECK ----------------
 @bot.message_handler(func=lambda m:m.text=="💳 WITHDRAW CHECK")
@@ -238,9 +265,12 @@ def wdcheck2(m):
 @bot.message_handler(func=lambda m:m.text=="📊 STATS")
 def stats(m):
     if m.from_user.id!=ADMIN_ID:return
-    total=len(users)
-    totalbal=sum(users[u]["balance"] for u in users)
-    bot.send_message(m.chat.id,f"Users: {total}\nTotal Balance: ${totalbal}")
+    total_users=len(users)
+    total_balance=sum(users[u]["balance"] for u in users)
+    total_blocked=sum(users[u]["blocked"] for u in users)
+    total_withdraw=sum(w["amount"] for w in withdraws if w["status"]=="paid")
+    bot.send_message(m.chat.id,
+        f"👥 Total Users: {total_users}\n💰 Total Balance: ${total_balance:.2f}\n⛔ Total Blocked: ${total_blocked:.2f}\n💵 Total Withdraw Paid: ${total_withdraw:.2f}")
 
 # ---------------- BROADCAST ----------------
 @bot.message_handler(func=lambda m:m.text=="📤 BROADCAST")

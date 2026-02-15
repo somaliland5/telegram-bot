@@ -145,13 +145,76 @@ def withdraw_start(m):
     bot.register_next_step_handler(msg, withdraw_address)
 
 def withdraw_address(m):
-    if banned_guard(m): return
     uid = str(m.from_user.id)
+    # Haddii user-ka taabtay BACK
+    if m.text == "🔙 BACK MAIN MENU":
+        back_main_menu(m.chat.id, uid)
+        return
+
     addr = (m.text or "").strip()
     if not addr.startswith("0x"):
-        msg = bot.send_message(m.chat.id, "❌ Invalid address. Must start with 0x. Try again:")
+        msg = bot.send_message(m.chat.id, "❌ Invalid address. Must start with 0x. Try again or tap 🔙 BACK MAIN MENU")
         bot.register_next_step_handler(msg, withdraw_address)
         return
+
+    users[uid]["temp_addr"] = addr
+    save_users()
+    msg = bot.send_message(m.chat.id, f"Enter amount to withdraw (MIN: $1 | Balance: ${users[uid]['balance']:.2f})")
+    bot.register_next_step_handler(msg, withdraw_amount)
+
+def withdraw_amount(m):
+    uid = str(m.from_user.id)
+    # BACK button
+    if m.text == "🔙 BACK MAIN MENU":
+        back_main_menu(m.chat.id, uid)
+        return
+
+    try:
+        amt = float(m.text)
+    except:
+        msg = bot.send_message(m.chat.id, "❌ Invalid amount. Enter number or tap 🔙 BACK MAIN MENU")
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+
+    if amt < 1:
+        msg = bot.send_message(m.chat.id, "❌ AMOUNT YOU WITHDRAWAL MIN: 1\nOr tap 🔙 BACK MAIN MENU")
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+
+    if amt > users[uid]["balance"]:
+        msg = bot.send_message(m.chat.id, "❌ Insufficient balance. Or tap 🔙 BACK MAIN MENU")
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+
+    # Haddii sax ah, sii wad
+    wid = random.randint(10000,99999)
+    addr = users[uid].pop("temp_addr", None)
+
+    withdraws.append({
+        "id": wid,
+        "user": uid,
+        "amount": amt,
+        "blocked": amt,
+        "address": addr,
+        "status": "pending",
+        "time": str(datetime.now())
+    })
+
+    users[uid]["balance"] -= amt
+    users[uid]["blocked"] = users[uid].get("blocked",0.0) + amt
+    save_users()
+    save_withdraws()
+
+    bot.send_message(m.chat.id,
+        f"✅ Request #{wid} Sent!\n"
+        f"💵 Amount: ${amt:.2f}\n"
+        f"💸 Fee (0.00%): -$0.00\n"
+        f"🧾 Net Due: ${amt:.2f}\n"
+        f"⏳ Your request is pending approval\n"
+        f"🕒 Pending time: 6–12 hours\n"
+        f"Please be patient 😕",
+        reply_markup=user_menu(is_admin(uid))
+                    )
     users[uid]["temp_addr"] = addr
     save_users()
     msg = bot.send_message(m.chat.id, f"Enter amount to withdraw (MIN: $1 | Balance: ${users[uid]['balance']:.2f})")

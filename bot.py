@@ -125,35 +125,36 @@ def customer(m):
     bot.send_message(m.chat.id,"Contact support: @scholes1")
 
 # ================= WITHDRAWAL =================
+from telebot.types import ReplyKeyboardMarkup
 
 @bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")
 def withdraw_menu(m):
     if banned_guard(m): return
-
     uid = str(m.from_user.id)
-
-    if users[uid]["balance"] < 1:
-        bot.send_message(m.chat.id, "❌ Minimum withdrawal is $1")
-        return
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("USDT-BEP20")
-    kb.add("🔙 BACK MAIN MENU")
+    kb.add("🔙 CANCEL")
 
     bot.send_message(m.chat.id, "Select withdrawal method:", reply_markup=kb)
 
 
 # ================= SELECT METHOD =================
-@bot.message_handler(func=lambda m: m.text == "USDT-BEP20")
-def withdraw_address_start(m):
-    if banned_guard(m): return
+@bot.message_handler(func=lambda m: m.text in ["USDT-BEP20", "🔙 CANCEL"])
+def withdraw_method(m):
+    uid = str(m.from_user.id)
 
-    msg = bot.send_message(
-        m.chat.id,
-        "Enter USDT BEP20 address (must start with 0x)\nOr press 🔙 BACK MAIN MENU"
-    )
+    if m.text == "🔙 CANCEL":
+        back_main_menu(m.chat.id, uid)
+        return
 
-    bot.register_next_step_handler(msg, withdraw_address)
+    if m.text == "USDT-BEP20":
+        msg = bot.send_message(
+            m.chat.id,
+            "Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL"
+        )
+        bot.register_next_step_handler(msg, withdraw_address)
+        return
 
 
 # ================= ADDRESS =================
@@ -161,12 +162,15 @@ def withdraw_address(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
 
-    if text == "🔙 BACK MAIN MENU":
+    if text == "🔙 CANCEL":
         back_main_menu(m.chat.id, uid)
         return
 
     if not text.startswith("0x"):
-        msg = bot.send_message(m.chat.id, "❌ Address must start with 0x")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL"
+        )
         bot.register_next_step_handler(msg, withdraw_address)
         return
 
@@ -175,9 +179,8 @@ def withdraw_address(m):
 
     msg = bot.send_message(
         m.chat.id,
-        f"Enter amount to withdraw\nMinimum: $1\nBalance: ${users[uid]['balance']:.2f}"
+        f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL"
     )
-
     bot.register_next_step_handler(msg, withdraw_amount)
 
 
@@ -186,24 +189,33 @@ def withdraw_amount(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
 
-    if text == "🔙 BACK MAIN MENU":
+    if text == "🔙 CANCEL":
         back_main_menu(m.chat.id, uid)
         return
 
     try:
         amt = float(text)
     except:
-        msg = bot.send_message(m.chat.id, "❌ Enter valid number")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid number. Enter again or press 🔙 CANCEL"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
     if amt < 1:
-        msg = bot.send_message(m.chat.id, "❌ Minimum withdrawal is $1")
+        msg = bot.send_message(
+            m.chat.id,
+            f"❌ Minimum withdrawal is $1\nYour Balance: ${users[uid]['balance']:.2f}\nTry again or press 🔙 CANCEL"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
     if amt > users[uid]["balance"]:
-        msg = bot.send_message(m.chat.id, "❌ Insufficient balance")
+        msg = bot.send_message(
+            m.chat.id,
+            f"❌ Insufficient balance\nYour Balance: ${users[uid]['balance']:.2f}\nTry again or press 🔙 CANCEL"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
@@ -235,7 +247,7 @@ def withdraw_amount(m):
         f"💵 Amount: ${amt:.2f}\n"
         f"🏦 Address: {addr}\n"
         f"💰 Balance Left: ${users[uid]['balance']:.2f}\n"
-        f"⏳ Processing: 6‑12 hours",
+        f"⏳ Status: Pending (6–12 hours)",
         reply_markup=user_menu(is_admin(uid))
     )
 
@@ -248,9 +260,7 @@ def withdraw_amount(m):
         f"💵 Amount: ${amt:.2f}\n"
         f"🧾 Request ID: {wid}\n"
         f"🏦 Address: {addr}\n\n"
-        f"CONFIRM {wid}\n"
-        f"REJECT {wid}\n"
-        f"BAN {uid}"
+        f"Reply with:\nCONFIRM {wid}\nREJECT {wid}\nBAN {uid}"
     )
 
     bot.send_message(ADMIN_ID, admin_msg)

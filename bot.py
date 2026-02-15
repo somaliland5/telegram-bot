@@ -92,10 +92,11 @@ def start(m):
                     bot.send_message(int(u),"🎉 You earned $0.2 from referral.")
                     break
         save_users()
-    bot.send_message(m.chat.id,"👋 Welcome to our Video Downloader Bot! 🎬
-We are very happy to have you here. This bot is designed to help you download videos quickly, safely, and easily from different platforms. Our goal is to make your downloading experience simple, fast, and convenient without any complicated steps.
-With this bot, you can download your favorite videos in high quality and save them directly to your device. Whether you want videos for entertainment, learning, sharing, or offline watching, this bot is here to help you anytime.", reply_markup=user_menu(is_admin(uid)))
+    bot.send_message(m.chat.id,"""👋🎬 Welcome to our Video Downloader Bot!
+We are very happy to have you here. This bot helps you download videos quickly, safely, and easily from different platforms.
 
+Send any video link and download your favorite videos in high quality anytime.
+"""
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
 def balance(m):

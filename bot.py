@@ -110,13 +110,53 @@ def get_id(m):
     uid = str(m.from_user.id)
     bot.send_message(m.chat.id, f"🆔 BOT ID: <code>{users[uid]['bot_id']}</code>\n👤 Telegram ID: <code>{uid}</code>")
 
-# ================= REFERRAL =================
-@bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
-def referral(m):
-    if banned_guard(m): return
+# ================= START + REFERRAL =================
+@bot.message_handler(commands=['start'])
+def start(m):
     uid = str(m.from_user.id)
-    link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-    bot.send_message(m.chat.id,f"🔗 Referral link:\n{link}\n👥 Invited: {users[uid].get('invited',0)}")
+    args = m.text.split()
+
+    # Haddii user-ka cusub yahay
+    if uid not in users:
+        # Haddii uu jiro referral code
+        ref = args[1] if len(args) > 1 else None
+
+        # Ku dar user-ka database
+        users[uid] = {
+            "balance": 0.0,           # lacagta user-ka
+            "blocked": 0.0,           # lacag block ah
+            "ref": random_ref(),      # referral code gaar ah
+            "bot_id": random_botid(), # bot id
+            "invited": 0,             # tirada dadka uu casuumay
+            "banned": False,
+            "month": now_month()
+        }
+
+        # Haddii uu user cusub code haysto
+        if ref:
+            for u, data in users.items():
+                # Haddii referral code uu sax yahay
+                if data["ref"] == ref:
+                    # Lacag si automatic ah $0.2
+                    users[u]["balance"] += 0.2
+                    users[u]["invited"] += 1
+                    save_users()  # save users ka dib
+
+                    # U dir fariin user-kii casuumay
+                    bot.send_message(
+                        int(u),
+                        f"🎉 Congratulations! You earned $0.2 from your referral."
+                    )
+                    break
+
+        save_users()
+
+    # Salaan user-ka cusub / hore
+    bot.send_message(
+        m.chat.id,
+        "👋 Welcome to the bot!",
+        reply_markup=user_menu(is_admin(uid))
+    )
 
 # ================= CUSTOMER =================
 @bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")

@@ -275,6 +275,43 @@ def admin_panel_btn(m):
 def back_main(m):
     back_main_menu(m.chat.id, str(m.from_user.id))
 
+# ================= BROADCAST =================
+
+@bot.message_handler(func=lambda m: m.text == "📢 BROADCAST")
+def broadcast_start(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "📢 Send message / photo / video / link you want to broadcast to all users"
+    )
+    bot.register_next_step_handler(msg, broadcast_send)
+
+
+def broadcast_send(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    sent = 0
+    failed = 0
+
+    for uid in users:
+        try:
+            bot.copy_message(
+                chat_id=int(uid),
+                from_chat_id=m.chat.id,
+                message_id=m.message_id
+            )
+            sent += 1
+        except:
+            failed += 1
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Broadcast Finished\n\n📤 Sent: {sent}\n❌ Failed: {failed}"
+    )
+
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id,url):
     try:

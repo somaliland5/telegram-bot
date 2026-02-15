@@ -260,62 +260,135 @@ def broadcast_send(m):
         except: failed+=1
     bot.send_message(m.chat.id,f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
-# ================= MEDIA DOWNLOADER =================
-def download_media(chat_id,url):
+# ================= MEDIA DOWNLOADER PRO =================
+def download_media(chat_id, url):
     try:
+
+        # ========= TIKTOK =========
         if "tiktok.com" in url:
+
+            # ----- TikTok API (BEST METHOD) -----
             try:
-                api=f"https://tikwm.com/api/?url={url}"
-                res=requests.get(api,timeout=20).json()
-                if res.get("code")==0 and "data" in res:
-                    data=res["data"]
+                api = f"https://tikwm.com/api/?url={url}"
+                res = requests.get(api, timeout=20).json()
+
+                if res.get("code") == 0 and "data" in res:
+                    data = res["data"]
+
+                    # ===== SLIDESHOW / PHOTOS =====
                     if data.get("images"):
-                        for img in data["images"]:
-                            img_data=requests.get(img).content
-                            with open("tt.jpg","wb") as f: f.write(img_data)
-                            bot.send_photo(chat_id,open("tt.jpg","rb"))
-                            os.remove("tt.jpg")
+                        for i, img in enumerate(data["images"]):
+                            img_data = requests.get(img, timeout=20).content
+                            filename = f"tt_{i}.jpg"
+
+                            with open(filename, "wb") as f:
+                                f.write(img_data)
+
+                            bot.send_photo(chat_id, open(filename, "rb"))
+                            os.remove(filename)
+
                         return
+
+                    # ===== VIDEO =====
                     if data.get("play"):
-                        vid=requests.get(data["play"]).content
-                        with open("tt.mp4","wb") as f: f.write(vid)
-                        bot.send_video(chat_id,open("tt.mp4","rb"))
-                        os.remove("tt.mp4")
+                        vid_data = requests.get(data["play"], timeout=60).content
+
+                        with open("tiktok.mp4", "wb") as f:
+                            f.write(vid_data)
+
+                        bot.send_video(chat_id, open("tiktok.mp4", "rb"))
+                        os.remove("tiktok.mp4")
+
                         return
-            except: pass
+
+            except:
+                pass
+
+
+            # ----- FALLBACK yt-dlp -----
             try:
-                ydl_opts={"outtmpl":"tiktok.%(ext)s","format":"mp4","quiet":True}
+                ydl_opts = {
+                    "outtmpl": "tiktok_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "format": "mp4"
+                }
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info=ydl.extract_info(url,download=True)
+                    info = ydl.extract_info(url, download=True)
+
+                    # slideshow fallback
                     if isinstance(info, dict) and info.get("entries"):
                         for e in info["entries"]:
-                            f=ydl.prepare_filename(e)
-                            bot.send_photo(chat_id,open(f,"rb"))
+                            f = ydl.prepare_filename(e)
+                            bot.send_photo(chat_id, open(f, "rb"))
                             os.remove(f)
-                    else:
-                        f=ydl.prepare_filename(info)
-                        bot.send_video(chat_id,open(f,"rb"))
-                        os.remove(f)
-                return
-            except Exception as e: bot.send_message(chat_id,f"TikTok download error: {e}"); return
-        if "youtube.com" in url or "youtu.be" in url:
-            try:
-                ydl_opts={"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info=ydl.extract_info(url,download=True)
-                    f=ydl.prepare_filename(info)
-                bot.send_video(chat_id,open(f,"rb"))
-                os.remove(f)
-                return
-            except Exception as e: bot.send_message(chat_id,f"YouTube download error: {e}"); return
-        bot.send_message(chat_id,"❌ Unsupported link")
-    except Exception as e: bot.send_message(chat_id,f"Download error: {e}")
 
-@bot.message_handler(func=lambda m: m.text and "http" in m.text)
-def links(m):
-    if banned_guard(m): return
-    bot.send_message(m.chat.id,"⏳ Downloading...")
-    download_media(m.chat.id,m.text)
+                    else:
+                        f = ydl.prepare_filename(info)
+                        bot.send_video(chat_id, open(f, "rb"))
+                        os.remove(f)
+
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"TikTok download error:\n{e}")
+                return
+
+
+        # ========= FACEBOOK =========
+        if "facebook.com" in url or "fb.watch" in url:
+
+            try:
+                ydl_opts = {
+                    "outtmpl": "facebook_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "format": "mp4"
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    f = ydl.prepare_filename(info)
+
+                bot.send_video(chat_id, open(f, "rb"))
+                os.remove(f)
+
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"Facebook download error:\n{e}")
+                return
+
+
+        # ========= YOUTUBE =========
+        if "youtube.com" in url or "youtu.be" in url:
+
+            try:
+                ydl_opts = {
+                    "outtmpl": "youtube_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "format": "mp4"
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    f = ydl.prepare_filename(info)
+
+                bot.send_video(chat_id, open(f, "rb"))
+                os.remove(f)
+
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"YouTube download error:\n{e}")
+                return
+
+
+        # ========= UNSUPPORTED =========
+        bot.send_message(chat_id, "❌ Unsupported link")
+
+
+    except Exception as e:
+        bot.send_message(chat_id, f"Download error:\n{e}")
 
 # ================= RUN =================
 bot.infinity_polling(skip_pending=True)

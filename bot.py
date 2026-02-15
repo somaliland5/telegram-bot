@@ -8,51 +8,39 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-# ================= TOKEN =================
-
-TOKEN = os.environ.get("BOT_TOKEN")
-
-if not TOKEN:
-    raise Exception("BOT_TOKEN not found in Railway Variables")
-
+TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 7983838654
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
-# ================= DATABASE SAFE =================
+# ---------------- DATABASE ----------------
 
 def load_json(name, default):
     if not os.path.exists(name):
-        with open(name,"w") as f:
-            json.dump(default,f)
         return default
     return json.load(open(name))
 
-def save_json(name, data):
-    with open(name,"w") as f:
-        json.dump(data,f,indent=4)
+def save_json(name,data):
+    json.dump(data,open(name,"w"),indent=4)
 
-users = load_json("users.json", {})
-withdraws = load_json("withdraws.json", [])
-ratings = load_json("ratings.json", [])
+users = load_json("users.json",{})
+withdraws = load_json("withdraws.json",[])
 
-# ================= MENUS =================
+# ---------------- MENUS ----------------
 
-def user_menu():
+def user_menu(uid):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
+
     kb.add("💰 BALANCE","💸 WITHDRAWAL")
     kb.add("👥 REFERAL","🆔 GET MY ID")
     kb.add("☎️ COSTUMER")
+
+    if int(uid)==ADMIN_ID:
+        kb.add("👑 ADMIN PANEL")
+
     return kb
 
-def admin_panel():
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("📊 Stats",callback_data="stats"))
-    kb.add(InlineKeyboardButton("⭐ Send Rate",callback_data="rate_send"))
-    kb.add(InlineKeyboardButton("📢 Broadcast",callback_data="broadcast"))
-    return kb
-
-# ================= START =================
+# ---------------- START ----------------
 
 @bot.message_handler(commands=['start'])
 def start(m):
@@ -62,87 +50,78 @@ def start(m):
 
     if uid not in users:
 
+        ref=args[1] if len(args)>1 else None
+
         users[uid]={
             "balance":0,
+            "refs":0,
             "ref":str(random.randint(100000,999999)),
             "bot_id":str(random.randint(10000000000,99999999999)),
-            "refs":0,
-            "month":datetime.now().month
+            "month":datetime.now().month,
+            "banned":False
         }
 
-        # Referral
-        if len(args)>1:
-            ref=args[1]
-
+        # Referral reward
+        if ref:
             for u in users:
                 if users[u]["ref"]==ref:
-                    users[u]["balance"]+=0.2
                     users[u]["refs"]+=1
-
+                    users[u]["balance"]+=0.2
                     bot.send_message(int(u),
-                    "🎉 Congratulations!\nYou invited new user & earned $0.2")
+                    f"🎉 Congratulations!\nNew referral joined.\nYou earned $0.2")
 
         save_json("users.json",users)
 
-    bot.send_message(m.chat.id,"👋 Welcome",reply_markup=user_menu())
+    bot.send_message(m.chat.id,"👋 Welcome",reply_markup=user_menu(uid))
 
-    if m.from_user.id==ADMIN_ID:
-        bot.send_message(m.chat.id,"👑 Admin Panel",reply_markup=admin_panel())
-
-# ================= BALANCE =================
+# ---------------- BALANCE ----------------
 
 @bot.message_handler(func=lambda m:m.text=="💰 BALANCE")
 def bal(m):
     uid=str(m.from_user.id)
     bot.send_message(m.chat.id,f"💰 Balance: ${users[uid]['balance']:.2f}")
 
-# ================= GET ID =================
+# ---------------- GET ID ----------------
 
 @bot.message_handler(func=lambda m:m.text=="🆔 GET MY ID")
 def myid(m):
+
     uid=str(m.from_user.id)
 
     bot.send_message(m.chat.id,f"""
-👤 TELEGRAM ID: <code>{uid}</code>
-🆔 BOT USER ID: <code>{users[uid]['bot_id']}</code>
+🆔 USER ID: {uid}
+🤖 BOT ID: {users[uid]['bot_id']}
 """)
 
-# ================= REFERRAL =================
+# ---------------- REFERAL ----------------
 
 @bot.message_handler(func=lambda m:m.text=="👥 REFERAL")
 def ref(m):
+
     uid=str(m.from_user.id)
 
     link=f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
 
-    bot.send_message(m.chat.id,f"""
-🔗 Referral Link:
-{link}
+    bot.send_message(m.chat.id,
+    f"🔗 Referral Link:\n{link}\n\n👥 Total referrals: {users[uid]['refs']}")
 
-👥 Invited: {users[uid]['refs']}
-""")
-
-# ================= WITHDRAW =================
+# ---------------- WITHDRAW ----------------
 
 @bot.message_handler(func=lambda m:m.text=="💸 WITHDRAWAL")
-def withdraw(m):
-    msg=bot.send_message(m.chat.id,"Send USDT BEP20 address")
-    bot.register_next_step_handler(msg,withdraw2)
+def wd(m):
+    msg=bot.send_message(m.chat.id,"Enter USDT BEP20 address")
+    bot.register_next_step_handler(msg,wd2)
 
-def withdraw2(m):
+def wd2(m):
 
     uid=str(m.from_user.id)
-    address=m.text
-
-    if not address.startswith("0x"):
-        bot.send_message(m.chat.id,"❌ Invalid address")
-        return
-
     bal=users[uid]["balance"]
 
-    if bal < 0.5:
-        bot.send_message(m.chat.id,"Minimum withdrawal $0.5")
-        return
+    if not m.text.startswith("0x"):
+        return bot.send_message(m.chat.id,"❌ Invalid address")
+
+    if bal<0.5:
+        return bot.send_message(m.chat.id,"Minimum withdrawal $0.5")
 
     wid=random.randint(10000,99999)
 
@@ -150,133 +129,175 @@ def withdraw2(m):
         "id":wid,
         "user":uid,
         "amount":bal,
-        "address":address
+        "status":"pending"
     })
 
     users[uid]["balance"]=0
 
-    save_json("withdraws.json",withdraws)
     save_json("users.json",users)
+    save_json("withdraws.json",withdraws)
 
-    # USER MESSAGE
     bot.send_message(m.chat.id,f"""
 ✅ Request #{wid} Sent!
-
 💵 Amount: ${bal:.2f}
 💸 Fee (0.00%): -$0.00
 🧾 Net Due: ${bal:.2f}
-⏳ Pending approval
+⏳ Your request is pending approval
 🕒 Pending time: 6–12 hours
+Please be patient 😕
 """)
 
-    # ADMIN MESSAGE
     bot.send_message(ADMIN_ID,f"""
-📤 Withdrawal Request
+💳 NEW WITHDRAW
 
-🆔 Request ID: {wid}
-👤 User: {uid}
-🤖 Bot ID: {users[uid]['bot_id']}
-👥 Referral: {users[uid]['refs']}
-💵 Amount: ${bal}
+User: {uid}
+BOT ID: {users[uid]['bot_id']}
+Referral: {users[uid]['refs']}
+Amount: ${bal}
+
+CONFIRM {wid}
+REJECT {wid}
+BAN {uid}
 """)
 
-# ================= RATING =================
+# ---------------- ADMIN PANEL ----------------
 
-@bot.callback_query_handler(func=lambda c:c.data=="rate_send")
-def send_rate(c):
+@bot.message_handler(func=lambda m:m.text=="👑 ADMIN PANEL")
+def admin_panel(m):
 
-    if c.from_user.id!=ADMIN_ID:
+    if m.from_user.id!=ADMIN_ID:
         return
 
-    kb=InlineKeyboardMarkup(row_width=5)
+    kb=InlineKeyboardMarkup()
 
-    for i in range(1,6):
-        kb.add(InlineKeyboardButton("⭐"*i,callback_data=f"rate_{i}"))
+    kb.add(InlineKeyboardButton("📊 Stats",callback_data="stats"))
+    kb.add(InlineKeyboardButton("⭐ Send Rating",callback_data="rate"))
+    kb.add(InlineKeyboardButton("📢 Broadcast",callback_data="broadcast"))
+    kb.add(InlineKeyboardButton("➕ Add Balance",callback_data="addbal"))
 
-    for u in users:
-        try:
-            bot.send_message(int(u),"⭐ Rate our bot",reply_markup=kb)
-        except:
-            pass
+    bot.send_message(m.chat.id,"👑 ADMIN PANEL",reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c:c.data.startswith("rate_"))
-def save_rate(c):
-
-    rate=int(c.data.split("_")[1])
-    name=c.from_user.first_name
-
-    ratings.append({
-        "name":name,
-        "rate":rate
-    })
-
-    save_json("ratings.json",ratings)
-
-    bot.answer_callback_query(c.id,"Thanks your Rate 😍")
-
-    bot.send_message(ADMIN_ID,
-    f"⭐ New Rate\nUser: {name}\nRate: {rate}")
-
-# ================= STATS =================
+# ---------------- STATS ----------------
 
 @bot.callback_query_handler(func=lambda c:c.data=="stats")
 def stats(c):
 
-    if c.from_user.id!=ADMIN_ID:
-        return
-
-    total_users=len(users)
+    total=len(users)
     monthly=sum(1 for u in users if users[u]["month"]==datetime.now().month)
-    total_bal=sum(users[u]["balance"] for u in users)
+    totalbal=sum(users[u]["balance"] for u in users)
+
+    totalwd=sum(w["amount"] for w in withdraws)
 
     bot.send_message(c.message.chat.id,f"""
 📊 BOT STATS
 
-👥 Total Users: {total_users}
-📆 Monthly Users: {monthly}
-💰 Total Balance: ${total_bal:.2f}
-⭐ Total Ratings: {len(ratings)}
+👥 Users: {total}
+📆 Monthly: {monthly}
+💰 Total Balance: ${totalbal:.2f}
+💳 Total Withdrawn: ${totalwd:.2f}
 """)
 
-# ================= BROADCAST =================
+# ---------------- RATING ----------------
+
+@bot.callback_query_handler(func=lambda c:c.data=="rate")
+def send_rate(c):
+
+    kb=InlineKeyboardMarkup()
+
+    for i in range(1,6):
+        kb.add(InlineKeyboardButton(f"{i} ⭐",callback_data=f"rate_{i}"))
+
+    for u in users:
+        try:
+            bot.send_message(int(u),"⭐ Please rate our bot",reply_markup=kb)
+        except:
+            pass
+
+@bot.callback_query_handler(func=lambda c:c.data.startswith("rate_"))
+def rate_recv(c):
+
+    rate=c.data.split("_")[1]
+    name=c.from_user.first_name
+
+    bot.send_message(ADMIN_ID,f"⭐ New Rate\nUser: {name}\nRate: {rate}")
+
+    bot.answer_callback_query(c.id,"Thanks your Rate 😍")
+
+# ---------------- BROADCAST ----------------
 
 @bot.callback_query_handler(func=lambda c:c.data=="broadcast")
 def bc(c):
 
-    if c.from_user.id!=ADMIN_ID:
-        return
-
-    msg=bot.send_message(c.message.chat.id,"Send message or media")
+    msg=bot.send_message(c.message.chat.id,"Send message")
     bot.register_next_step_handler(msg,bc2)
 
 def bc2(m):
 
     for u in users:
         try:
-            bot.copy_message(int(u),m.chat.id,m.message_id)
+            bot.send_message(int(u),m.text)
         except:
             pass
 
-# ================= MEDIA DOWNLOADER =================
+# ---------------- ADD BALANCE ----------------
+
+@bot.callback_query_handler(func=lambda c:c.data=="addbal")
+def addbal(c):
+    msg=bot.send_message(c.message.chat.id,"Send BOT ID and amount")
+    bot.register_next_step_handler(msg,addbal2)
+
+def addbal2(m):
+
+    bid,amt=m.text.split()
+
+    for u in users:
+        if users[u]["bot_id"]==bid:
+            users[u]["balance"]+=float(amt)
+            save_json("users.json",users)
+
+            bot.send_message(int(u),f"💰 Admin added ${amt}")
+            bot.send_message(m.chat.id,"Done")
+
+# ---------------- WITHDRAW CONTROL ----------------
+
+@bot.message_handler(func=lambda m:m.text.startswith("CONFIRM"))
+def confirm(m):
+
+    if m.from_user.id!=ADMIN_ID:
+        return
+
+    wid=int(m.text.split()[1])
+
+    for w in withdraws:
+        if w["id"]==wid:
+            w["status"]="paid"
+            bot.send_message(int(w["user"]),"✅ Withdrawal Approved")
+
+    save_json("withdraws.json",withdraws)
+
+# ---------------- MEDIA DOWNLOADER ----------------
 
 def download_media(chat_id,url):
 
     try:
-        # TikTok photo
-        if "photo" in url and "tiktok" in url:
+
+        if "tiktok.com" in url:
+
             html=requests.get(url,headers={"User-Agent":"Mozilla"}).text
             soup=BeautifulSoup(html,"html.parser")
-            img=soup.find("meta",property="og:image")["content"]
 
-            data=requests.get(img).content
-            open("img.jpg","wb").write(data)
+            imgs=soup.find_all("meta",property="og:image")
 
-            bot.send_photo(chat_id,open("img.jpg","rb"))
-            os.remove("img.jpg")
+            for img in imgs:
+                link=img["content"]
+                data=requests.get(link).content
+                open("tt.jpg","wb").write(data)
+                bot.send_photo(chat_id,open("tt.jpg","rb"))
+
             return
 
-        # Video / Shorts
-        ydl_opts={"outtmpl":"video.%(ext)s","format":"mp4"}
+        ydl_opts={"outtmpl":"vid.%(ext)s","format":"mp4"}
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info=ydl.extract_info(url,download=True)
             file=ydl.prepare_filename(info)
@@ -287,13 +308,11 @@ def download_media(chat_id,url):
     except Exception as e:
         bot.send_message(chat_id,str(e))
 
-@bot.message_handler(func=lambda m:m.text and "http" in m.text)
+@bot.message_handler(func=lambda m:"http" in m.text)
 def links(m):
     bot.send_message(m.chat.id,"⏳ Downloading...")
     download_media(m.chat.id,m.text)
 
-# ================= RUN BOT =================
+# ---------------- RUN ----------------
 
-print("Bot Started...")
-
-bot.infinity_polling(skip_pending=True)
+bot.infinity_polling()

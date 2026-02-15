@@ -305,6 +305,44 @@ def add_balance_step(m):
     bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
     bot.send_message(m.chat.id, f"✅ Successfully added ${amt:.2f} to BOT ID {bid}")
 
+# ================= UNBAN USER =================
+@bot.message_handler(func=lambda m: m.text == "✅ UNBAN MONEY")
+def unban_start(m):
+    if not is_admin(m.from_user.id):
+        return
+    msg = bot.send_message(
+        m.chat.id,
+        "Send BOT ID or Telegram ID to UNBAN"
+    )
+    bot.register_next_step_handler(msg, unban_process)
+
+def unban_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    text = m.text.strip()
+
+    # ===== Try Telegram ID first =====
+    if text in users:
+        users[text]["banned"] = False
+        save_users()
+
+        bot.send_message(int(text), "✅ You are unbanned. You can use the bot again.")
+        bot.send_message(m.chat.id, "✅ User unbanned successfully")
+        return
+
+    # ===== Try BOT ID =====
+    uid = find_user_by_botid(text)
+    if uid:
+        users[uid]["banned"] = False
+        save_users()
+
+        bot.send_message(int(uid), "✅ You are unbanned. You can use the bot again.")
+        bot.send_message(m.chat.id, f"✅ BOT ID {text} unbanned successfully")
+        return
+
+    bot.send_message(m.chat.id, "❌ User not found")
+
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
 def broadcast_start(m):

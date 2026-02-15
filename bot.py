@@ -305,6 +305,56 @@ def add_balance_step(m):
     bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
     bot.send_message(m.chat.id, f"✅ Successfully added ${amt:.2f} to BOT ID {bid}")
 
+# ================= WITHDRAWAL CHECK =================
+@bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
+def withdrawal_check_start(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Enter Withdrawal Request ID\nExample: 402000"
+    )
+    bot.register_next_step_handler(msg, withdrawal_check_process)
+
+
+def withdrawal_check_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+        wid = int(m.text.strip())
+    except:
+        bot.send_message(m.chat.id, "❌ Invalid Request ID")
+        return
+
+    # Raadi withdrawal-ka
+    w = next((x for x in withdraws if x["id"] == wid), None)
+
+    if not w:
+        bot.send_message(m.chat.id, "❌ Request ID not found")
+        return
+
+    uid = w["user"]
+
+    # Soo saar user info
+    bot_id = users.get(uid, {}).get("bot_id", "Unknown")
+    invited = users.get(uid, {}).get("invited", 0)
+
+    msg_text = (
+        f"💳 WITHDRAWAL DETAILS\n\n"
+        f"🧾 Request ID: {w['id']}\n"
+        f"👤 User ID: {uid}\n"
+        f"🤖 BOT ID: {bot_id}\n"
+        f"👥 Referrals: {invited}\n"
+        f"💵 Amount: ${w['amount']:.2f}\n"
+        f"🏦 Address: {w['address']}\n"
+        f"📊 Status: {w['status'].upper()}\n"
+        f"⏰ Time: {w['time']}"
+    )
+
+    bot.send_message(m.chat.id, msg_text)
+
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text == "✅ UNBAN MONEY")
 def unban_start(m):

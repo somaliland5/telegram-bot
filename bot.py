@@ -251,19 +251,59 @@ def withdraw_amount(m):
         reply_markup=user_menu(is_admin(uid))
     )
 
-    # ===== ADMIN MESSAGE =====
-    admin_msg = (
-        f"💳 NEW WITHDRAWAL\n\n"
-        f"👤 User: {uid}\n"
-        f"🤖 BOT ID: {users[uid]['bot_id']}\n"
-        f"👥 Referrals: {users[uid]['invited']}\n"
-        f"💵 Amount: ${amt:.2f}\n"
-        f"🧾 Request ID: {wid}\n"
-        f"🏦 Address: {addr}\n\n"
-        f"Reply with:\nCONFIRM {wid}\nREJECT {wid}\nBAN {uid}"
-    )
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-    bot.send_message(ADMIN_ID, admin_msg)
+# ===== ADMIN MESSAGE INLINE BUTTON =====
+markup = InlineKeyboardMarkup()
+markup.add(
+    InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
+    InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
+    InlineKeyboardButton("🚫 BAN", callback_data=f"ban_{uid}")
+)
+
+bot.send_message(
+    ADMIN_ID,
+    f"💳 NEW WITHDRAWAL\n\n"
+    f"👤 User: {uid}\n"
+    f"🤖 BOT ID: {users[uid]['bot_id']}\n"
+    f"👥 Referrals: {users[uid]['invited']}\n"
+    f"💵 Amount: ${amt:.2f}\n"
+    f"🧾 Request ID: {wid}\n"
+    f"🏦 Address: {addr}",
+    reply_markup=markup
+)
+
+# ===== CALLBACK HANDLER =====
+@bot.callback_query_handler(func=lambda call: True)
+def admin_callbacks(call):
+    data = call.data
+    if data.startswith("confirm_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending": return
+        w["status"] = "paid"
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id, "✅ Confirmed")
+        bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
+
+    elif data.startswith("reject_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending": return
+        w["status"] = "rejected"
+        users[w["user"]]["balance"] += w["blocked"]
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id, "❌ Rejected")
+        bot.send_message(int(w["user"]), f"❌ Withdrawal #{wid} rejected")
+
+    elif data.startswith("ban_"):
+        uid = data.split("_")[1]
+        if uid in users:
+            users[uid]["banned"] = True
+            save_users()
+            bot.answer_callback_query(call.id, "🚫 User banned")
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")

@@ -130,65 +130,70 @@ def customer(m):
     if banned_guard(m): return
     bot.send_message(m.chat.id, "Contact support: @scholes1")
 
-# ================= WITHDRAW =================
-from datetime import datetime
-import random
-
-def back_main_menu(chat_id, uid):
-    bot.send_message(chat_id, "🔙 Back to Main Menu", reply_markup=user_menu())
+# ================= WITHDRAWAL =================
 
 @bot.message_handler(func=lambda m: m.text=="💸 WITHDRAWAL")
-def withdraw(m):
-    uid = str(m.from_user.id)
-    # Hubi balance min 1
-    if users[uid]["balance"] < 1:
-        bot.send_message(m.chat.id,"❌ Your balance is less than $1, cannot withdraw.")
-        return
+def withdraw_menu(m):
+    if banned_guard(m): return
 
-    # Tusaale menu button: USDT-BEP20 & BACK
-    kb = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    uid = str(m.from_user.id)
+
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("USDT-BEP20")
     kb.add("🔙 BACK MAIN MENU")
-    msg = bot.send_message(m.chat.id,"Select your withdrawal method:", reply_markup=kb)
-    bot.register_next_step_handler(msg, withdraw_method)
 
-def withdraw_method(m):
+    bot.send_message(m.chat.id,"Select withdrawal method:",reply_markup=kb)
+
+
+@bot.message_handler(func=lambda m: m.text=="USDT-BEP20")
+def withdraw_start(m):
+    if banned_guard(m): return
+
     uid = str(m.from_user.id)
-    text = m.text
 
-    if text == "🔙 BACK MAIN MENU":
-        back_main_menu(m.chat.id, uid)
-        return
+    msg = bot.send_message(
+        m.chat.id,
+        "Enter USDT BEP20 address\n(Must start with 0x)\n\nOr tap 🔙 BACK MAIN MENU"
+    )
+    bot.register_next_step_handler(msg, withdraw_address)
 
-    if text == "USDT-BEP20":
-        msg = bot.send_message(m.chat.id, "Enter your USDT-BEP20 address (must start with 0x):")
-        bot.register_next_step_handler(msg, withdraw_address)
-        return
-
-    bot.send_message(m.chat.id, "Invalid selection. Tap again.")
-    withdraw(m)
 
 def withdraw_address(m):
+    if banned_guard(m): return
+
     uid = str(m.from_user.id)
-    text = m.text.strip()
+    text = (m.text or "").strip()
 
     if text == "🔙 BACK MAIN MENU":
         back_main_menu(m.chat.id, uid)
         return
 
     if not text.startswith("0x"):
-        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or tap 🔙 BACK MAIN MENU")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid address\nAddress must start with 0x\n\nTry again or tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_address)
         return
 
     users[uid]["temp_addr"] = text
-    save_users(users)
-    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount (MIN: $1 | Balance: ${users[uid]['balance']:.2f}):")
+    save_users()
+
+    msg = bot.send_message(
+        m.chat.id,
+        f"💵 Enter amount to withdraw\n"
+        f"Minimum: $1\n"
+        f"Balance: ${users[uid]['balance']:.2f}\n\n"
+        f"Or tap 🔙 BACK MAIN MENU"
+    )
     bot.register_next_step_handler(msg, withdraw_amount)
 
+
 def withdraw_amount(m):
+    if banned_guard(m): return
+
     uid = str(m.from_user.id)
-    text = m.text.strip()
+    text = (m.text or "").strip()
 
     if text == "🔙 BACK MAIN MENU":
         back_main_menu(m.chat.id, uid)
@@ -197,24 +202,34 @@ def withdraw_amount(m):
     try:
         amt = float(text)
     except:
-        msg = bot.send_message(m.chat.id,"❌ Invalid amount. Enter a number or tap 🔙 BACK MAIN MENU")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid number\nEnter amount or tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
     if amt < 1:
-        msg = bot.send_message(m.chat.id,"❌ AMOUNT YOU WITHDRAWAL MIN: 1\nOr tap 🔙 BACK MAIN MENU")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Minimum withdrawal is $1\nOr tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
     if amt > users[uid]["balance"]:
-        msg = bot.send_message(m.chat.id,"❌ Insufficient balance. Or tap 🔙 BACK MAIN MENU")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Insufficient balance\nOr tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
+
+    # ===== CREATE REQUEST =====
 
     wid = random.randint(10000,99999)
     addr = users[uid].pop("temp_addr", None)
 
-    withdraws = load_withdraws()
     withdraws.append({
         "id": wid,
         "user": uid,
@@ -224,87 +239,118 @@ def withdraw_amount(m):
         "status": "pending",
         "time": str(datetime.now())
     })
-    save_withdraws(withdraws)
 
-    # Update user balance
+    # update balances
     users[uid]["balance"] -= amt
     users[uid]["blocked"] = users[uid].get("blocked",0.0) + amt
-    save_users(users)
 
-    # Message user
-    bot.send_message(m.chat.id,
-        f"✅ Request #{wid} Sent!\n"
-        f"💵 Amount: ${amt:.2f}\n"
-        f"💸 Fee (0.00%): -$0.00\n"
-        f"🧾 Net Due: ${amt:.2f}\n"
-        f"⏳ Your request is pending approval\n"
-# ================= WITHDRAW =================
+    save_users()
+    save_withdraws()
+
+    # ===== USER MESSAGE =====
+
+    bot.send_message(
+        m.chat.id,
+# ================= WITHDRAWAL =================
+
 @bot.message_handler(func=lambda m: m.text=="💸 WITHDRAWAL")
 def withdraw_menu(m):
-    uid = str(m.from_user.id)
     if banned_guard(m): return
-    if users[uid]["balance"] < 1:
-        bot.send_message(m.chat.id,"❌ Your balance is less than $1, cannot withdraw.")
-        return
+
+    uid = str(m.from_user.id)
+
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("USDT-BEP20")
     kb.add("🔙 BACK MAIN MENU")
-    msg = bot.send_message(m.chat.id,"Select your withdrawal method:", reply_markup=kb)
-    bot.register_next_step_handler(msg, withdraw_method)
 
-def withdraw_method(m):
-    uid = str(m.from_user.id)
+    bot.send_message(m.chat.id,"Select withdrawal method:",reply_markup=kb)
+
+
+@bot.message_handler(func=lambda m: m.text=="USDT-BEP20")
+def withdraw_start(m):
     if banned_guard(m): return
-    if m.text == "🔙 BACK MAIN MENU":
-        back_main_menu(m.chat.id, uid)
-        return
-    if m.text == "USDT-BEP20":
-        msg = bot.send_message(m.chat.id,"Enter your USDT-BEP20 address (must start with 0x):")
-        bot.register_next_step_handler(msg, withdraw_address)
-        return
-    bot.send_message(m.chat.id,"❌ Invalid selection")
-    withdraw_menu(m)
+
+    uid = str(m.from_user.id)
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Enter USDT BEP20 address\n(Must start with 0x)\n\nOr tap 🔙 BACK MAIN MENU"
+    )
+    bot.register_next_step_handler(msg, withdraw_address)
+
 
 def withdraw_address(m):
-    uid = str(m.from_user.id)
     if banned_guard(m): return
-    if m.text == "🔙 BACK MAIN MENU":
+
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+
+    if text == "🔙 BACK MAIN MENU":
         back_main_menu(m.chat.id, uid)
         return
-    addr = m.text.strip()
-    if not addr.startswith("0x"):
-        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or tap 🔙 BACK MAIN MENU")
+
+    if not text.startswith("0x"):
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid address\nAddress must start with 0x\n\nTry again or tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_address)
         return
-    users[uid]["temp_addr"] = addr
+
+    users[uid]["temp_addr"] = text
     save_users()
-    msg = bot.send_message(m.chat.id,f"Enter amount to withdraw (MIN: $1 | Balance: ${users[uid]['balance']:.2f}):")
+
+    msg = bot.send_message(
+        m.chat.id,
+        f"💵 Enter amount to withdraw\n"
+        f"Minimum: $1\n"
+        f"Balance: ${users[uid]['balance']:.2f}\n\n"
+        f"Or tap 🔙 BACK MAIN MENU"
+    )
     bot.register_next_step_handler(msg, withdraw_amount)
 
+
 def withdraw_amount(m):
-    uid = str(m.from_user.id)
     if banned_guard(m): return
-    if m.text == "🔙 BACK MAIN MENU":
+
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+
+    if text == "🔙 BACK MAIN MENU":
         back_main_menu(m.chat.id, uid)
         return
+
     try:
-        amt = float(m.text)
+        amt = float(text)
     except:
-        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter amount or tap 🔙 BACK MAIN MENU")
-        bot.register_next_step_handler(msg, withdraw_amount)
-        return
-    if amt < 1:
-        msg = bot.send_message(m.chat.id,"❌ AMOUNT YOU WITHDRAWAL MIN: 1\nOr tap 🔙 BACK MAIN MENU")
-        bot.register_next_step_handler(msg, withdraw_amount)
-        return
-    if amt > users[uid]["balance"]:
-        msg = bot.send_message(m.chat.id,"❌ Insufficient balance. Or tap 🔙 BACK MAIN MENU")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid number\nEnter amount or tap 🔙 BACK MAIN MENU"
+        )
         bot.register_next_step_handler(msg, withdraw_amount)
         return
 
-    # Create withdraw request
+    if amt < 1:
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Minimum withdrawal is $1\nOr tap 🔙 BACK MAIN MENU"
+        )
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+
+    if amt > users[uid]["balance"]:
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Insufficient balance\nOr tap 🔙 BACK MAIN MENU"
+        )
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+
+    # ===== CREATE REQUEST =====
+
     wid = random.randint(10000,99999)
     addr = users[uid].pop("temp_addr", None)
+
     withdraws.append({
         "id": wid,
         "user": uid,
@@ -314,43 +360,46 @@ def withdraw_amount(m):
         "status": "pending",
         "time": str(datetime.now())
     })
-    save_withdraws()
 
-    # Update user balance
+    # update balances
     users[uid]["balance"] -= amt
     users[uid]["blocked"] = users[uid].get("blocked",0.0) + amt
-    save_users()
 
-    # Send confirmation to user
-    bot.send_message(m.chat.id,
-        f"✅ Request #{wid} Sent!\n"
+    save_users()
+    save_withdraws()
+
+    # ===== USER MESSAGE =====
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Withdrawal Request Sent!\n\n"
+        f"🧾 Request ID: {wid}\n"
         f"💵 Amount: ${amt:.2f}\n"
-        f"💸 Fee (0.00%): -$0.00\n"
-        f"🧾 Net Due: ${amt:.2f}\n"
-        f"⏳ Your request is pending approval\n"
-        f"🕒 Pending time: 6–12 hours\n"
-        f"Please be patient 😕",
+        f"🏦 Address: {addr}\n"
+        f"💰 Balance Left: ${users[uid]['balance']:.2f}\n\n"
+        f"⏳ Processing time: 6–12 hours",
         reply_markup=user_menu(is_admin(uid))
     )
 
-    # Notify admin
+    # ===== ADMIN MESSAGE =====
+
     referrals_count = users[uid].get("invited",0)
-    admin_msg = f"""
-💳 NEW WITHDRAWAL
 
-👤 User: {uid}
-🤖 BOT ID: {users[uid]['bot_id']}
-👥 Referrals: {referrals_count}
-💵 Amount: ${amt:.2f}
-🧾 Request ID: {wid}
-🏦 Address: {addr}
-Blocked: ${amt:.2f}
+    admin_msg = (
+        f"💳 NEW WITHDRAW\n\n"
+        f"👤 User: {uid}\n"
+        f"🤖 BOT ID: {users[uid]['bot_id']}\n"
+        f"👥 Referrals: {referrals_count}\n"
+        f"💵 Amount: ${amt:.2f}\n"
+        f"🧾 Request ID: {wid}\n"
+        f"🏦 Address: {addr}\n"
+        f"🔒 Blocked: ${amt:.2f}\n\n"
+        f"Reply with:\n"
+        f"CONFIRM {wid}\n"
+        f"REJECT {wid}\n"
+        f"BAN {uid}"
+    )
 
-Reply with:
-CONFIRM {wid}
-REJECT {wid}
-BAN {uid}
-"""
     bot.send_message(ADMIN_ID, admin_msg)
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")

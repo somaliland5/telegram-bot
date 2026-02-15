@@ -275,6 +275,57 @@ def admin_panel_btn(m):
 def back_main(m):
     back_main_menu(m.chat.id, str(m.from_user.id))
 
+# ================= ADD BALANCE =================
+
+@bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")
+def add_balance_start(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "➕ Send BOT ID and Amount\n\nExample:\n12345678901 5"
+    )
+    bot.register_next_step_handler(msg, add_balance_process)
+
+
+def add_balance_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+        bot_id, amount = m.text.split()
+        amount = float(amount)
+    except:
+        bot.send_message(m.chat.id, "❌ Invalid format.\nExample:\n12345678901 5")
+        return
+
+    # search user by BOT ID
+    user_id = None
+    for uid in users:
+        if users[uid]["bot_id"] == bot_id:
+            user_id = uid
+            break
+
+    if not user_id:
+        bot.send_message(m.chat.id, "❌ BOT ID not found")
+        return
+
+    # add balance
+    users[user_id]["balance"] += amount
+    save_users()
+
+    # notify user
+    try:
+        bot.send_message(
+            int(user_id),
+            f"💰 Admin added ${amount:.2f} to your balance"
+        )
+    except:
+        pass
+
+    bot.send_message(m.chat.id, "✅ Balance added successfully")
+
 # ================= BROADCAST =================
 
 @bot.message_handler(func=lambda m: m.text == "📢 BROADCAST")

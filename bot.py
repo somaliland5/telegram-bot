@@ -92,7 +92,7 @@ def start(m):
                     bot.send_message(int(u),"🎉 You earned $0.2 from referral.")
                     break
         save_users()
-    bot.send_message(m.chat.id,"👋 Welcome! To Vedio Downloader 🫵", 
+    bot.send_message(m.chat.id,"👋 Welcome! To Vedio Downloader Download Video Using Link Or shere 🎬🫵", 
     reply_markup=user_menu(is_admin(uid)))
                      
 # ================= BALANCE =================

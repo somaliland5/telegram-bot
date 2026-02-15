@@ -92,8 +92,8 @@ def start(m):
                     bot.send_message(int(u),"🎉 You earned $0.2 from referral.")
                     break
         save_users()
-    bot.send_message(m.chat.id,"""👋🎬 Welcome to our Video Downloader Bot!
-We are very happy to have you here. This bot helps you download videos quickly"""
+    bot.send_message(m.chat.id,"👋🎬 Welcome to our Video Downloader Bot!"
+                     
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
 def balance(m):

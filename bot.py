@@ -265,6 +265,45 @@ def admin_panel_btn(m):
 def back_main(m):
     back_main_menu(m.chat.id, str(m.from_user.id))
 
+# ================= ADD BALANCE =================
+@bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
+def add_balance(m):
+    # Hubi admin
+    if not is_admin(m.from_user.id):
+        return
+    msg = bot.send_message(
+        m.chat.id,
+        "Send BOT ID and amount to add.\nExample: 12345678901 2.5"
+    )
+    bot.register_next_step_handler(msg, add_balance_step)
+
+
+def add_balance_step(m):
+    # Hubi admin
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+        bid, amt = m.text.split()
+        amt = float(amt)
+    except:
+        return bot.send_message(
+            m.chat.id,
+            "❌ Invalid format! Please send like: BOT_ID AMOUNT"
+        )
+
+    # Hel user ka ku jira BOT ID
+    uid = find_user_by_botid(bid)
+    if not uid:
+        return bot.send_message(m.chat.id, "❌ BOT ID not found!")
+
+    # Cusbooneysii balance-ka
+    users[uid]["balance"] += amt
+    save_users()
+
+    bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
+    bot.send_message(m.chat.id, f"✅ Successfully added ${amt:.2f} to BOT ID {bid}")
+
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
 def broadcast_start(m):

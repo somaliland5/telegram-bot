@@ -93,10 +93,7 @@ def start(m):
                     break
         save_users()
     bot.send_message(m.chat.id,"""👋🎬 Welcome to our Video Downloader Bot!
-We are very happy to have you here. This bot helps you download videos quickly, safely, and easily from different platforms.
-
-Send any video link and download your favorite videos in high quality anytime.
-"""
+We are very happy to have you here. This bot helps you download videos quickly"""
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
 def balance(m):

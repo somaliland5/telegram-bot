@@ -8,7 +8,7 @@ import yt_dlp
 
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 7983838654
-bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+bot = telebot.TeleBot(TOKEN)
 
 # ================= DATABASE =================
 def load_users():
@@ -44,6 +44,7 @@ def admin_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📊 STATS","📢 BROADCAST")
     kb.add("➕ ADD BALANCE","✅ UNBAN MONEY")
+    kb.add("💳 WITHDRAWAL CHECK")
     return kb
 
 # ================= START =================
@@ -69,7 +70,10 @@ def start(m):
                     users[u]["invited"]+=1
                     bot.send_message(int(u),"🎉 You earned $0.2 from referral!")
         save_users(users)
-    bot.send_message(m.chat.id,"👋 Welcome to Media Downloader Bot!", reply_markup=user_menu())
+    kb = user_menu()
+    if m.from_user.id==ADMIN_ID:
+        kb=admin_menu()
+    bot.send_message(m.chat.id,"👋 Welcome to Media Downloader Bot!", reply_markup=kb)
 
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")

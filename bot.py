@@ -556,3 +556,13 @@ def handle_links(message):
 
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
+
+# ================= RUN BOT =================
+if __name__ == "__main__":
+    print("🤖 Bot is running...")
+    try:
+        bot.infinity_polling(skip_pending=True)
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped by user")
+    except Exception as e:
+        print(f"❌ Bot crashed: {e}")

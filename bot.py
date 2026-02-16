@@ -102,7 +102,7 @@ def balance(m):
     uid = str(m.from_user.id)
     bal = users[uid]["balance"]
     blk = users[uid].get("blocked",0.0)
-    bot.send_message(m.chat.id, f"💰 Available: ${bal:.2f}\n🔒 Blocked: ${blk:.2f}")
+    bot.send_message(m.chat.id, f"💰 Available: ${bal:.2f}\n⏰️ Blocked: ${blk:.2f}")
 
 # ================= GET ID =================
 @bot.message_handler(func=lambda m: m.text=="🆔 GET ID")
@@ -514,13 +514,21 @@ def download_media(chat_id, url):
 
 
 # ========= LINK HANDLER =========
-@bot.message_handler(func=lambda m: m.text and "http" in m.text)
-def links(m):
-    uid = str(m.from_user.id)
-    if uid in users and users[uid].get("banned"):
-        return
-    bot.send_message(m.chat.id, "⏳ Downloading...")
-    download_media(m.chat.id, m.text)
+@bot.message_handler(func=lambda m: "http" in m.text)
+def handle_links(message):
+
+    # 🚀 Reaction
+    try:
+        bot.set_message_reaction(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            reaction=[{"type": "emoji", "emoji": "🚀"}]
+        )
+    except:
+        pass
+
+    bot.send_message(message.chat.id, "Downloading...")
+    download_media(message.chat.id, message.text)
 
 # ================= RUN =================
 bot.infinity_polling(skip_pending=True)

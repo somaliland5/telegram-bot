@@ -540,12 +540,133 @@ def convert_music(call):
     audio = file.replace(".mp4", ".mp3")
 
     try:
+
+# ================= MEDIA DOWNLOADER =================
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import subprocess
+import requests
+import os
+import yt_dlp
+
+def send_video_with_music(chat_id, file):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
+
+    bot.send_video(
+        chat_id,
+        open(file, "rb"),
+        caption="Downloaded by:\n@Downloadvedioytibot",
+        reply_markup=kb
+    )
+
+
+def download_media(chat_id, url):
+    try:
+        # ===== TIKTOK =====
+        if "tiktok.com" in url:
+
+            # ---- TikWM API ----
+            try:
+                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
+
+                if res.get("code") == 0:
+                    data = res["data"]
+
+                    # ===== PHOTOS (MID MID) =====
+                    if data.get("images"):
+                        count = 1
+                        for img in data["images"]:
+                            img_data = requests.get(img, timeout=20).content
+
+                            filename = f"tt_{count}.jpg"
+                            with open(filename, "wb") as f:
+                                f.write(img_data)
+
+                            bot.send_photo(
+                                chat_id,
+                                open(filename, "rb"),
+                                caption=f"Downloaded by:\n@Downloadvedioytibot\n📸 Photo {count}"
+                            )
+
+                            os.remove(filename)
+                            count += 1
+
+                        return
+
+                    # ===== VIDEO =====
+                    if data.get("play"):
+                        vid_data = requests.get(data["play"], timeout=60).content
+
+                        with open("tt_video.mp4", "wb") as f:
+                            f.write(vid_data)
+
+                        send_video_with_music(chat_id, "tt_video.mp4")
+                        return
+
+            except Exception as e:
+                print(f"TikTok API error: {e}")
+
+            # ---- FALLBACK YT-DLP ----
+            try:
+                ydl_opts = {
+                    "outtmpl": "tiktok.%(ext)s",
+                    "format": "mp4",
+                    "quiet": True
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file)
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"TikTok download error: {e}")
+                return
+
+        # ===== YOUTUBE =====
+        if "youtube.com" in url or "youtu.be" in url:
+            try:
+                ydl_opts = {
+                    "outtmpl": "youtube.%(ext)s",
+                    "format": "mp4",
+                    "quiet": True
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file)
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"YouTube download error: {e}")
+                return
+
+        bot.send_message(chat_id, "❌ Unsupported link")
+
+    except Exception as e:
+        bot.send_message(chat_id, f"Download error: {e}")
+
+
+# ================= MUSIC BUTTON =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    file = call.data.split("|")[1]
+    audio = file.replace(".mp4", ".mp3")
+
+    try:
+        # Convert video → mp3
         subprocess.run(
             ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            check=True
         )
 
+        # CHANNEL BUTTON
         kb = InlineKeyboardMarkup()
         kb.add(
             InlineKeyboardButton(
@@ -554,6 +675,7 @@ def convert_music(call):
             )
         )
 
+        # SEND AUDIO
         bot.send_audio(
             call.message.chat.id,
             open(audio, "rb"),
@@ -563,16 +685,18 @@ def convert_music(call):
             reply_markup=kb
         )
 
+        # Delete files after conversion
         os.remove(audio)
+        os.remove(file)
 
-    except:
-        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed: {e}")
 
 
 # ========= LINK HANDLER =========
 @bot.message_handler(func=lambda m: "http" in m.text)
 def handle_links(message):
-
+    # 🚀 Reaction
     try:
         bot.set_message_reaction(
             chat_id=message.chat.id,
@@ -584,6 +708,7 @@ def handle_links(message):
 
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
+
 
 # ================= RUN BOT =================
 if __name__ == "__main__":

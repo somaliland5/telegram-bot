@@ -1,6 +1,6 @@
 import telebot
 from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-import os, json, random, requests
+import os, json, random, requests, subprocess
 from datetime import datetime
 import yt_dlp
 
@@ -429,6 +429,20 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
 # ================= MEDIA DOWNLOADER =================
+def send_video_with_music(chat_id, file):
+    from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
+
+    bot.send_video(
+        chat_id,
+        open(file, "rb"),
+        caption="Downloaded by:\n@Downloadvedioytibot",
+        reply_markup=kb
+    )
+
+
 def download_media(chat_id, url):
     try:
         # ================= TIKTOK (API FIRST) =================
@@ -448,7 +462,8 @@ def download_media(chat_id, url):
                             img_data = requests.get(img, timeout=20).content
                             with open("tt.jpg","wb") as f:
                                 f.write(img_data)
-                            bot.send_photo(chat_id, open("tt.jpg","rb"))
+                            bot.send_photo(chat_id, open("tt.jpg","rb"),
+                                           caption="Downloaded by:\n@Downloadvedioytibot")
                             os.remove("tt.jpg")
                         return
 
@@ -458,7 +473,7 @@ def download_media(chat_id, url):
                         vid_data = requests.get(vid_url, timeout=60).content
                         with open("tt.mp4","wb") as f:
                             f.write(vid_data)
-                        bot.send_video(chat_id, open("tt.mp4","rb"))
+                        send_video_with_music(chat_id, "tt.mp4")
                         os.remove("tt.mp4")
                         return
             except:
@@ -477,11 +492,12 @@ def download_media(chat_id, url):
                     if isinstance(info, dict) and info.get("entries"):
                         for entry in info["entries"]:
                             file = ydl.prepare_filename(entry)
-                            bot.send_photo(chat_id, open(file, "rb"))
+                            bot.send_photo(chat_id, open(file,"rb"),
+                                           caption="Downloaded by:\n@Downloadvedioytibot")
                             os.remove(file)
                     else:
                         file = ydl.prepare_filename(info)
-                        bot.send_video(chat_id, open(file, "rb"))
+                        send_video_with_music(chat_id, file)
                         os.remove(file)
                 return
             except Exception as e:
@@ -500,7 +516,7 @@ def download_media(chat_id, url):
                     info = ydl.extract_info(url, download=True)
                     file = ydl.prepare_filename(info)
 
-                bot.send_video(chat_id, open(file, "rb"))
+                send_video_with_music(chat_id, file)
                 os.remove(file)
                 return
             except Exception as e:
@@ -512,11 +528,22 @@ def download_media(chat_id, url):
     except Exception as e:
         bot.send_message(chat_id, f"Download error: {e}")
 
+# ================= MUSIC BUTTON HANDLER =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    import subprocess
+    file = call.data.split("|")[1]
+    audio_file = file.replace(".mp4", ".mp3")
+    try:
+        subprocess.run(["ffmpeg", "-i", file, audio_file])
+        bot.send_audio(call.message.chat.id, open(audio_file, "rb"))
+        os.remove(audio_file)
+    except Exception as e:
+        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
 
 # ========= LINK HANDLER =========
 @bot.message_handler(func=lambda m: "http" in m.text)
 def handle_links(message):
-
     # 🚀 Reaction
     try:
         bot.set_message_reaction(
@@ -529,6 +556,3 @@ def handle_links(message):
 
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
-
-# ================= RUN =================
-bot.infinity_polling(skip_pending=True)

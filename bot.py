@@ -522,12 +522,12 @@ def handle_links(message):
         bot.set_message_reaction(
             chat_id=message.chat.id,
             message_id=message.message_id,
-            reaction=[{"type": "emoji", "emoji": "🚀"}]
+            reaction=[{"type": "emoji", "emoji": "❤️"}]
         )
     except:
         pass
 
-    bot.send_message(message.chat.id, "Downloading...")
+    bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
 
 # ================= RUN =================

@@ -430,8 +430,6 @@ def broadcast_send(m):
 
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file):
-    from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
 
@@ -445,66 +443,70 @@ def send_video_with_music(chat_id, file):
 
 def download_media(chat_id, url):
     try:
-        # ================= TIKTOK (API FIRST) =================
+        # ===== TIKTOK =====
         if "tiktok.com" in url:
 
-            # ---- Try TikWM API (no watermark, photos + video) ----
+            # ---- TikWM API ----
             try:
-                api = f"https://tikwm.com/api/?url={url}"
-                res = requests.get(api, timeout=20).json()
+                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
 
-                if res.get("code") == 0 and "data" in res:
+                if res.get("code") == 0:
                     data = res["data"]
 
-                    # slideshow photos
+                    # ===== PHOTOS (MID MID) =====
                     if data.get("images"):
+                        count = 1
                         for img in data["images"]:
                             img_data = requests.get(img, timeout=20).content
-                            with open("tt.jpg","wb") as f:
+
+                            filename = f"tt_{count}.jpg"
+                            with open(filename, "wb") as f:
                                 f.write(img_data)
-                            bot.send_photo(chat_id, open("tt.jpg","rb"),
-                                           caption="Downloaded by:\n@Downloadvedioytibot")
-                            os.remove("tt.jpg")
+
+                            bot.send_photo(
+                                chat_id,
+                                open(filename, "rb"),
+                                caption=f"Downloaded by:\n@Downloadvedioytibot\n📸 Photo {count}"
+                            )
+
+                            os.remove(filename)
+                            count += 1
+
                         return
 
-                    # video no watermark
+                    # ===== VIDEO =====
                     if data.get("play"):
-                        vid_url = data["play"]
-                        vid_data = requests.get(vid_url, timeout=60).content
-                        with open("tt.mp4","wb") as f:
+                        vid_data = requests.get(data["play"], timeout=60).content
+
+                        with open("tt_video.mp4", "wb") as f:
                             f.write(vid_data)
-                        send_video_with_music(chat_id, "tt.mp4")
-                        os.remove("tt.mp4")
+
+                        send_video_with_music(chat_id, "tt_video.mp4")
                         return
+
             except:
                 pass
 
-            # ---- Fallback yt-dlp (video/shorts) ----
+            # ---- FALLBACK YT-DLP ----
             try:
                 ydl_opts = {
                     "outtmpl": "tiktok.%(ext)s",
                     "format": "mp4",
                     "quiet": True
                 }
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
-                    # slideshow entries fallback
-                    if isinstance(info, dict) and info.get("entries"):
-                        for entry in info["entries"]:
-                            file = ydl.prepare_filename(entry)
-                            bot.send_photo(chat_id, open(file,"rb"),
-                                           caption="Downloaded by:\n@Downloadvedioytibot")
-                            os.remove(file)
-                    else:
-                        file = ydl.prepare_filename(info)
-                        send_video_with_music(chat_id, file)
-                        os.remove(file)
-                return
-            except Exception as e:
-                bot.send_message(chat_id, f"TikTok download error: {e}")
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file)
                 return
 
-        # ================= YOUTUBE =================
+            except Exception as e:
+                bot.send_message(chat_id, f"TikTok error: {e}")
+                return
+
+        # ===== YOUTUBE =====
         if "youtube.com" in url or "youtu.be" in url:
             try:
                 ydl_opts = {
@@ -512,15 +514,16 @@ def download_media(chat_id, url):
                     "format": "mp4",
                     "quiet": True
                 }
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                     file = ydl.prepare_filename(info)
 
                 send_video_with_music(chat_id, file)
-                os.remove(file)
                 return
+
             except Exception as e:
-                bot.send_message(chat_id, f"YouTube download error: {e}")
+                bot.send_message(chat_id, f"YouTube error: {e}")
                 return
 
         bot.send_message(chat_id, "❌ Unsupported link")
@@ -528,22 +531,21 @@ def download_media(chat_id, url):
     except Exception as e:
         bot.send_message(chat_id, f"Download error: {e}")
 
-# ================= MUSIC BUTTON HANDLER =================
+
+# ================= MUSIC BUTTON =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
-    file = call.data.split("|")[1]  # get video file
 
+    file = call.data.split("|")[1]
     audio = file.replace(".mp4", ".mp3")
 
     try:
-        # Convert video to audio
         subprocess.run(
             ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
-        # Channel button
         kb = InlineKeyboardMarkup()
         kb.add(
             InlineKeyboardButton(
@@ -563,13 +565,14 @@ def convert_music(call):
 
         os.remove(audio)
 
-    except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed: {e}")
-        
+    except:
+        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
+
+
 # ========= LINK HANDLER =========
 @bot.message_handler(func=lambda m: "http" in m.text)
 def handle_links(message):
-    # 🚀 Reaction
+
     try:
         bot.set_message_reaction(
             chat_id=message.chat.id,
@@ -581,13 +584,3 @@ def handle_links(message):
 
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
-
-# ================= RUN BOT =================
-if __name__ == "__main__":
-    print("🤖 Bot is running...")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except KeyboardInterrupt:
-        print("🛑 Bot stopped by user")
-    except Exception as e:
-        print(f"❌ Bot crashed: {e}")

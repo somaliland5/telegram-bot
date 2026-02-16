@@ -1,7 +1,6 @@
 import telebot
 from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-import os, json, random, requests,
-import subprocess
+import os, json, random, requests, subprocess
 from datetime import datetime
 import yt_dlp
 

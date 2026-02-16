@@ -531,19 +531,19 @@ def download_media(chat_id, url):
 # ================= MUSIC BUTTON HANDLER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
+    file = call.data.split("|")[1]  # get video file
 
-    file = call.data.split("|")[1]
     audio = file.replace(".mp4", ".mp3")
 
     try:
-        # Convert video → mp3
+        # Convert video to audio
         subprocess.run(
             ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
-        # CHANNEL BUTTON
+        # Channel button
         kb = InlineKeyboardMarkup()
         kb.add(
             InlineKeyboardButton(
@@ -552,7 +552,6 @@ def convert_music(call):
             )
         )
 
-        # SEND AUDIO LIKE TELEGRAM STYLE
         bot.send_audio(
             call.message.chat.id,
             open(audio, "rb"),
@@ -564,8 +563,9 @@ def convert_music(call):
 
         os.remove(audio)
 
-    except:
-        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed: {e}")
+        
 # ========= LINK HANDLER =========
 @bot.message_handler(func=lambda m: "http" in m.text)
 def handle_links(message):

@@ -531,16 +531,41 @@ def download_media(chat_id, url):
 # ================= MUSIC BUTTON HANDLER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
-    import subprocess
-    file = call.data.split("|")[1]
-    audio_file = file.replace(".mp4", ".mp3")
-    try:
-        subprocess.run(["ffmpeg", "-i", file, audio_file])
-        bot.send_audio(call.message.chat.id, open(audio_file, "rb"))
-        os.remove(audio_file)
-    except Exception as e:
-        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
 
+    file = call.data.split("|")[1]
+    audio = file.replace(".mp4", ".mp3")
+
+    try:
+        # Convert video → mp3
+        subprocess.run(
+            ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        # CHANNEL BUTTON
+        kb = InlineKeyboardMarkup()
+        kb.add(
+            InlineKeyboardButton(
+                "📢 BOT CHANNEL",
+                url="https://t.me/tiktokvediodownload"
+            )
+        )
+
+        # SEND AUDIO LIKE TELEGRAM STYLE
+        bot.send_audio(
+            call.message.chat.id,
+            open(audio, "rb"),
+            title="Downloaded Music",
+            performer="Downloadvedioytibot",
+            caption="Downloaded via:\n@Downloadvedioytibot",
+            reply_markup=kb
+        )
+
+        os.remove(audio)
+
+    except:
+        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
 # ========= LINK HANDLER =========
 @bot.message_handler(func=lambda m: "http" in m.text)
 def handle_links(message):

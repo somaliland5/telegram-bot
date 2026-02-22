@@ -429,16 +429,23 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
 # ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
+def send_video_with_music(chat_id, file_path):
 
-    bot.send_video(
-        chat_id,
-        open(file, "rb"),
-        caption="Downloaded by:\n@Downloadvedioytibot",
-        reply_markup=kb
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🎵 MUSIC",
+            callback_data=f"music|{file_path}"
+        )
     )
+
+    with open(file_path, "rb") as video:
+        bot.send_video(
+            chat_id,
+            video,
+            caption="Downloaded via:\n@Downloadvedioytibot",
+            reply_markup=kb
+        )
 
 
 def download_media(chat_id, url):
@@ -536,37 +543,46 @@ def download_media(chat_id, url):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
 
-    file = call.data.split("|")[1]
-    audio = file.replace(".mp4", ".mp3")
+    bot.answer_callback_query(call.id, "🎵 Converting...")
+
+    file_path = call.data.split("|")[1]
+
+    if not os.path.exists(file_path):
+        bot.send_message(call.message.chat.id, "❌ File not found")
+        return
+
+    audio_path = file_path.replace(".mp4", ".mp3")
 
     try:
         subprocess.run(
-            ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
+            ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
-        kb = InlineKeyboardMarkup()
-        kb.add(
+        markup = InlineKeyboardMarkup()
+        markup.add(
             InlineKeyboardButton(
                 "📢 BOT CHANNEL",
-                url="https://t.me/tiktokvediodownload"
+                url="https://t.me/tiktokvediodownload"  # ku bedel channel-kaaga
             )
         )
 
-        bot.send_audio(
-            call.message.chat.id,
-            open(audio, "rb"),
-            title="Downloaded Music",
-            performer="Downloadvedioytibot",
-            caption="Downloaded via:\n@Downloadvedioytibot",
-            reply_markup=kb
-        )
+        with open(audio_path, "rb") as audio:
+            bot.send_audio(
+                call.message.chat.id,
+                audio,
+                title="Downloaded Music",
+                performer="Downloadvedioytibot",
+                caption="Downloaded via:\n@Downloadvedioytibot",
+                reply_markup=markup
+            )
 
-        os.remove(audio)
+        os.remove(audio_path)
+        os.remove(file_path)
 
-    except:
-        bot.send_message(call.message.chat.id, "❌ Music conversion failed")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music failed:\n{e}")
 
 
 # ========= LINK HANDLER =========

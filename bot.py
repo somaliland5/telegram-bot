@@ -429,17 +429,17 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
 # ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file):
+def send_video_with_music(chat_id, file_path):
 
     kb = InlineKeyboardMarkup()
     kb.add(
         InlineKeyboardButton(
             "🎵 MUSIC",
-            callback_data=f"music|{file}"
+            callback_data=f"music|{file_path}"
         )
     )
 
-    with open(file, "rb") as video:
+    with open(file_path, "rb") as video:
         bot.send_video(
             chat_id,
             video,
@@ -543,9 +543,7 @@ def download_media(chat_id, url):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
 
-    print("MUSIC BUTTON CLICKED")
-
-    bot.answer_callback_query(call.id, "🎵 Converting...")
+    bot.answer_callback_query(call.id, "🎵 Converting to music...")
 
     file_path = call.data.split("|")[1]
 
@@ -556,17 +554,23 @@ def convert_music(call):
     audio_path = file_path.replace(".mp4", ".mp3")
 
     try:
+        # Convert video → mp3
         subprocess.run(
             ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
+        if not os.path.exists(audio_path):
+            bot.send_message(call.message.chat.id, "❌ Conversion failed")
+            return
+
+        # Channel button
         markup = InlineKeyboardMarkup()
         markup.add(
             InlineKeyboardButton(
                 "📢 BOT CHANNEL",
-                url="https://t.me/tiktokvediodownload"  # ku bedel channel-kaaga
+                url="https://t.me/tiktokvediodownload"  # Ku bedel channel-kaaga
             )
         )
 
@@ -580,11 +584,12 @@ def convert_music(call):
                 reply_markup=markup
             )
 
+        # Nadiifi files
         os.remove(audio_path)
         os.remove(file_path)
 
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music failed:\n{e}")
+        bot.send_message(call.message.chat.id, f"❌ Music error:\n{e}")
 
 
 # ========= LINK HANDLER =========

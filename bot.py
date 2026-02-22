@@ -262,6 +262,42 @@ def admin_panel_btn(m):
         return
     bot.send_message(m.chat.id,"👑 ADMIN PANEL", reply_markup=admin_menu())
 
+@bot.message_handler(func=lambda m: m.text == "📊 STATS")
+def admin_stats(m):
+
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    # ===== TOTAL USERS =====
+    total_users = len(users)
+
+    # ===== TOTAL BALANCE (available + blocked) =====
+    total_balance = 0.0
+    for u in users.values():
+        total_balance += u.get("balance", 0.0)
+        total_balance += u.get("blocked", 0.0)
+
+    # ===== TOTAL WITHDRAW PAID =====
+    total_paid = sum(w["amount"] for w in withdraws if w["status"] == "paid")
+
+    # ===== TOTAL PENDING =====
+    total_pending = sum(w["amount"] for w in withdraws if w["status"] == "pending")
+
+    # ===== BANNED USERS =====
+    banned_users = sum(1 for u in users.values() if u.get("banned"))
+
+    msg = (
+        f"📊 ADMIN STATISTICS\n\n"
+        f"👥 TOTAL USERS: {total_users}\n"
+        f"💰 TOTAL BALANCE: ${total_balance:.2f}\n"
+        f"💸 TOTAL WITHDRAWAL (PAID): ${total_paid:.2f}\n"
+        f"⏳ TOTAL PENDING: ${total_pending:.2f}\n"
+        f"🚫 BANNED USERS: {banned_users}"
+    )
+
+    bot.send_message(m.chat.id, msg)
+
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     back_main_menu(m.chat.id, str(m.from_user.id))
@@ -428,41 +464,6 @@ def broadcast_send(m):
 
     bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
-@bot.message_handler(func=lambda m: m.text == "📊 STATS")
-def admin_stats(m):
-
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
-        return
-
-    # ===== TOTAL USERS =====
-    total_users = len(users)
-
-    # ===== TOTAL BALANCE (available + blocked) =====
-    total_balance = 0.0
-    for u in users.values():
-        total_balance += u.get("balance", 0.0)
-        total_balance += u.get("blocked", 0.0)
-
-    # ===== TOTAL WITHDRAW PAID =====
-    total_paid = sum(w["amount"] for w in withdraws if w["status"] == "paid")
-
-    # ===== TOTAL PENDING =====
-    total_pending = sum(w["amount"] for w in withdraws if w["status"] == "pending")
-
-    # ===== BANNED USERS =====
-    banned_users = sum(1 for u in users.values() if u.get("banned"))
-
-    msg = (
-        f"📊 ADMIN STATISTICS\n\n"
-        f"👥 TOTAL USERS: {total_users}\n"
-        f"💰 TOTAL BALANCE: ${total_balance:.2f}\n"
-        f"💸 TOTAL WITHDRAWAL (PAID): ${total_paid:.2f}\n"
-        f"⏳ TOTAL PENDING: ${total_pending:.2f}\n"
-        f"🚫 BANNED USERS: {banned_users}"
-    )
-
-    bot.send_message(m.chat.id, msg)
 
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file_path):

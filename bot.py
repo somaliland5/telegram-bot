@@ -543,6 +543,8 @@ def download_media(chat_id, url):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
 
+    print("MUSIC BUTTON CLICKED")
+
     bot.answer_callback_query(call.id, "🎵 Converting...")
 
     file_path = call.data.split("|")[1]

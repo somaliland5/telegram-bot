@@ -429,17 +429,17 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
 
 # ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file_path):
+def send_video_with_music(chat_id, file):
 
     kb = InlineKeyboardMarkup()
     kb.add(
         InlineKeyboardButton(
             "🎵 MUSIC",
-            callback_data=f"music|{file_path}"
+            callback_data=f"music|{file}"
         )
     )
 
-    with open(file_path, "rb") as video:
+    with open(file, "rb") as video:
         bot.send_video(
             chat_id,
             video,

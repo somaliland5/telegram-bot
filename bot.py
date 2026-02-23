@@ -35,46 +35,6 @@ def random_botid(): return str(random.randint(10000000000,99999999999))
 def now_month(): return datetime.now().month
 def is_admin(uid): return int(uid) == ADMIN_ID
 
-def ensure_user_keys(uid):
-    """
-    Hubi in user uu leeyahay dhammaan keys-ka muhiimka ah.
-    Haddii user cusub yahay, abuur.
-    Haddii user hore uu leeyahay, kaliya ku dar key cusub (balance lama bedelo).
-    """
-    user = users.get(uid)
-    if not user:
-        # User cusub
-        users[uid] = {
-            "balance": 0.0,
-            "blocked": 0.0,
-            "ref": random_ref(),
-            "bot_id": random_botid(),
-            "invited": 0,
-            "banned": False,
-            "month": now_month()
-        }
-        save_users()
-        return
-
-    # User hore u jiray
-    updated = False
-    defaults = {
-        "blocked": 0.0,
-        "ref": random_ref(),
-        "bot_id": random_botid(),
-        "invited": 0,
-        "banned": False,
-        "month": now_month()
-    }
-
-    for k, v in defaults.items():
-        if k not in user:
-            user[k] = v
-            updated = True
-
-    if updated:
-        save_users()
-
 def user_menu(is_admin_user=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 BALANCE","💸 WITHDRAWAL")

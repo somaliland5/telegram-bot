@@ -1,3 +1,4 @@
+# ================= BOT PART 1/4 =================
 import telebot
 from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 import os, json, random, requests, subprocess
@@ -5,8 +6,8 @@ from datetime import datetime
 import yt_dlp
 
 # ================= CONFIG =================
-TOKEN = os.getenv("BOT_TOKEN")  # Environment variable
-ADMIN_ID = 7983838654           # Telegram ID-ga admin
+TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = 7983838654
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # ================= DATABASE =================
@@ -14,26 +15,36 @@ USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 
 def load_json(path, default):
-    if not os.path.exists(path): 
+    if not os.path.exists(path):
         return default
-    with open(path, "r") as f: 
+    with open(path, "r") as f:
         return json.load(f)
 
 def save_json(path, data):
-    with open(path, "w") as f: 
+    with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
 
-def save_users(): save_json(USERS_FILE, users)
-def save_withdraws(): save_json(WITHDRAWS_FILE, withdraws)
+def save_users():
+    save_json(USERS_FILE, users)
+
+def save_withdraws():
+    save_json(WITHDRAWS_FILE, withdraws)
 
 # ================= HELPERS =================
-def random_ref(): return str(random.randint(1000000000,9999999999))
-def random_botid(): return str(random.randint(10000000000,99999999999))
-def now_month(): return datetime.now().month
-def is_admin(uid): return int(uid) == ADMIN_ID
+def random_ref():
+    return str(random.randint(1000000000, 9999999999))
+
+def random_botid():
+    return str(random.randint(10000000000, 99999999999))
+
+def now_month():
+    return datetime.now().month
+
+def is_admin(uid):
+    return int(uid) == ADMIN_ID
 
 def find_user_by_botid(bid):
     for u, data in users.items():
@@ -51,41 +62,28 @@ def banned_guard(m):
 # ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💰 BALANCE","💸 WITHDRAWAL")
-    kb.add("👥 REFERRAL","🆔 GET ID")
+    kb.add("💰 BALANCE", "💸 WITHDRAWAL")
+    kb.add("👥 REFERRAL", "🆔 GET ID")
     kb.add("☎️ CUSTOMER")
-    if show_admin: kb.add("👑 ADMIN PANEL")
+    if show_admin:
+        kb.add("👑 ADMIN PANEL")
     return kb
 
 def admin_panel_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("➕ ADD BALANCE","➖ MINES MONEY")
-    kb.add("✅ UNBAN USER","💳 UNBLOCK MONEY")
-    kb.add("📊 STATS","📢 BROADCAST","💳 WITHDRAWAL CHECK")
-    kb.add("🔙 BACK MAIN MENU")
+    kb.add("➕ ADD BALANCE", "➖ MINUS MONEY")
+    kb.add("✅ UNBAN USER", "💳 UNBLOCK MONEY")
+    kb.add("📊 STATS", "📢 BROADCAST", "💳 WITHDRAWAL CHECK")
+    kb.add("🔙 BACK TO MAIN MENU")
     return kb
-
-# ================= BACK MAIN MENU =================
-def back_main_menu(chat_id, uid, context=None):
-    if is_admin(uid) and context=="admin":
-        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
-    else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
-@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
-def back_main(m):
-    uid = str(m.from_user.id)
-    if banned_guard(m): return
-    if is_admin(uid):
-        back_main_menu(m.chat.id, uid, context="admin")
-    else:
-        back_main_menu(m.chat.id, uid, context="user")
 
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start(m):
     uid = str(m.from_user.id)
     args = m.text.split()
+    
+    # New user registration
     if uid not in users:
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
@@ -98,6 +96,7 @@ def start(m):
             "banned": False,
             "month": now_month()
         }
+        # Referral reward
         if ref:
             for u in users:
                 if users[u]["ref"] == ref:
@@ -107,12 +106,34 @@ def start(m):
                     break
         save_users()
     
+    # Show user menu; admin sees extra button
     bot.send_message(
         m.chat.id,
-        "👋 Welcome! Send Video Link to Download 🎬",
+        "👋 Welcome! Send a video link to download 🎬",
         reply_markup=user_menu(is_admin(uid))
     )
 
+# ================= BACK MAIN MENU =================
+def back_main_menu(chat_id, uid, context=None):
+    """
+    context=None or "user" → user menu
+    context="admin" → admin panel
+    """
+    if is_admin(uid) and context == "admin":
+        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
+    else:
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+
+@bot.message_handler(func=lambda m: m.text=="🔙 BACK TO MAIN MENU")
+def back_main(m):
+    uid = str(m.from_user.id)
+    if banned_guard(m): return
+    if is_admin(uid):
+        back_main_menu(m.chat.id, uid, context="admin")
+    else:
+        back_main_menu(m.chat.id, uid, context="user")
+
+# ================= BOT PART 2/4 =================
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
 def balance(m):
@@ -153,7 +174,7 @@ def referral(m):
 @bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")
 def customer(m):
     if banned_guard(m): return
-    bot.send_message(m.chat.id,"Contact support: @scholes1")
+    bot.send_message(m.chat.id,"📞 Contact support: @scholes1")
 
 # ================= WITHDRAWAL MENU =================
 @bot.message_handler(func=lambda m: m.text=="💸 WITHDRAWAL")
@@ -228,13 +249,13 @@ def withdraw_amount(m):
     if amt < 1:
         kb = ReplyKeyboardMarkup(resize_keyboard=True)
         kb.add("🔙 CANCEL")
-        msg = bot.send_message(m.chat.id,"❌ Minimum withdrawal is $1:", reply_markup=kb)
+        msg = bot.send_message(m.chat.id,"❌ Minimum withdrawal is $1", reply_markup=kb)
         bot.register_next_step_handler(msg, withdraw_amount)
         return
     if users[uid]["balance"] < amt:
         kb = ReplyKeyboardMarkup(resize_keyboard=True)
         kb.add("🔙 CANCEL")
-        msg = bot.send_message(m.chat.id,"❌ Insufficient balance:", reply_markup=kb)
+        msg = bot.send_message(m.chat.id,"❌ Insufficient balance", reply_markup=kb)
         bot.register_next_step_handler(msg, withdraw_amount)
         return
     # Save withdrawal request
@@ -253,12 +274,13 @@ def withdraw_amount(m):
     save_withdraws()
     bot.send_message(m.chat.id,f"✅ Withdrawal request submitted!\nID: {wid}\nAmount: ${amt:.2f}\nStatus: Pending")
 
+# ================= BOT PART 3/4 =================
 # ================= ADMIN PANEL CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","banmoney_")))
 def admin_callbacks(call):
     data = call.data
     uid_admin = str(call.from_user.id)
-    if not is_admin(uid_admin): 
+    if not is_admin(uid_admin):
         bot.answer_callback_query(call.id, "❌ You are not admin")
         return
 
@@ -312,7 +334,6 @@ def admin_callbacks(call):
         users[uid]["pending"] -= amt
         users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
         w["status"] = "blocked"
-        # Generate 4-digit unblock code
         code = str(random.randint(1000,9999))
         w["block_code"] = code
         save_users(); save_withdraws()
@@ -401,6 +422,7 @@ def unblock_money_process(m):
     bot.send_message(int(uid), f"✅ Your blocked ${amt:.2f} is now available in balance!")
     bot.send_message(m.chat.id, f"✅ Money unblocked for user {uid}")
 
+# ================= BOT PART 4/4 =================
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):

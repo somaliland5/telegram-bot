@@ -134,18 +134,25 @@ def get_id(m):
 # ================= REFERRAL HANDLER =================
 @bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
 def referral(m):
-    if banned_guard(m): return
+    if banned_guard(m):
+        return
     uid = str(m.from_user.id)
+
+    # Samee referral link gaar ah
     link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-    invited = users[uid].get("invited",0)
+
+    # Tirada dadka uu casuumay
+    invited = users[uid].get("invited", 0)
+
+    # Fariinta user-ka (kaliya link + invited)
     msg_text = (
         f"🔗 Your referral link:\n{link}\n"
         f"👥 Invited: {invited}\n\n"
-        "🎁 Each new user who joins using your link will automatically give you $0.2!"
+        f"🎁 Each new user who joins using your link will automatically give you $0.2!"
     )
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🔙 BACK MAIN MENU")
-    bot.send_message(m.chat.id, msg_text, reply_markup=kb)
+
+    # Kaliya fariin u dir user-ka, button ma jiro
+    bot.send_message(m.chat.id, msg_text)
 
 # ================= CUSTOMER SUPPORT =================
 @bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")

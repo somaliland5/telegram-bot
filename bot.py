@@ -209,9 +209,9 @@ def withdraw_menu(m):
 def withdraw_method(m):
     uid = str(m.from_user.id)
     
-    if text == "🔙 CANCEL":
-    back_main_menu(m.chat.id, uid)
-    return
+    if m.text == "🔙 CANCEL":
+        back_main_menu(m)
+        return
 
     if m.text == "USDT-BEP20":
         kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -228,9 +228,9 @@ def withdraw_address_step(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
 
-if m.text == "🔙 CANCEL":
-    back_main_menu(m.chat.id, uid)
-    return
+    if text == "🔙 CANCEL":
+        back_main_menu(m)
+        return
 
     if not text.startswith("0x"):
         kb = ReplyKeyboardMarkup(resize_keyboard=True)

@@ -223,6 +223,16 @@ def withdraw_method(m):
         )
         bot.register_next_step_handler(msg, withdraw_address_step)
 
+# ================= BACK FROM WITHDRAWAL =================
+@bot.message_handler(func=lambda m: m.text=="🔙 CANCEL")
+def back_from_withdrawal(m):
+    uid = str(m.from_user.id)
+    # Dib ugu celi user-ka menu-ga caadiga ah (ama admin menu haddii uu admin yahay)
+    bot.send_message(
+        m.chat.id,
+        "🔙 Returning to main menu",
+        reply_markup=user_menu(is_admin(uid))
+    )
 
 # ================= WITHDRAWAL ADDRESS =================
 def withdraw_address_step(m):

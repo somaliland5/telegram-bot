@@ -293,34 +293,26 @@ def admin_menu():
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
-def back_main_menu(chat_id, uid):
-    if is_admin(uid):  # Haddii uu admin yahay
-        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_menu())
-    else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")
 def admin_panel_btn(m):
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id,"❌ You are not admin")
         return
-    bot.send_message(m.chat.id,"👑 ADMIN PANEL", reply_markup=admin_menu())
+    bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_menu())
 
+# ================= BACK MAIN MENU =================
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
     if is_admin(uid):
-        # Haddii uu admin yahay, dib ugu celi admin menu
-        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
+        bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_menu())
     else:
-        # Haddii uu caadi yahay, dib ugu celi user menu
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     total_users = len(users)
     total_balance = sum(u.get("balance",0) for u in users.values())
     total_paid = sum(w["amount"] for w in withdraws if w["status"]=="paid")
@@ -336,97 +328,88 @@ def admin_stats(m):
         f"🚫 BANNED USERS: {banned_users}"
     )
     bot.send_message(m.chat.id, msg)
-    back_main_menu(m.chat.id, str(m.from_user.id))
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
 def add_balance(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID and amount to ADD\nExample: 12345678901 2.5")
     bot.register_next_step_handler(msg, add_balance_step)
 
 def add_balance_step(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     try:
         uid_or_bid, amt = m.text.split()
         amt = float(amt)
     except:
-        bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
 
+    # Telegram ID first
     if uid_or_bid in users:
         users[uid_or_bid]["balance"] += amt
         save_users()
         bot.send_message(int(uid_or_bid), f"💰 Admin added ${amt:.2f} to your balance!")
         bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to Telegram ID {uid_or_bid}")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return
 
+    # BOT ID
     uid = find_user_by_botid(uid_or_bid)
     if uid:
         users[uid]["balance"] += amt
         save_users()
         bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
         bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to BOT ID {uid_or_bid}")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return
 
-    bot.send_message(m.chat.id, "❌ User not found")
-    back_main_menu(m.chat.id, str(m.from_user.id))
+    bot.send_message(m.chat.id,"❌ User not found")
 
 # ================= REMOVE MONEY =================
 @bot.message_handler(func=lambda m: m.text=="➖ REMOVE MONEY")
 def remove_money(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID and amount to REMOVE\nExample: 12345678901 1.5")
     bot.register_next_step_handler(msg, remove_money_step)
 
 def remove_money_step(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     try:
         uid_or_bid, amt = m.text.split()
         amt = float(amt)
     except:
-        bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
 
+    # Telegram ID
     if uid_or_bid in users:
         if users[uid_or_bid]["balance"] < amt:
-            bot.send_message(m.chat.id,"❌ Insufficient balance")
-            return back_main_menu(m.chat.id, str(m.from_user.id))
+            return bot.send_message(m.chat.id,"❌ Insufficient balance")
         users[uid_or_bid]["balance"] -= amt
         save_users()
         bot.send_message(int(uid_or_bid), f"💸 Admin removed ${amt:.2f} from your balance!")
         bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from Telegram ID {uid_or_bid}")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return
 
+    # BOT ID
     uid = find_user_by_botid(uid_or_bid)
     if uid:
         if users[uid]["balance"] < amt:
-            bot.send_message(m.chat.id,"❌ Insufficient balance")
-            return back_main_menu(m.chat.id, str(m.from_user.id))
+            return bot.send_message(m.chat.id,"❌ Insufficient balance")
         users[uid]["balance"] -= amt
         save_users()
         bot.send_message(int(uid), f"💸 Admin removed ${amt:.2f} from your balance!")
         bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from BOT ID {uid_or_bid}")
-        return back_main_menu(m.chat.id, str(m.from_user.id))
+        return
 
     bot.send_message(m.chat.id,"❌ User not found")
-    back_main_menu(m.chat.id, str(m.from_user.id))
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text=="✅ UNBAN USER")
 def unban_start(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID to UNBAN")
     bot.register_next_step_handler(msg, unban_process)
 
 def unban_process(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     text = m.text.strip()
     # Telegram ID first
     if text in users:
@@ -448,14 +431,12 @@ def unban_process(m):
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
 def broadcast_start(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     msg = bot.send_message(m.chat.id,"📢 Send message / photo / video / link to broadcast")
     bot.register_next_step_handler(msg, broadcast_send)
 
 def broadcast_send(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     sent = 0
     failed = 0
     for uid in users:
@@ -478,14 +459,12 @@ def broadcast_send(m):
 # ================= WITHDRAWAL CHECK =================
 @bot.message_handler(func=lambda m: m.text=="💳 WITHDRAWAL CHECK")
 def withdrawal_check_start(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     msg = bot.send_message(m.chat.id,"Enter Withdrawal Request ID\nExample: 402000")
     bot.register_next_step_handler(msg, withdrawal_check_process)
 
 def withdrawal_check_process(m):
-    if not is_admin(m.from_user.id):
-        return
+    if not is_admin(m.from_user.id): return
     try:
         wid = int(m.text.strip())
     except:
@@ -510,6 +489,7 @@ def withdrawal_check_process(m):
         f"⏰ Time: {w['time']}"
     )
     bot.send_message(m.chat.id, msg_text)
+
 
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file):

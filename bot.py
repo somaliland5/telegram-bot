@@ -65,10 +65,10 @@ def user_menu(show_admin=False):
     kb.add("👥 REFERRAL","🆔 GET ID")
     kb.add("☎️ CUSTOMER")
     if show_admin:
-        kb.add("👑 ADMIN PANEL")  # Kaliya markuu user-ka admin yahay
+        kb.add("👑 ADMIN PANEL")
     return kb
 
-def admin_panel_menu():
+def admin_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📊 STATS","📢 BROADCAST")
     kb.add("➕ ADD BALANCE","➖ REMOVE MONEY")
@@ -294,15 +294,10 @@ def admin_panel_btn(m):
 def back_main(m):
     uid = str(m.from_user.id)
 
-    if banned_guard(m):  # check banned
+    if banned_guard(m):
         return
 
-    # Haddii admin uu taabto Back, dib ugu celiso user menu
-    bot.send_message(
-        m.chat.id, 
-        "🏠 Main Menu", 
-        reply_markup=user_menu(is_admin(uid))
-    )
+    bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= ADMIN FEATURES =================
 # ================= STATS =================
@@ -462,7 +457,7 @@ def send_video_with_music(chat_id, file):
 
 def download_media(chat_id, url):
     try:
-        # ===== TIKTOK =====
+        # TikTok
         if "tiktok.com" in url:
             res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
             if res.get("code")==0:
@@ -480,7 +475,7 @@ def download_media(chat_id, url):
                     with open("tt_video.mp4","wb") as f: f.write(vid_data)
                     send_video_with_music(chat_id, "tt_video.mp4")
                     return
-        # ===== YOUTUBE =====
+        # YouTube
         if "youtube.com" in url or "youtu.be" in url:
             ydl_opts = {"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -274,17 +274,10 @@ def withdraw_amount(m):
     save_withdraws()
     bot.send_message(m.chat.id,f"✅ Withdrawal request submitted!\nID: {wid}\nAmount: ${amt:.2f}\nStatus: Pending")
 
-# ================= BOT PART 3/4 =================
-# ================= ADMIN PANEL CALLBACKS =================
+# ================= ADMIN CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","banmoney_")))
 def admin_callbacks(call):
     data = call.data
-    uid_admin = str(call.from_user.id)
-    if not is_admin(uid_admin):
-        bot.answer_callback_query(call.id, "❌ You are not admin")
-        return
-
-    # ===== CONFIRM WITHDRAWAL =====
     if data.startswith("confirm_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
@@ -295,10 +288,9 @@ def admin_callbacks(call):
         uid = w["user"]
         users[uid]["pending"] -= w["amount"]
         save_users(); save_withdraws()
-        bot.answer_callback_query(call.id,"✅ Withdrawal Confirmed")
-        bot.send_message(int(uid),f"✅ Your withdrawal #{wid} of ${w['amount']:.2f} is approved and paid!")
+        bot.answer_callback_query(call.id,"✅ Confirmed")
+        bot.send_message(int(uid),f"✅ Withdrawal #{wid} approved and paid!")
 
-    # ===== REJECT WITHDRAWAL =====
     elif data.startswith("reject_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
@@ -310,19 +302,17 @@ def admin_callbacks(call):
         users[uid]["balance"] += w["amount"]
         users[uid]["pending"] -= w["amount"]
         save_users(); save_withdraws()
-        bot.answer_callback_query(call.id,"❌ Withdrawal Rejected")
-        bot.send_message(int(uid),f"❌ Your withdrawal #{wid} of ${w['amount']:.2f} has been rejected. Funds returned to balance.")
+        bot.answer_callback_query(call.id,"❌ Rejected")
+        bot.send_message(int(uid),f"❌ Withdrawal #{wid} rejected. Funds returned to balance.")
 
-    # ===== BAN USER =====
     elif data.startswith("ban_"):
         uid = data.split("_")[1]
         if uid in users:
             users[uid]["banned"] = True
             save_users()
-            bot.answer_callback_query(call.id,"🚫 User Banned")
-            bot.send_message(int(uid),"🚫 You have been banned by admin.")
+            bot.answer_callback_query(call.id,"🚫 User banned")
+            bot.send_message(int(uid),"🚫 You are banned by admin.")
 
-    # ===== BLOCK MONEY =====
     elif data.startswith("banmoney_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
@@ -334,11 +324,43 @@ def admin_callbacks(call):
         users[uid]["pending"] -= amt
         users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
         w["status"] = "blocked"
+        # Generate 4-digit unblock code
         code = str(random.randint(1000,9999))
         w["block_code"] = code
         save_users(); save_withdraws()
-        bot.answer_callback_query(call.id,"💰 Money Blocked")
+        bot.answer_callback_query(call.id,"💰 Money blocked")
         bot.send_message(int(uid),f"🚫 Your ${amt:.2f} is blocked.\n💳 Block Code: {code}")
+
+# ================= ADMIN PANEL MENU =================
+def admin_panel_menu():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("➕ ADD BALANCE", "➖ MINES MONEY")
+    kb.add("✅ UNBAN USER", "💳 UNBLOCK MONEY")
+    kb.add("📊 STATS", "📢 BROADCAST")
+    kb.add("💳 WITHDRAWAL CHECK")
+    kb.add("🔙 BACK MAIN MENU")
+    return kb
+
+# ================= BACK MAIN MENU =================
+def back_main_menu(chat_id, uid, context=None):
+    """
+    Dib ugu celiso menu-ka saxda ah iyadoo ku xiran:
+    - context="admin" → admin panel
+    - context="user" ama None → user menu
+    """
+    if is_admin(uid) and context=="admin":
+        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
+    else:
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+
+@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
+def back_main(m):
+    uid = str(m.from_user.id)
+    if banned_guard(m): return
+    if is_admin(uid):
+        back_main_menu(m.chat.id, uid, context="admin")
+    else:
+        back_main_menu(m.chat.id, uid, context="user")
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
@@ -361,7 +383,7 @@ def add_balance_step(m):
     bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
     bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to user {uid}")
 
-# ================= MINUS MONEY =================
+# ================= MINES MONEY =================
 @bot.message_handler(func=lambda m: m.text=="➖ MINES MONEY")
 def remove_money(m):
     if not is_admin(m.from_user.id): return
@@ -422,7 +444,6 @@ def unblock_money_process(m):
     bot.send_message(int(uid), f"✅ Your blocked ${amt:.2f} is now available in balance!")
     bot.send_message(m.chat.id, f"✅ Money unblocked for user {uid}")
 
-# ================= BOT PART 4/4 =================
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):

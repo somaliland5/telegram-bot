@@ -59,13 +59,13 @@ def banned_guard(m):
     return False
 
 # ================= MENUS =================
-def user_menu(is_admin_user=False):
+def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 BALANCE","💸 WITHDRAWAL")
     kb.add("👥 REFERRAL","🆔 GET ID")
     kb.add("☎️ CUSTOMER")
-    if is_admin_user:
-        kb.add("👑 ADMIN PANEL")
+    if show_admin:
+        kb.add("👑 ADMIN PANEL")  # Kaliya markuu user-ka admin yahay
     return kb
 
 def admin_menu():
@@ -304,10 +304,15 @@ def admin_panel_btn(m):
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
+    
+    # Xaqiiji banned
+    if banned_guard(m): return
+    
+    # Haddii admin
     if is_admin(uid):
-        bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_menu())
+        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
     else:
-        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")

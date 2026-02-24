@@ -65,10 +65,10 @@ def user_menu(show_admin=False):
     kb.add("👥 REFERRAL","🆔 GET ID")
     kb.add("☎️ CUSTOMER")
     if show_admin:
-        kb.add("👑 ADMIN PANEL")
+        kb.add("👑 ADMIN PANEL")  # Kaliya markuu user-ka admin yahay
     return kb
 
-def admin_menu():
+def admin_panel_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📊 STATS","📢 BROADCAST")
     kb.add("➕ ADD BALANCE","➖ REMOVE MONEY")
@@ -78,13 +78,11 @@ def admin_menu():
 
 def back_main_menu(chat_id, uid):
     """
-    Admin → admin_menu
-    User → user_menu
+    Back/CANCEL → Main Menu (home)
+    Admin → user_menu(True)
+    User → user_menu(False)
     """
-    if is_admin(uid):
-        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_menu())
-    else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+    bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])

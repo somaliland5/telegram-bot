@@ -126,29 +126,55 @@ def withdraw_menu(m):
     kb.add("USDT-BEP20","🔙 CANCEL")
     bot.send_message(m.chat.id,"Select withdrawal method:", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: m.text in ["USDT-BEP20","🔙 CANCEL"])
 def withdraw_method(m):
     uid = str(m.from_user.id)
-    if m.text=="🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
+    if banned_guard(m): return
+
+    if m.text == "🔙 CANCEL":
+        # User-ka dib ugu celi main menu
+        back_main_menu(m.chat.id, uid, context="user")
         return
-    if m.text=="USDT-BEP20":
-        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL")
+
+    if m.text == "USDT-BEP20":
+        # Bedel keyboard: kaliya CANCEL ayaa muuqanaya
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(
+            m.chat.id,
+            "Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL",
+            reply_markup=kb
+        )
         bot.register_next_step_handler(msg, withdraw_address)
 
 def withdraw_address(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
-    if text=="🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
+
+    if text == "🔙 CANCEL":
+        back_main_menu(m.chat.id, uid, context="user")
         return
+
     if not text.startswith("0x"):
-        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL")
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL",
+            reply_markup=kb
+        )
         bot.register_next_step_handler(msg, withdraw_address)
         return
+
     users[uid]["temp_addr"] = text
     save_users()
-    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL")
+    # Bedel keyboard: kaliya CANCEL mar kale inta la gelinayo amount
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🔙 CANCEL")
+    msg = bot.send_message(
+        m.chat.id,
+        f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL",
+        reply_markup=kb
+    )
     bot.register_next_step_handler(msg, withdraw_amount)
 
 def withdraw_amount(m):
@@ -252,15 +278,14 @@ def admin_panel_btn(m):
         return
     bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_panel_menu())
 
-# BACK → Admin Panel ama User Menu
+# ================= BACK MAIN MENU =================
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
-    if banned_guard(m): return
-    if is_admin(uid):
-        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_panel_menu())
-    else:
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(False))
+    if banned_guard(m):  # Check banned
+        return
+    # Haddii admin uu taabto BACK → dib ugu celiso user menu (home)
+    bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ADD BALANCE
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")

@@ -309,7 +309,12 @@ def admin_panel_btn(m):
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
-    back_main_menu(m.chat.id, uid)
+    if is_admin(uid):
+        # Haddii uu admin yahay, dib ugu celi admin menu
+        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
+    else:
+        # Haddii uu caadi yahay, dib ugu celi user menu
+        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")

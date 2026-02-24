@@ -293,12 +293,23 @@ def admin_menu():
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
+def back_main_menu(chat_id, uid):
+    if is_admin(uid):  # Haddii uu admin yahay
+        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_menu())
+    else:
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")
 def admin_panel_btn(m):
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id,"❌ You are not admin")
         return
     bot.send_message(m.chat.id,"👑 ADMIN PANEL", reply_markup=admin_menu())
+
+@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
+def back_main(m):
+    uid = str(m.from_user.id)
+    back_main_menu(m.chat.id, uid)
 
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
@@ -320,6 +331,7 @@ def admin_stats(m):
         f"🚫 BANNED USERS: {banned_users}"
     )
     bot.send_message(m.chat.id, msg)
+    back_main_menu(m.chat.id, str(m.from_user.id))
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
@@ -336,26 +348,26 @@ def add_balance_step(m):
         uid_or_bid, amt = m.text.split()
         amt = float(amt)
     except:
-        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+        bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
-    # Telegram ID first
     if uid_or_bid in users:
         users[uid_or_bid]["balance"] += amt
         save_users()
         bot.send_message(int(uid_or_bid), f"💰 Admin added ${amt:.2f} to your balance!")
         bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to Telegram ID {uid_or_bid}")
-        return
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
-    # BOT ID
     uid = find_user_by_botid(uid_or_bid)
     if uid:
         users[uid]["balance"] += amt
         save_users()
         bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
         bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to BOT ID {uid_or_bid}")
-        return
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
     bot.send_message(m.chat.id, "❌ User not found")
+    back_main_menu(m.chat.id, str(m.from_user.id))
 
 # ================= REMOVE MONEY =================
 @bot.message_handler(func=lambda m: m.text=="➖ REMOVE MONEY")
@@ -372,30 +384,32 @@ def remove_money_step(m):
         uid_or_bid, amt = m.text.split()
         amt = float(amt)
     except:
-        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+        bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
-    # Telegram ID
     if uid_or_bid in users:
         if users[uid_or_bid]["balance"] < amt:
-            return bot.send_message(m.chat.id,"❌ Insufficient balance")
+            bot.send_message(m.chat.id,"❌ Insufficient balance")
+            return back_main_menu(m.chat.id, str(m.from_user.id))
         users[uid_or_bid]["balance"] -= amt
         save_users()
         bot.send_message(int(uid_or_bid), f"💸 Admin removed ${amt:.2f} from your balance!")
         bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from Telegram ID {uid_or_bid}")
-        return
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
-    # BOT ID
     uid = find_user_by_botid(uid_or_bid)
     if uid:
         if users[uid]["balance"] < amt:
-            return bot.send_message(m.chat.id,"❌ Insufficient balance")
+            bot.send_message(m.chat.id,"❌ Insufficient balance")
+            return back_main_menu(m.chat.id, str(m.from_user.id))
         users[uid]["balance"] -= amt
         save_users()
         bot.send_message(int(uid), f"💸 Admin removed ${amt:.2f} from your balance!")
         bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from BOT ID {uid_or_bid}")
-        return
+        return back_main_menu(m.chat.id, str(m.from_user.id))
 
     bot.send_message(m.chat.id,"❌ User not found")
+    back_main_menu(m.chat.id, str(m.from_user.id))
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text=="✅ UNBAN USER")

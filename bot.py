@@ -577,6 +577,88 @@ def broadcast_send(m):
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
+# ================= ADD BALANCE =================
+@bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")
+def add_balance_start(m):
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send BOT ID or Telegram ID and amount separated by space:\n"
+        "Example:\n123456789 10.5"
+    )
+    bot.register_next_step_handler(msg, add_balance_process)
+
+
+def add_balance_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+        uid_str, amt_str = m.text.strip().split()
+        amt = float(amt_str)
+
+        # Hubi haddii la isticmaalayo Telegram ID ama BOT ID
+        uid = uid_str if uid_str in users else find_user_by_botid(uid_str)
+
+        if not uid or amt <= 0:
+            bot.send_message(m.chat.id, "❌ Invalid input")
+            return
+
+        users[uid]["balance"] += amt
+        save_users()
+
+        bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to user {uid}")
+        bot.send_message(int(uid), f"💰 Your balance increased by ${amt:.2f}")
+
+    except:
+        bot.send_message(m.chat.id, "❌ Format error.\nUse:\n<BOT ID or Telegram ID> <amount>")
+
+# ================= REMOVE MONEY =================
+@bot.message_handler(func=lambda m: m.text == "➖ REMOVE MONEY")
+def remove_balance_start(m):
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send BOT ID or Telegram ID and amount separated by space:\n"
+        "Example:\n123456789 5.0"
+    )
+    bot.register_next_step_handler(msg, remove_balance_process)
+
+
+def remove_balance_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+        uid_str, amt_str = m.text.strip().split()
+        amt = float(amt_str)
+
+        # Hubi haddii la isticmaalayo Telegram ID ama BOT ID
+        uid = uid_str if uid_str in users else find_user_by_botid(uid_str)
+
+        if not uid or amt <= 0:
+            bot.send_message(m.chat.id, "❌ Invalid input")
+            return
+
+        if users[uid]["balance"] < amt:
+            bot.send_message(m.chat.id, "❌ Insufficient balance")
+            return
+
+        users[uid]["balance"] -= amt
+        save_users()
+
+        bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from user {uid}")
+        bot.send_message(int(uid), f"💸 ${amt:.2f} removed from your balance")
+
+    except:
+        bot.send_message(m.chat.id, "❌ Format error.\nUse:\n<BOT ID or Telegram ID> <amount>")
+
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()

@@ -77,11 +77,7 @@ def admin_menu():
     return kb
 
 def back_main_menu(chat_id, uid):
-    # Haddii uu admin yahay, dib u dir menu-ga admin
-    if is_admin(uid):
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=admin_menu())
-    else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+    bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])

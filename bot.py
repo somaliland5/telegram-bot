@@ -274,8 +274,45 @@ def withdraw_amount_step(m):
         return
 
     # ================= CREATE WITHDRAWAL REQUEST =================
+def withdraw_amount_step(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+
+    if text == "🔙 CANCEL":
+        back_to_main_menu(m)
+        return
+
+    try:
+        amt = float(text)
+    except:
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid number.\nEnter again or press 🔙 CANCEL",
+            reply_markup=kb
+        )
+        bot.register_next_step_handler(msg, withdraw_amount_step)
+        return
+
+    if amt < 1:
+        bot.send_message(
+            m.chat.id,
+            "❌ Minimum withdrawal is $1",
+            reply_markup=user_menu(is_admin(uid))
+        )
+        return
+
+    if amt > users[uid]["balance"]:
+        bot.send_message(
+            m.chat.id,
+            "❌ Insufficient balance",
+            reply_markup=user_menu(is_admin(uid))
+        )
+        return
+
+    # ===== Create withdrawal request =====
     wid = random.randint(10000, 99999)
-    address = users[uid]["temp_addr"]
 
     users[uid]["balance"] -= amt
     users[uid]["blocked"] += amt
@@ -285,7 +322,7 @@ def withdraw_amount_step(m):
         "user": uid,
         "amount": amt,
         "blocked": amt,
-        "address": address,
+        "address": users[uid].get("temp_addr", "N/A"),
         "status": "pending",
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -294,45 +331,42 @@ def withdraw_amount_step(m):
     save_users()
     save_withdraws()
 
-    # ================= USER MESSAGE =================
+    # ===== Notify user =====
     bot.send_message(
         int(uid),
-        f"✅ Withdrawal Sent\n\n"
-        f"🧾 ID: {wid}\n"
+        f"✅ Withdrawal Request Sent\n"
+        f"🧾 Request ID: {wid}\n"
         f"💵 Amount: ${amt:.2f}\n"
-        f"⏳ Status: PENDING"
+        f"🏦 Address: {withdrawal['address']}\n"
+        f"💰 Balance Left: ${users[uid]['balance']:.2f}\n"
+        f"⏳ Status: Pending"
     )
 
-    # ================= ADMIN NOTIFICATION =================
-    bot_id = users[uid].get("bot_id", "N/A")
-    referrals = users[uid].get("invited", 0)
-
+    # ===== Notify admins =====
     admin_text = (
-        f"🚨 NEW WITHDRAWAL REQUEST\n\n"
-        f"🧾 Request ID: {wid}\n"
-        f"👤 Telegram ID: {uid}\n"
-        f"🤖 BOT ID: {bot_id}\n"
-        f"👥 Referrals: {referrals}\n"
+        f"💳 NEW WITHDRAWAL\n\n"
+        f"👤 User: {uid}\n"
+        f"🤖 BOT ID: {users[uid]['bot_id']}\n"
+        f"👥 Referrals: {users[uid]['invited']}\n"
         f"💵 Amount: ${amt:.2f}\n"
-        f"🏦 Address: {address}\n"
-        f"⏰ Time: {withdrawal['time']}\n"
-        f"📊 Status: PENDING"
+        f"🧾 Request ID: {wid}\n"
+        f"🏦 Address: {withdrawal['address']}\n"
+        f"⏳ Status: Pending"
     )
 
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
-        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}")
-    )
-    markup.add(
+        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
         InlineKeyboardButton("🚫 BAN USER", callback_data=f"ban_{uid}"),
         InlineKeyboardButton("💰 BAN MONEY", callback_data=f"block_{wid}")
     )
 
-    for admin in [ADMIN_ID]:
+    # Loop through admin IDs
+    for admin in [ADMIN_ID]:  # Halkan waxaad ku dari kartaa liiska admin IDs
         bot.send_message(admin, admin_text, reply_markup=markup)
 
-# ================= ADMIN INLINE CALLBACKS =================
+    # ================= ADMIN INLINE CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_", "reject_", "ban_", "block_")))
 def admin_callbacks(call):
 

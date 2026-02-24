@@ -303,16 +303,14 @@ def admin_panel_btn(m):
 # ================= BACK MAIN MENU =================
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
-    uid = str(m.from_user.id)
-    
-    # Xaqiiji banned
+    uid = int(m.from_user.id)  # Hubi int
+
     if banned_guard(m): return
-    
-    # Haddii admin
+
     if is_admin(uid):
         bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
     else:
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu())
 
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")

@@ -82,6 +82,7 @@ def admin_menu():
 def start(m):
     uid = str(m.from_user.id)
     args = m.text.split()
+    
     if uid not in users:
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
@@ -93,6 +94,7 @@ def start(m):
             "banned":False,
             "month": now_month()
         }
+        # Referral reward
         if ref:
             for u in users:
                 if users[u]["ref"] == ref:
@@ -101,8 +103,25 @@ def start(m):
                     bot.send_message(int(u), "🎉 You earned $0.2 from referral.")
                     break
         save_users()
-    bot.send_message(m.chat.id, "👋 Welcome! Send Video Link to Download 🎬",
-                     reply_markup=user_menu(is_admin(uid)))
+    
+    bot.send_message(
+        m.chat.id,
+        "👋 Welcome! Send Video Link to Download 🎬",
+        reply_markup=user_menu(is_admin(uid))
+    )
+
+# ================= BACK TO MAIN MENU =================
+def back_main_menu(chat_id, uid):
+    if is_admin(uid):
+        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_menu())
+    else:
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+
+@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
+def back_main(m):
+    uid = str(m.from_user.id)
+    if banned_guard(m): return
+    back_main_menu(m.chat.id, uid)
 
 # ================= BALANCE HANDLER =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
@@ -232,29 +251,30 @@ def withdraw_amount_step(m):
         reply_markup=user_menu(is_admin(uid))
     )
 
-    # Admin notification with inline buttons
+    # Admin inline buttons: Confirm / Reject / Ban / BLOCK MONEY
     markup = InlineKeyboardMarkup()
     markup.add(
         InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
         InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
         InlineKeyboardButton("🚫 BAN USER", callback_data=f"ban_{uid}"),
-        InlineKeyboardButton("💰 BAN MONEY", callback_data=f"banmoney_{wid}")
+        InlineKeyboardButton("💰 BLOCK MONEY", callback_data=f"block_{wid}")
     )
     bot.send_message(ADMIN_ID,
-        f"💳 NEW WITHDRAWAL REQUEST\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
+        f"💳 NEW WITHDRAWAL\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
         reply_markup=markup
                     )
 
 # ================= ADMIN CALLBACKS =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","banmoney_")))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","block_")))
 def admin_callbacks(call):
     data = call.data
 
-    # ===== CONFIRM =====
+    # ===== CONFIRM WITHDRAWAL =====
     if data.startswith("confirm_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
         if not w or w["status"] != "pending":
+            bot.answer_callback_query(call.id, "❌ Already processed")
             return
         w["status"] = "paid"
         users[w["user"]]["blocked"] -= w["blocked"]
@@ -262,11 +282,12 @@ def admin_callbacks(call):
         bot.answer_callback_query(call.id,"✅ Confirmed")
         bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
 
-    # ===== REJECT =====
+    # ===== REJECT WITHDRAWAL =====
     elif data.startswith("reject_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
         if not w or w["status"] != "pending":
+            bot.answer_callback_query(call.id,"❌ Already processed")
             return
         w["status"] = "rejected"
         users[w["user"]]["balance"] += w["blocked"]
@@ -284,25 +305,25 @@ def admin_callbacks(call):
             bot.answer_callback_query(call.id,"🚫 User banned")
             bot.send_message(int(uid),"🚫 You have been banned by admin.")
 
-    # ===== BAN MONEY (BLOCK) =====
-    elif data.startswith("banmoney_"):
+    # ===== BLOCK MONEY =====
+    elif data.startswith("block_"):
         wid = int(data.split("_")[1])
         w = next((x for x in withdraws if x["id"]==wid), None)
         if not w or w["status"] != "pending":
+            bot.answer_callback_query(call.id,"❌ Already processed")
             return
         uid = w["user"]
         amt = w["blocked"]
+        # Create 4-digit block code
+        code = str(random.randint(1000,9999))
         w["status"] = "blocked"
-        code = str(random.randint(1000,9999))  # 4-digit code
         w["block_code"] = code
-        users[uid]["blocked"] -= amt  # Pending money now blocked
+        users[uid]["blocked"] -= amt
         save_users(); save_withdraws()
         bot.answer_callback_query(call.id,"💰 Money Blocked")
-        bot.send_message(int(uid),
-            f"🚫 Your withdrawal of ${amt:.2f} is BLOCKED by admin.\n💳 Block Code: {code}\nContact support to release funds."
-        )
+        bot.send_message(int(uid), f"🚫 Your withdrawal of ${amt:.2f} is BLOCKED by admin.\n💳 Code: {code}\nContact support to release funds.")
 
-# ================= UNBLOCK MONEY (ADMIN) =================
+# ================= UNBLOCK MONEY =================
 @bot.message_handler(func=lambda m: m.text=="💳 UNBLOCK MONEY")
 def unblock_money_start(m):
     if not is_admin(m.from_user.id): return
@@ -320,8 +341,7 @@ def unblock_money_process(m):
     uid = w["user"]
     amt = w["blocked"]
     users[uid]["balance"] += amt
-    # Remove blocked from user
-    users[uid]["blocked"] = max(users[uid].get("blocked",0.0)-amt,0.0)
+    users[uid]["blocked"] -= amt
     w["status"] = "unblocked"
     w.pop("block_code", None)
     save_users(); save_withdraws()
@@ -336,111 +356,326 @@ def admin_panel_btn(m):
         return
     bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_menu())
 
-# ================= BACK TO MAIN MENU =================
+# ================= ADMIN ADD BALANCE =================
+@bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
+def add_balance(m):
+    if not is_admin(m.from_user.id): return
+    msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID and amount to ADD\nExample: 12345678901 2.5")
+    bot.register_next_step_handler(msg, add_balance_step)
+
+def add_balance_step(m):
+    if not is_admin(m.from_user.id): return
+    try:
+        uid_or_bid, amt = m.text.split()
+        amt = float(amt)
+    except:
+        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+
+    uid = uid_or_bid if uid_or_bid in users else find_user_by_botid(uid_or_bid)
+    if not uid: return bot.send_message(m.chat.id,"❌ User not found")
+    users[uid]["balance"] += amt
+    save_users()
+    bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
+    bot.send_message(m.chat.id,f"✅ Added ${amt:.2f} to user {uid}")
+
+# ================= ADMIN REMOVE MONEY =================
+@bot.message_handler(func=lambda m: m.text=="➖ REMOVE MONEY")
+def remove_money(m):
+    if not is_admin(m.from_user.id): return
+    msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID and amount to REMOVE\nExample: 12345678901 1.5")
+    bot.register_next_step_handler(msg, remove_money_step)
+
+def remove_money_step(m):
+    if not is_admin(m.from_user.id): return
+    try:
+        uid_or_bid, amt = m.text.split()
+        amt = float(amt)
+    except:
+        return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
+
+    uid = uid_or_bid if uid_or_bid in users else find_user_by_botid(uid_or_bid)
+    if not uid: return bot.send_message(m.chat.id,"❌ User not found")
+    if users[uid]["balance"] < amt:
+        return bot.send_message(m.chat.id,"❌ Insufficient balance")
+    users[uid]["balance"] -= amt
+    save_users()
+    bot.send_message(int(uid), f"💸 Admin removed ${amt:.2f} from your balance!")
+    bot.send_message(m.chat.id,f"✅ Removed ${amt:.2f} from user {uid}")
+
+# ================= ADMIN UNBAN USER =================
+@bot.message_handler(func=lambda m: m.text=="✅ UNBAN USER")
+def unban_start(m):
+    if not is_admin(m.from_user.id): return
+    msg = bot.send_message(m.chat.id,"Send BOT ID or Telegram ID to UNBAN")
+    bot.register_next_step_handler(msg, unban_process)
+
+def unban_process(m):
+    if not is_admin(m.from_user.id): return
+    text = m.text.strip()
+    uid = text if text in users else find_user_by_botid(text)
+    if not uid: return bot.send_message(m.chat.id,"❌ User not found")
+    users[uid]["banned"] = False
+    save_users()
+    bot.send_message(int(uid),"✅ You are unbanned. You can use the bot again.")
+    bot.send_message(m.chat.id,f"✅ User {uid} unbanned successfully")
+
+# ================= ADMIN STATS =================
+@bot.message_handler(func=lambda m: m.text=="📊 STATS")
+def admin_stats(m):
+    if not is_admin(m.from_user.id): return
+    total_users = len(users)
+    total_balance = sum(u.get("balance",0) for u in users.values())
+    total_paid = sum(w["amount"] for w in withdraws if w["status"]=="paid")
+    total_pending = sum(w["amount"] for w in withdraws if w["status"]=="pending")
+    total_blocked = sum(u.get("blocked",0) for u in users.values())
+    banned_users = sum(1 for u in users.values() if u.get("banned"))
+    msg = (
+        f"📊 <b>ADMIN STATS</b>\n\n"
+        f"👥 TOTAL USERS: {total_users}\n"
+        f"💰 TOTAL BALANCE: ${total_balance:.2f}\n"
+        f"💵 TOTAL WITHDRAWAL PAID: ${total_paid:.2f}\n"
+        f"⏳ TOTAL PENDING: ${total_pending:.2f}\n"
+        f"🚫 BLOCKED: ${total_blocked:.2f}\n"
+        f"🚫 BANNED USERS: {banned_users}"
+    )
+    bot.send_message(m.chat.id, msg)
+
+# ================= ADMIN BROADCAST =================
+@bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
+def broadcast_start(m):
+    if not is_admin(m.from_user.id): return
+    msg = bot.send_message(m.chat.id,"📢 Send message / photo / video / link to broadcast")
+    bot.register_next_step_handler(msg, broadcast_send)
+
+def broadcast_send(m):
+    if not is_admin(m.from_user.id): return
+    sent = 0; failed = 0
+    for uid in users:
+        try:
+            if m.content_type == 'text':
+                bot.send_message(int(uid), m.text)
+            elif m.content_type == 'photo':
+                bot.send_photo(int(uid), m.photo[-1].file_id, caption=m.caption)
+            elif m.content_type == 'video':
+                bot.send_video(int(uid), m.video.file_id, caption=m.caption)
+            elif m.content_type == 'document':
+                bot.send_document(int(uid), m.document.file_id, caption=m.caption)
+            else:
+                bot.send_message(int(uid),"📢 New message available!")
+            sent += 1
+        except:
+            failed += 1
+    bot.send_message(m.chat.id,f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
+
+# ================= BACK TO MAIN MENU FIX =================
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
     if banned_guard(m): return
-    # Admin sees admin menu again, user sees main menu
+    # User & Admin labadaba ku laabo menu sax ah
     if is_admin(uid):
-        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(show_admin=True))
     else:
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(show_admin=False))
 
-# ================= ADMIN WITHDRAWAL REQUESTS =================
-@bot.message_handler(func=lambda m: m.text=="💳 WITHDRAWAL CHECK")
-def withdrawal_check_start(m):
-    if not is_admin(m.from_user.id): return
-    msg = bot.send_message(m.chat.id,"Enter Withdrawal Request ID or type ALL to see all pending requests")
-    bot.register_next_step_handler(msg, withdrawal_check_process)
+    # ================= WITHDRAWAL MENU =================
+@bot.message_handler(func=lambda m: m.text=="💸 WITHDRAWAL")
+def withdraw_menu(m):
+    if banned_guard(m): return
+    uid = str(m.from_user.id)
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("USDT-BEP20","🔙 CANCEL")
+    bot.send_message(m.chat.id,"Select withdrawal method:", reply_markup=kb)
 
-def withdrawal_check_process(m):
-    if not is_admin(m.from_user.id): return
-    text = m.text.strip()
-    if text.upper() == "ALL":
-        pending_requests = [w for w in withdraws if w["status"]=="pending"]
-        if not pending_requests:
-            bot.send_message(m.chat.id,"❌ No pending withdrawals")
-            return
-        for w in pending_requests:
-            uid = w["user"]
-            markup = InlineKeyboardMarkup()
-            markup.add(
-                InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{w['id']}"),
-                InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{w['id']}"),
-                InlineKeyboardButton("🚫 BAN USER", callback_data=f"ban_{uid}"),
-                InlineKeyboardButton("💰 BAN MONEY", callback_data=f"banmoney_{w['id']}")
-            )
-            bot.send_message(m.chat.id,
-                f"💳 PENDING WITHDRAWAL\n🧾 Request ID: {w['id']}\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${w['amount']:.2f}\n🏦 Address: {w['address']}",
-                reply_markup=markup
-            )
+# ================= WITHDRAWAL PROCESSING =================
+@bot.message_handler(func=lambda m: m.text in ["USDT-BEP20","🔙 CANCEL"])
+def withdraw_method(m):
+    uid = str(m.from_user.id)
+    if m.text=="🔙 CANCEL":
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(show_admin=is_admin(uid)))
+        return
+    if m.text=="USDT-BEP20":
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_address_step)
+
+def withdraw_address_step(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+    if text=="🔙 CANCEL":
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(show_admin=is_admin(uid)))
+        return
+    if not text.startswith("0x"):
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_address_step)
+        return
+    users[uid]["temp_addr"] = text
+    save_users()
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🔙 CANCEL")
+    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL", reply_markup=kb)
+    bot.register_next_step_handler(msg, withdraw_amount_step)
+
+def withdraw_amount_step(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+    if text=="🔙 CANCEL":
+        bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(show_admin=is_admin(uid)))
         return
     try:
-        wid = int(text)
+        amt = float(text)
     except:
-        bot.send_message(m.chat.id,"❌ Invalid Request ID")
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_amount_step)
         return
-    w = next((x for x in withdraws if x["id"]==wid), None)
-    if not w:
-        bot.send_message(m.chat.id,"❌ Request ID not found")
+    if amt<1 or amt>users[uid]["balance"]:
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,f"❌ Invalid amount. Balance: ${users[uid]['balance']:.2f}", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_amount_step)
         return
-    uid = w["user"]
+
+    wid = random.randint(10000,99999)
+    addr = users[uid].pop("temp_addr")
+    withdraws.append({
+        "id": wid,
+        "user": uid,
+        "amount": amt,
+        "blocked": amt,
+        "address": addr,
+        "status": "pending",
+        "time": str(datetime.now())
+    })
+    users[uid]["balance"] -= amt
+    users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
+    save_users(); save_withdraws()
+
+    bot.send_message(m.chat.id,
+        f"✅ Withdrawal Request Sent\n🧾 Request ID: {wid}\n💵 Amount: ${amt:.2f}\n🏦 Address: {addr}\n💰 Balance Left: ${users[uid]['balance']:.2f}\n⏳ Status: Pending",
+        reply_markup=user_menu(show_admin=is_admin(uid))
+    )
+
+    # Admin view buttons
     markup = InlineKeyboardMarkup()
     markup.add(
-        InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{w['id']}"),
-        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{w['id']}"),
+        InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
+        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
         InlineKeyboardButton("🚫 BAN USER", callback_data=f"ban_{uid}"),
-        InlineKeyboardButton("💰 BAN MONEY", callback_data=f"banmoney_{w['id']}")
+        InlineKeyboardButton("💰 BLOCK MONEY", callback_data=f"block_{wid}")
     )
-    bot.send_message(m.chat.id,
-        f"💳 WITHDRAWAL DETAILS\n🧾 Request ID: {w['id']}\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${w['amount']:.2f}\n🏦 Address: {w['address']}\n⏳ Status: {w['status'].upper()}",
+    bot.send_message(ADMIN_ID,
+        f"💳 NEW WITHDRAWAL\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
         reply_markup=markup
     )
 
-# ================= USER BACK BUTTON IN WITHDRAWAL =================
-def back_main_menu(chat_id, uid):
-    if is_admin(uid):
-        bot.send_message(chat_id,"👑 Admin Menu", reply_markup=admin_menu())
-    else:
-        bot.send_message(chat_id,"🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+# ================= ADMIN CALLBACKS =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","block_")))
+def admin_callbacks(call):
+    data = call.data
 
-# ================= MEDIA DOWNLOADER =================
+    if data.startswith("confirm_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending": return
+        w["status"] = "paid"
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id,"✅ Confirmed")
+        bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
+
+    elif data.startswith("reject_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending": return
+        w["status"] = "rejected"
+        users[w["user"]]["balance"] += w["blocked"]
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id,"❌ Rejected")
+        bot.send_message(int(w["user"]), f"❌ Withdrawal #{wid} rejected")
+
+    elif data.startswith("ban_"):
+        uid = data.split("_")[1]
+        if uid in users:
+            users[uid]["banned"] = True
+            save_users()
+            bot.answer_callback_query(call.id,"🚫 User banned")
+            bot.send_message(int(uid),"🚫 You have been banned by admin.")
+
+    elif data.startswith("block_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending": return
+        uid = w["user"]
+        amt = w["blocked"]
+        code = str(random.randint(1000,9999))
+        w["status"] = "blocked"
+        w["block_code"] = code
+        users[uid]["blocked"] -= amt
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id,"💰 Money Blocked")
+        bot.send_message(int(uid), f"🚫 Your withdrawal of ${amt:.2f} is BLOCKED.\n💳 Code: {code}\nContact support to release funds.")
+
+# ================= UNBLOCK MONEY =================
+@bot.message_handler(func=lambda m: m.text=="💳 UNBLOCK MONEY")
+def unblock_money_start(m):
+    if not is_admin(m.from_user.id): return
+    msg = bot.send_message(m.chat.id,"Send 4-digit Block Code to UNBLOCK the money")
+    bot.register_next_step_handler(msg, unblock_money_process)
+
+def unblock_money_process(m):
+    if not is_admin(m.from_user.id): return
+    code = m.text.strip()
+    w = next((x for x in withdraws if x.get("block_code") == code), None)
+    if not w:
+        bot.send_message(m.chat.id,"❌ Invalid Block Code")
+        return
+    uid = w["user"]
+    amt = w["blocked"]
+    users[uid]["balance"] += amt
+    users[uid]["blocked"] -= amt
+    w["status"] = "unblocked"
+    w.pop("block_code", None)
+    save_users(); save_withdraws()
+    bot.send_message(int(uid), f"✅ Your blocked ${amt:.2f} is now available in balance!")
+    bot.send_message(m.chat.id,f"✅ Money unblocked for user {uid}")
+
+# ================= MEDIA DOWNLOADERS =================
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
-    bot.send_video(chat_id, open(file, "rb"), caption="Downloaded by @Downloadvedioytibot", reply_markup=kb)
+    bot.send_video(chat_id, open(file,"rb"), caption="Downloaded by @Downloadvedioytibot", reply_markup=kb)
 
 def download_media(chat_id, url):
     try:
-        # ===== TIKTOK =====
         if "tiktok.com" in url:
             res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
             if res.get("code") == 0:
                 data = res["data"]
                 if data.get("images"):
-                    for i, img in enumerate(data["images"], 1):
-                        img_data = requests.get(img, timeout=20).content
-                        filename = f"tt_{i}.jpg"
-                        with open(filename,"wb") as f: f.write(img_data)
+                    for i,img in enumerate(data["images"],1):
+                        filename=f"tt_{i}.jpg"
+                        with open(filename,"wb") as f: f.write(requests.get(img).content)
                         bot.send_photo(chat_id, open(filename,"rb"), caption=f"📸 Photo {i}")
                         os.remove(filename)
                     return
                 if data.get("play"):
-                    vid_data = requests.get(data["play"], timeout=60).content
+                    vid_data = requests.get(data["play"]).content
                     with open("tt_video.mp4","wb") as f: f.write(vid_data)
-                    send_video_with_music(chat_id, "tt_video.mp4")
+                    send_video_with_music(chat_id,"tt_video.mp4")
                     return
-
-        # ===== YOUTUBE =====
         if "youtube.com" in url or "youtu.be" in url:
             ydl_opts = {"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
-            send_video_with_music(chat_id, file)
+            send_video_with_music(chat_id,file)
             return
-
         bot.send_message(chat_id,"❌ Unsupported link")
     except Exception as e:
         bot.send_message(chat_id,f"Download error: {e}")
@@ -468,4 +703,11 @@ def handle_links(message):
 # ================= RUN BOT =================
 if __name__ == "__main__":
     print("🤖 Bot is running...")
-    bot.infinity_polling(skip_pending=True)
+    try:
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        print(f"❌ Bot crashed: {e}")
+        print("⏳ Restarting...")
+        import time
+        time.sleep(5)
+        bot.infinity_polling(skip_pending=True)

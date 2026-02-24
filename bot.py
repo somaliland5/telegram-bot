@@ -238,9 +238,9 @@ def back_main(m):
     uid = str(m.from_user.id)
     if banned_guard(m): return
     if is_admin(uid):
-        back_main_menu(m.chat.id, uid, context="admin")
+        bot.send_message(m.chat.id, "👑 Admin Panel", reply_markup=admin_panel_menu())
     else:
-        back_main_menu(m.chat.id, uid, context="user")
+        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(False))
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")

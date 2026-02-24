@@ -415,3 +415,78 @@ def admin_withdrawals(m):
         if w["status"]=="pending":
             msg += f"🧾 ID: {w['id']} | User: {w['user']} | Amount: ${w['amount']:.2f} | Address: {w['address']}\n"
     bot.send_message(m.chat.id, msg or "No pending withdrawals.")
+
+# ================= MEDIA DOWNLOADER & MUSIC =================
+def send_video_with_music(chat_id, file):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
+    bot.send_video(chat_id, open(file,"rb"), caption="Downloaded by @Downloadvedioytibot", reply_markup=kb)
+
+def download_media(chat_id, url):
+    try:
+        # ===== TIKTOK =====
+        if "tiktok.com" in url:
+            res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
+            if res.get("code")==0:
+                data = res["data"]
+                # Images
+                if data.get("images"):
+                    for i,img in enumerate(data["images"],1):
+                        img_data = requests.get(img, timeout=20).content
+                        filename = f"tt_{i}.jpg"
+                        with open(filename,"wb") as f: f.write(img_data)
+                        bot.send_photo(chat_id, open(filename,"rb"), caption=f"📸 Photo {i}")
+                        os.remove(filename)
+                    return
+                # Video
+                if data.get("play"):
+                    vid_data = requests.get(data["play"], timeout=60).content
+                    with open("tt_video.mp4","wb") as f: f.write(vid_data)
+                    send_video_with_music(chat_id, "tt_video.mp4")
+                    return
+        # ===== YOUTUBE =====
+        if "youtube.com" in url or "youtu.be" in url:
+            ydl_opts = {"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
+            send_video_with_music(chat_id, file)
+            return
+        bot.send_message(chat_id,"❌ Unsupported link")
+    except Exception as e:
+        bot.send_message(chat_id,f"Download error: {e}")
+
+# ================= MUSIC CONVERSION =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    file = call.data.split("|")[1]
+    audio = file.replace(".mp4",".mp3")
+    try:
+        subprocess.run(
+            ["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        kb = InlineKeyboardMarkup()
+        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
+        bot.send_audio(
+            call.message.chat.id,
+            open(audio,"rb"),
+            title="Downloaded Music",
+            performer="Downloadvedioytibot",
+            caption="Downloaded via @Downloadvedioytibot",
+            reply_markup=kb
+        )
+        os.remove(audio)
+    except:
+        bot.send_message(call.message.chat.id,"❌ Music conversion failed")
+
+# ================= LINK HANDLER =================
+@bot.message_handler(func=lambda m: m.text and "http" in m.text)
+def handle_links(message):
+    bot.send_message(message.chat.id,"⏳ Downloading...")
+    download_media(message.chat.id, message.text)
+
+# ================= RUN BOT =================
+if __name__ == "__main__":
+    print("🤖 Bot is running...")
+    bot.infinity_polling(skip_pending=True)

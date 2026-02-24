@@ -509,6 +509,52 @@ def add_balance_process(m):
     except:
         bot.send_message(m.chat.id,"❌ Error. Use format: <BOT ID or Telegram ID> <amount>")
 
+# ================= STATS =================
+@bot.message_handler(func=lambda m: m.text=="📊 STATS")
+def stats_handler(m):
+    """Admin-only: show bot stats"""
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id,"❌ You are not admin")
+        return
+    total_users = len(users)
+    total_balance = sum(u.get("balance",0.0) for u in users.values())
+    total_blocked = sum(u.get("blocked",0.0) for u in users.values())
+    total_withdraws = len(withdraws)
+    pending_withdraws = len([w for w in withdraws if w["status"]=="pending"])
+    msg = (
+        f"📊 BOT STATS\n\n"
+        f"👥 Total Users: {total_users}\n"
+        f"💰 Total Balance: ${total_balance:.2f}\n"
+        f"⏳ Total Blocked: ${total_blocked:.2f}\n"
+        f"🧾 Total Withdraw Requests: {total_withdraws}\n"
+        f"⏳ Pending Withdrawals: {pending_withdraws}"
+    )
+    bot.send_message(m.chat.id,msg)
+
+# ================= BROADCAST =================
+@bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
+def broadcast_start(m):
+    """Admin-only: start broadcast"""
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id,"❌ You are not admin")
+        return
+    msg = bot.send_message(m.chat.id,"📝 Send the broadcast message to all users:")
+    bot.register_next_step_handler(msg, broadcast_send)
+
+def broadcast_send(m):
+    """Send the broadcast message to all users"""
+    if not is_admin(m.from_user.id):
+        return
+    text = m.text
+    count = 0
+    for uid in users:
+        try:
+            bot.send_message(int(uid), text)
+            count += 1
+        except:
+            continue
+    bot.send_message(m.chat.id,f"✅ Broadcast sent to {count} users")
+
 # ================= REMOVE MONEY =================
 @bot.message_handler(func=lambda m: m.text=="➖ REMOVE MONEY")
 def remove_balance_start(m):
@@ -536,6 +582,22 @@ def remove_balance_process(m):
         bot.send_message(int(uid), f"💸 ${amt:.2f} has been removed from your balance")
     except:
         bot.send_message(m.chat.id,"❌ Error. Use format: <BOT ID or Telegram ID> <amount>")
+
+# ================= BACK TO MAIN MENU =================
+def back_to_main_menu(m):
+    """Return user or admin to main menu"""
+    uid = str(m.from_user.id)
+    # Halkan admin-ka ayaa dib loogu celinayaa menu-ga caadiga ah
+    bot.send_message(
+        m.chat.id,
+        "🔙 Returning to main menu",
+        reply_markup=user_menu(is_admin(uid))
+    )
+
+# ================= BACK BUTTON HANDLER =================
+@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
+def back_main_menu_handler(m):
+    back_to_main_menu(m)
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")

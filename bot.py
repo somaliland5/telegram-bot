@@ -1,420 +1,414 @@
-import os
-import asyncio
-import random
-import logging
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import *
-from aiogram.filters import Command
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
+import telebot
+from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+import os, json, random, requests, subprocess
+from datetime import datetime
+import yt_dlp
 
 # ================= CONFIG =================
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 7983838654
+bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
-LOCAL_NUMBER = "+252907868526"
-BNB_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
-USDT_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
+# ================= DATABASE =================
+USERS_FILE = "users.json"
+WITHDRAWS_FILE = "withdraws.json"
 
-bot = Bot(BOT_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
-logging.basicConfig(level=logging.INFO)
+def load_json(path, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, "r") as f:
+        return json.load(f)
 
-users = {}
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
 
-# ================= STATES =================
-class VirtualState(StatesGroup):
-    screenshot = State()
+users = load_json(USERS_FILE, {})
+withdraws = load_json(WITHDRAWS_FILE, [])
 
-class CodeState(StatesGroup):
-    code = State()
+def save_users():
+    save_json(USERS_FILE, users)
+
+def save_withdraws():
+    save_json(WITHDRAWS_FILE, withdraws)
 
 # ================= HELPERS =================
-def random_number():
-    return "+25263" + "".join(str(random.randint(0,9)) for _ in range(7))
+def random_ref():
+    return str(random.randint(1000000000,9999999999))
 
-def generate_otp():
-    return "".join(random.choices("0123456789", k=6))
+def random_botid():
+    return str(random.randint(10000000000,99999999999))
 
-async def animation(message, text="Checking", sec=10):
-    for i in range(sec):
-        await asyncio.sleep(1)
-        dots = "." * (i % 4)
-        await message.edit_text(f"{text}{dots}")
+def now_month():
+    return datetime.now().month
 
-# ================= START =================
-@dp.message(Command("start"))
-async def start(msg: Message):
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="New Order"),
-             KeyboardButton(text="Check Code")]
-        ],
-        resize_keyboard=True
-    )
-    await msg.answer("Ku soo dhawoow Service Bot 🤖", reply_markup=kb)
+def is_admin(uid):
+    return int(uid) == ADMIN_ID
 
-# ================= CHECK CODE =================
-@dp.message(F.text == "Check Code")
-async def check_code(msg: Message, state: FSMContext):
-    await msg.answer("Geli Code-kaaga:")
-    await state.set_state(CodeState.code)
+def find_user_by_botid(bid):
+    for u, data in users.items():
+        if data.get("bot_id") == bid:
+            return u
+    return None
 
-@dp.message(CodeState.code)
-async def process_code(msg: Message, state: FSMContext):
-    uid = msg.from_user.id
-    if uid in users and users[uid].get("otp") == msg.text:
-        await msg.answer("✅ Code sax ah")
-    else:
-        await msg.answer("❌ Code khaldan")
-    await state.clear()
+def banned_guard(m):
+    uid = str(m.from_user.id)
+    if uid in users and users[uid].get("banned"):
+        bot.send_message(m.chat.id, "🚫 You are banned.")
+        return True
+    return False
 
-# ================= NEW ORDER =================
-@dp.message(F.text == "New Order")
-async def new_order(msg: Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="VIRTUAL ($0.8)", callback_data="virtual")],
-        [InlineKeyboardButton(text="CARD", callback_data="card")]
-    ])
-    await msg.answer("Dooro adeeg:", reply_markup=kb)
+# ================= MENUS =================
+def user_menu(is_admin_user=False):
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("💰 BALANCE","💸 WITHDRAWAL")
+    kb.add("👥 REFERRAL","🆔 GET ID")
+    kb.add("☎️ CUSTOMER")
+    if is_admin_user:
+        kb.add("👑 ADMIN PANEL")
+    return kb
 
-# ================= VIRTUAL FLOW =================
-@dp.callback_query(F.data == "virtual")
-async def virtual(call: CallbackQuery):
-    number = random_number()
-    users[call.from_user.id] = {
-        "type": "virtual",
-        "number": number,
-        "amount": "$0.8"
-    }
+def admin_menu():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("📊 STATS","📢 BROADCAST")
+    kb.add("➕ ADD BALANCE","✅ UNBAN MONEY")
+    kb.add("💳 WITHDRAWAL CHECK")
+    kb.add("🔙 BACK MAIN MENU")
+    return kb
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="LOCAL", callback_data="v_local")],
-        [InlineKeyboardButton(text="CRYPTO", callback_data="v_crypto")]
-    ])
+def back_main_menu(chat_id, uid):
+    bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
-    await call.message.edit_text(
-        f"Number: {number}\nQiimaha: $0.8\nDooro Payment:",
-        reply_markup=kb
-    )
-
-# LOCAL
-@dp.callback_query(F.data == "v_local")
-async def v_local(call: CallbackQuery):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="CONFIRM", callback_data="v_confirm")]
-    ])
-    await call.message.edit_text(
-        f"Lacagta ku dir:\n{LOCAL_NUMBER}",
-        reply_markup=kb
-    )
-
-# CRYPTO
-@dp.callback_query(F.data == "v_crypto")
-async def v_crypto(call: CallbackQuery):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="CONFIRM", callback_data="v_confirm")]
-    ])
-    await call.message.edit_text(
-        f"BNB:\n`{BNB_ADDRESS}`\n\nUSDT-BEP20:\n`{USDT_ADDRESS}`",
-        parse_mode="Markdown",
-        reply_markup=kb
+# ================= START HANDLER =================
+@bot.message_handler(commands=['start'])
+def start(m):
+    uid = str(m.from_user.id)
+    args = m.text.split()
+    
+    if uid not in users:
+        ref = args[1] if len(args) > 1 else None
+        users[uid] = {
+            "balance":0.0,
+            "blocked":0.0,
+            "ref":random_ref(),
+            "bot_id":random_botid(),
+            "invited":0,
+            "banned":False,
+            "month": now_month()
+        }
+        # Referral reward
+        if ref:
+            for u in users:
+                if users[u]["ref"] == ref:
+                    users[u]["balance"] += 0.2
+                    users[u]["invited"] += 1
+                    bot.send_message(int(u), "🎉 You earned $0.2 from referral.")
+                    break
+        save_users()
+    
+    bot.send_message(
+        m.chat.id,
+        "👋 Welcome! Send Video Link to Download 🎬",
+        reply_markup=user_menu(is_admin(uid))
     )
 
-# CONFIRM PAYMENT
-@dp.callback_query(F.data == "v_confirm")
-async def v_confirm(call: CallbackQuery, state: FSMContext):
-    msg = await call.message.edit_text("OTP READY...")
-    await animation(msg, "Checking", 10)
+# ================= BALANCE HANDLER =================
+@bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
+def balance(m):
+    if banned_guard(m): return
+    uid = str(m.from_user.id)
+    bal = users[uid]["balance"]
+    blk = users[uid].get("blocked",0.0)
+    bot.send_message(m.chat.id,f"💰 Available: ${bal:.2f}\n⏰ Blocked: ${blk:.2f}")
 
-    await call.message.answer("Fadlan Lacagta soo dir oo Screenshot dir.")
-    await state.set_state(VirtualState.screenshot)
-
-# RECEIVE SCREENSHOT
-@dp.message(VirtualState.screenshot, F.photo)
-async def receive_screenshot(msg: Message, state: FSMContext):
-    uid = msg.from_user.id
-    users[uid]["screenshot"] = msg.photo[-1].file_id
-
-    otp = generate_otp()
-    users[uid]["otp"] = otp
-
-    await msg.answer("Waad mahadsantahay 🚀 Sug Ansixinta Admin.")
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="CONFIRM", callback_data=f"admin_ok_{uid}")],
-        [InlineKeyboardButton(text="REJECT", callback_data=f"admin_no_{uid}")],
-        [InlineKeyboardButton(text="ASK", callback_data=f"admin_ask_{uid}")]
-    ])
-
-    await bot.send_photo(
-        ADMIN_ID,
-        users[uid]["screenshot"],
-        caption=f"""
-New Virtual Order
-
-User: {uid}
-Number: {users[uid]['number']}
-OTP: {otp}
-""",
-        reply_markup=kb
+# ================= GET ID HANDLER =================
+@bot.message_handler(func=lambda m: m.text=="🆔 GET ID")
+def get_id(m):
+    if banned_guard(m): return
+    uid = str(m.from_user.id)
+    bot.send_message(
+        m.chat.id,
+        f"🆔 BOT ID: <code>{users[uid]['bot_id']}</code>\n👤 Telegram ID: <code>{uid}</code>"
     )
 
-    await state.clear()
+# ================= REFERRAL HANDLER =================
+@bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
+def referral(m):
+    if banned_guard(m): return
+    uid = str(m.from_user.id)
+    link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
+    invited = users[uid].get("invited",0)
+    msg_text = (
+        f"🔗 Your referral link:\n{link}\n"
+        f"👥 Invited: {invited}\n\n"
+        "🎁 Each new user who joins using your link will automatically give you $0.2!"
+    )
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🔙 BACK MAIN MENU")
+    bot.send_message(m.chat.id, msg_text, reply_markup=kb)
 
-# ================= ADMIN ACTIONS =================
-@dp.callback_query(F.data.startswith("admin_ok_"))
-async def admin_ok(call: CallbackQuery):
-    uid = int(call.data.split("_")[2])
-    otp = users[uid]["otp"]
+# ================= CUSTOMER SUPPORT =================
+@bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")
+def customer(m):
+    if banned_guard(m): return
+    bot.send_message(m.chat.id,"Contact support: @scholes1")
 
-    await bot.send_message(uid, f"✅ Payment la xaqiijiyay\nOTP: {otp}")
-    await call.message.edit_caption("✅ La Ansixiyay")
+# ================= WITHDRAWAL MENU =================
+@bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")
+def withdraw_menu(m):
+    if banned_guard(m): return
+    uid = str(m.from_user.id)
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("USDT-BEP20")
+    kb.add("🔙 CANCEL")
+    bot.send_message(m.chat.id, "Select withdrawal method:", reply_markup=kb)
 
-@dp.callback_query(F.data.startswith("admin_no_"))
-async def admin_no(call: CallbackQuery):
-    uid = int(call.data.split("_")[2])
-    await bot.send_message(uid, "❌ Fadlan Lacagta soo dir.")
-    await call.message.edit_caption("❌ La Diiday")
+@bot.message_handler(func=lambda m: m.text in ["USDT-BEP20","🔙 CANCEL"])
+def withdraw_method(m):
+    uid = str(m.from_user.id)
+    if m.text=="🔙 CANCEL":
+        back_main_menu(m.chat.id, uid)
+        return
+    if m.text=="USDT-BEP20":
+        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL")
+        bot.register_next_step_handler(msg, withdraw_address)
 
-# ================= CARD STATES =================
-class CardState(StatesGroup):
-    card_type = State()
-    fullname = State()
-    mother = State()
-    face = State()
-    payment_method = State()
-    screenshot = State()
+def withdraw_address(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+    if text=="🔙 CANCEL":
+        back_main_menu(m.chat.id, uid)
+        return
+    if not text.startswith("0x"):
+        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL")
+        bot.register_next_step_handler(msg, withdraw_address)
+        return
+    users[uid]["temp_addr"] = text
+    save_users()
+    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL")
+    bot.register_next_step_handler(msg, withdraw_amount)
 
-# ================= CARD START =================
-@dp.callback_query(F.data == "card")
-async def card_start(call: CallbackQuery, state: FSMContext):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="NORMAL ($1)", callback_data="card_normal")],
-        [InlineKeyboardButton(text="VIP ($2)", callback_data="card_vip")]
-    ])
-    await call.message.edit_text("Dooro Nooca Card:", reply_markup=kb)
-
-# ================= CARD TYPE =================
-@dp.callback_query(F.data.startswith("card_"))
-async def card_type(call: CallbackQuery, state: FSMContext):
-    if call.data == "card_normal":
-        price = "$1"
-    else:
-        price = "$2"
-
-    await state.update_data(price=price, type=call.data)
-    await call.message.answer("Geli Magacaaga Saddex Magac (Tusaale: Ahmed Ali Jama):")
-    await state.set_state(CardState.fullname)
-
-# ================= FULL NAME VALIDATION =================
-@dp.message(CardState.fullname)
-async def get_fullname(msg: Message, state: FSMContext):
-    parts = msg.text.strip().split()
-
-    if len(parts) != 3 or not all(p.isalpha() for p in parts):
-        await msg.answer("❌ Fadlan geli 3 magac sax ah (Tusaale: Ahmed Ali Jama)")
+def withdraw_amount(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+    if text=="🔙 CANCEL":
+        back_main_menu(m.chat.id, uid)
+        return
+    try:
+        amt = float(text)
+    except:
+        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL")
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+    if amt<1:
+        msg = bot.send_message(m.chat.id,f"❌ Minimum withdrawal is $1\nBalance: ${users[uid]['balance']:.2f}")
+        bot.register_next_step_handler(msg, withdraw_amount)
+        return
+    if amt>users[uid]["balance"]:
+        msg = bot.send_message(m.chat.id,f"❌ Insufficient balance\nBalance: ${users[uid]['balance']:.2f}")
+        bot.register_next_step_handler(msg, withdraw_amount)
         return
 
-    await state.update_data(fullname=msg.text)
-    await msg.answer("Geli Magaca Hooyada:")
-    await state.set_state(CardState.mother)
+    wid = random.randint(10000,99999)
+    addr = users[uid].pop("temp_addr")
+    withdraws.append({
+        "id": wid,
+        "user": uid,
+        "amount": amt,
+        "blocked": amt,
+        "address": addr,
+        "status": "pending",
+        "time": str(datetime.now())
+    })
+    users[uid]["balance"] -= amt
+    users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
+    save_users(); save_withdraws()
 
-# ================= MOTHER NAME =================
-@dp.message(CardState.mother)
-async def get_mother(msg: Message, state: FSMContext):
-    if not msg.text.isalpha():
-        await msg.answer("❌ Magaca hooyada waa inuu ahaadaa xarfo kaliya.")
+    # User confirmation
+    bot.send_message(m.chat.id,
+        f"✅ Withdrawal Request Sent\n🧾 Request ID: {wid}\n💵 Amount: ${amt:.2f}\n🏦 Address: {addr}\n💰 Balance Left: ${users[uid]['balance']:.2f}\n⏳ Status: Pending",
+        reply_markup=user_menu(is_admin(uid))
+    )
+
+    # Admin inline buttons
+    markup = InlineKeyboardMarkup()
+    markup.add(
+        InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
+        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
+        InlineKeyboardButton("🚫 BAN", callback_data=f"ban_{uid}")
+    )
+    bot.send_message(ADMIN_ID,
+        f"💳 NEW WITHDRAWAL\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
+        reply_markup=markup
+    )
+
+    # ================= ADMIN CALLBACKS =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_")))
+def admin_callbacks(call):
+    data = call.data
+
+    if data.startswith("confirm_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending":
+            return
+        w["status"] = "paid"
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id,"✅ Confirmed")
+        bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
+
+    elif data.startswith("reject_"):
+        wid = int(data.split("_")[1])
+        w = next((x for x in withdraws if x["id"]==wid), None)
+        if not w or w["status"] != "pending":
+            return
+        w["status"] = "rejected"
+        users[w["user"]]["balance"] += w["blocked"]
+        users[w["user"]]["blocked"] -= w["blocked"]
+        save_users(); save_withdraws()
+        bot.answer_callback_query(call.id,"❌ Rejected")
+        bot.send_message(int(w["user"]), f"❌ Withdrawal #{wid} rejected")
+
+    elif data.startswith("ban_"):
+        uid = data.split("_")[1]
+        if uid in users:
+            users[uid]["banned"] = True
+            save_users()
+            bot.answer_callback_query(call.id,"🚫 User banned")
+
+# ================= STATS =================
+@bot.message_handler(func=lambda m: m.text=="📊 STATS")
+def stats(m):
+    if not is_admin(m.from_user.id):
         return
 
-    await state.update_data(mother=msg.text)
-    await msg.answer("Soo dir Sawirka Wajigaaga (Face Only):")
-    await state.set_state(CardState.face)
+    total_users = len(users)
+    total_balance = sum(u.get("balance",0) for u in users.values())
+    total_paid = sum(w["amount"] for w in withdraws if w["status"]=="paid")
+    total_pending = sum(w["amount"] for w in withdraws if w["status"]=="pending")
+    banned_users = sum(1 for u in users.values() if u.get("banned"))
 
-# ================= FACE CHECK =================
-@dp.message(CardState.face, F.photo)
-async def get_face(msg: Message, state: FSMContext):
-    face_id = msg.photo[-1].file_id
-    await state.update_data(face=face_id)
+    msg = (
+        f"📊 <b>ADMIN STATS</b>\n\n"
+        f"👥 TOTAL USERS: {total_users}\n"
+        f"💰 TOTAL BALANCE: ${total_balance:.2f}\n"
+        f"💵 TOTAL WITHDRAWAL PAID: ${total_paid:.2f}\n"
+        f"⏳ TOTAL PENDING: ${total_pending:.2f}\n"
+        f"🚫 BANNED USERS: {banned_users}"
+    )
 
-    checking = await msg.answer("Searching...")
-    await animation(checking, "Checking", 10)
+    bot.send_message(m.chat.id, msg)
 
-    data = await state.get_data()
-    number = random_number()
-
-    await state.update_data(number=number)
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="LOCAL", callback_data="card_local")],
-        [InlineKeyboardButton(text="CRYPTO", callback_data="card_crypto")]
-    ])
-
-    await msg.answer(
-        f"""
-Number: {number}
-Qiimaha: {data['price']}
-
-Dooro Payment Method:
-""",
+# ================= MEDIA DOWNLOADER =================
+def send_video_with_music(chat_id, file):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
+    bot.send_video(
+        chat_id,
+        open(file, "rb"),
+        caption="Downloaded by @Downloadvedioytibot",
         reply_markup=kb
     )
 
-    await state.set_state(CardState.payment_method)
+def download_media(chat_id, url):
+    try:
+        # ===== TIKTOK =====
+        if "tiktok.com" in url:
+            try:
+                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
 
-# ================= PAYMENT METHOD =================
-@dp.callback_query(F.data.startswith("card_"))
-async def card_payment_method(call: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
+                if res.get("code") == 0:
+                    data = res["data"]
 
-    if call.data == "card_local":
-        text = f"Lacagta ku dir number-kan:\n{LOCAL_NUMBER}"
-    else:
-        text = f"BNB:\n`{BNB_ADDRESS}`\n\nUSDT-BEP20:\n`{USDT_ADDRESS}`"
+                    # ===== PHOTOS (MID MID) =====
+                    if data.get("images"):
+                        count = 1
+                        for img in data["images"]:
+                            img_data = requests.get(img, timeout=20).content
+                            filename = f"tt_{count}.jpg"
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="CONFIRM", callback_data="card_confirm")]
-    ])
+                            with open(filename, "wb") as f:
+                                f.write(img_data)
 
-    await call.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+                            bot.send_photo(
+                                chat_id,
+                                open(filename, "rb"),
+                                caption=f"📸 Photo {count}\nDownloaded by @Downloadvedioytibot"
+                            )
 
-# ================= CONFIRM =================
-@dp.callback_query(F.data == "card_confirm")
-async def card_confirm(call: CallbackQuery, state: FSMContext):
-    await call.message.answer("Soo dir Screenshot-ka Lacagta:")
-    await state.set_state(CardState.screenshot)
+                            os.remove(filename)
+                            count += 1
+                        return
 
-# ================= RECEIVE SCREENSHOT =================
-@dp.message(CardState.screenshot, F.photo)
-async def card_screenshot(msg: Message, state: FSMContext):
-    uid = msg.from_user.id
-    data = await state.get_data()
+                    # ===== VIDEO =====
+                    if data.get("play"):
+                        vid_data = requests.get(data["play"], timeout=60).content
+                        with open("tt_video.mp4", "wb") as f:
+                            f.write(vid_data)
 
-    await msg.answer("Waad mahadsantahay 🚀 Dalabkaaga waa la hubinayaa.")
+                        send_video_with_music(chat_id, "tt_video.mp4")
+                        return
+            except:
+                pass
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="CONFIRM", callback_data=f"admin_card_ok_{uid}")],
-        [InlineKeyboardButton(text="REJECT", callback_data=f"admin_card_no_{uid}")],
-        [InlineKeyboardButton(text="ASK", callback_data=f"admin_card_ask_{uid}")]
-    ])
+        # ===== YOUTUBE =====
+        if "youtube.com" in url or "youtu.be" in url:
+            ydl_opts = {
+                "outtmpl": "youtube.%(ext)s",
+                "format": "mp4",
+                "quiet": True
+            }
 
-    caption = f"""
-New CARD Order
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
 
-User: {uid}
-Type: {data['type']}
-Full Name: {data['fullname']}
-Mother: {data['mother']}
-Number: {data['number']}
-Price: {data['price']}
-"""
+            send_video_with_music(chat_id, file)
+            return
 
-    await bot.send_photo(
-        ADMIN_ID,
-        msg.photo[-1].file_id,
-        caption=caption,
-        reply_markup=kb
-    )
+        bot.send_message(chat_id, "❌ Unsupported link")
 
-    await bot.send_photo(ADMIN_ID, data["face"])
+    except Exception as e:
+        bot.send_message(chat_id, f"Download error: {e}")
 
-    await state.clear()
+# ================= MUSIC BUTTON =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    file = call.data.split("|")[1]
+    audio = file.replace(".mp4", ".mp3")
 
-# ================= ADMIN CARD ACTIONS =================
-@dp.callback_query(F.data.startswith("admin_card_ok_"))
-async def admin_card_ok(call: CallbackQuery):
-    uid = int(call.data.split("_")[3])
-    await bot.send_message(uid, "✅ Dalabkaaga waa la Ansixiyay.")
-    await call.message.edit_caption("✅ CARD LA ANSIXIYAY")
+    try:
+        subprocess.run(
+            ["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-@dp.callback_query(F.data.startswith("admin_card_no_"))
-async def admin_card_no(call: CallbackQuery):
-    uid = int(call.data.split("_")[3])
-    await bot.send_message(uid, "❌ Fadlan Lacagta soo dir.")
-    await call.message.edit_caption("❌ CARD LA DIIDAY")
+        kb = InlineKeyboardMarkup()
+        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
 
-# ================= ASK SYSTEM =================
+        bot.send_audio(
+            call.message.chat.id,
+            open(audio,"rb"),
+            title="Downloaded Music",
+            performer="Downloadvedioytibot",
+            caption="Downloaded via @Downloadvedioytibot",
+            reply_markup=kb
+        )
 
-class AskState(StatesGroup):
-    waiting_admin_message = State()
+        os.remove(audio)
 
-pending_asks = {}
+    except:
+        bot.send_message(call.message.chat.id,"❌ Music conversion failed")
 
-# ========== ADMIN ASK (VIRTUAL) ==========
-@dp.callback_query(F.data.startswith("admin_ask_"))
-async def admin_ask(call: CallbackQuery, state: FSMContext):
-    uid = int(call.data.split("_")[2])
-    pending_asks[call.from_user.id] = uid
+# ================= LINK HANDLER =================
+@bot.message_handler(func=lambda m: m.text and "http" in m.text)
+def handle_links(message):
+    bot.send_message(message.chat.id,"⏳ Downloading...")
+    download_media(message.chat.id, message.text)
 
-    await call.message.answer("Qor fariinta aad u dirayso user-ka:")
-    await state.set_state(AskState.waiting_admin_message)
-
-@dp.callback_query(F.data.startswith("admin_card_ask_"))
-async def admin_card_ask(call: CallbackQuery, state: FSMContext):
-    uid = int(call.data.split("_")[3])
-    pending_asks[call.from_user.id] = uid
-
-    await call.message.answer("Qor fariinta aad u dirayso user-ka:")
-    await state.set_state(AskState.waiting_admin_message)
-
-# ========== SEND ADMIN MESSAGE ==========
-@dp.message(AskState.waiting_admin_message)
-async def send_admin_message(msg: Message, state: FSMContext):
-    if msg.from_user.id != ADMIN_ID:
-        return
-
-    if msg.from_user.id not in pending_asks:
-        return
-
-    target = pending_asks[msg.from_user.id]
-
-    await bot.send_message(
-        target,
-        f"📩 Fariin ka timid Admin:\n\n{msg.text}"
-    )
-
-    await msg.answer("✅ Fariinta waa la diray.")
-    pending_asks.pop(msg.from_user.id)
-    await state.clear()
-
-# ================= AUTO REJECT SYSTEM =================
-
-@dp.callback_query(F.data.startswith("admin_no_"))
-async def admin_no_final(call: CallbackQuery):
-    uid = int(call.data.split("_")[2])
-
-    await bot.send_message(uid, "❌ Payment lama xaqiijin.")
-
-    await asyncio.sleep(10)
-
-    await bot.send_message(uid, "⚠️ Fadlan Lacagta soo dir si adeegga loo sii wado.")
-
-    await call.message.edit_caption("❌ Virtual Payment Rejected")
-
-@dp.callback_query(F.data.startswith("admin_card_no_"))
-async def admin_card_no_final(call: CallbackQuery):
-    uid = int(call.data.split("_")[3])
-
-    await bot.send_message(uid, "❌ Payment lama xaqiijin.")
-
-    await asyncio.sleep(10)
-
-    await bot.send_message(uid, "⚠️ Fadlan Lacagta soo dir si dalabka loo dhamaystiro.")
-
-    await call.message.edit_caption("❌ Card Payment Rejected")
-
-# ================= PROTECTION FIX =================
-
-@dp.message()
-async def ignore_random(msg: Message):
-    # Ka hortag fariimo random ah
-    if msg.from_user.id != ADMIN_ID:
-        return
-
-# ================= RUN =================
-async def main():
-    await dp.start_polling(bot)
-
+# ================= RUN BOT =================
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("🤖 Bot is running...")
+    bot.infinity_polling(skip_pending=True)

@@ -5,8 +5,8 @@ from datetime import datetime
 import yt_dlp
 
 # ================= CONFIG =================
-TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = 7983838654
+TOKEN = os.getenv("BOT_TOKEN")  # Environment variable
+ADMIN_ID = 7983838654           # Telegram ID-ga admin
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # ================= DATABASE =================
@@ -14,11 +14,14 @@ USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 
 def load_json(path, default):
-    if not os.path.exists(path): return default
-    with open(path, "r") as f: return json.load(f)
+    if not os.path.exists(path): 
+        return default
+    with open(path, "r") as f: 
+        return json.load(f)
 
 def save_json(path, data):
-    with open(path, "w") as f: json.dump(data, f, indent=4)
+    with open(path, "w") as f: 
+        json.dump(data, f, indent=4)
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
@@ -449,25 +452,6 @@ def admin_withdrawals(m):
             msg += f"🧾 ID: {w['id']} | User: {w['user']} | Amount: ${w['amount']:.2f} | Address: {w['address']}\n"
     bot.send_message(m.chat.id, msg or "No pending withdrawals.")
 
-# ================= REFERRAL =================
-@bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
-def referral(m):
-    if banned_guard(m): return
-    uid = str(m.from_user.id)
-    link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-    invited = users[uid].get("invited", 0)
-    bot.send_message(
-        m.chat.id,
-        f"🔗 Your referral link:\n{link}\n👥 Invited: {invited}\n\n"
-        "🎁 Each new user who joins using your link will automatically give you $0.2!"
-    )
-
-# ================= CUSTOMER SUPPORT =================
-@bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")
-def customer(m):
-    if banned_guard(m): return
-    bot.send_message(m.chat.id,"Contact support: @scholes1")
-
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()
@@ -541,5 +525,4 @@ def handle_links(message):
 # ================= RUN BOT =================
 if __name__ == "__main__":
     print("🤖 Bot is running...")
-    # infinity_polling → bot-ka wuxuu ku sugayaa fariimaha cusub, xitaa haddii uu reconnect sameeyo
     bot.infinity_polling(skip_pending=True)

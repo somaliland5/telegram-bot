@@ -208,10 +208,10 @@ def withdraw_menu(m):
 @bot.message_handler(func=lambda m: m.text in ["USDT-BEP20", "🔙 CANCEL"])
 def withdraw_method(m):
     uid = str(m.from_user.id)
-
-if text == "🔙 CANCEL":
+    
+    if text == "🔙 CANCEL":
+    back_main_menu(m.chat.id, uid)
     return
-    back_main_menu(m.chat.id, uid) 
 
     if m.text == "USDT-BEP20":
         kb = ReplyKeyboardMarkup(resize_keyboard=True)

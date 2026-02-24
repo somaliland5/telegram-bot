@@ -76,6 +76,16 @@ def admin_menu():
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
+def back_main_menu(chat_id, uid):
+    """
+    Admin → admin_menu
+    User → user_menu
+    """
+    if is_admin(uid):
+        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_menu())
+    else:
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start(m):
@@ -134,21 +144,13 @@ def referral(m):
     if banned_guard(m):
         return
     uid = str(m.from_user.id)
-
-    # Samee referral link gaar ah
     link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-
-    # Tirada dadka uu casuumay
     invited = users[uid].get("invited", 0)
-
-    # Fariinta user-ka (kaliya link + invited)
     msg_text = (
         f"🔗 Your referral link:\n{link}\n"
         f"👥 Invited: {invited}\n\n"
         f"🎁 Each new user who joins using your link will automatically give you $0.2!"
     )
-
-    # Kaliya fariin u dir user-ka, button ma jiro
     bot.send_message(m.chat.id, msg_text)
 
 # ================= CUSTOMER SUPPORT =================
@@ -246,7 +248,7 @@ def withdraw_amount(m):
         reply_markup=markup
     )
 
-    # ================= ADMIN CALLBACKS =================
+# ================= ADMIN CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_")))
 def admin_callbacks(call):
     data = call.data
@@ -282,14 +284,6 @@ def admin_callbacks(call):
             bot.answer_callback_query(call.id,"🚫 User banned")
 
 # ================= ADMIN PANEL =================
-def admin_menu():
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("📊 STATS", "📢 BROADCAST")
-    kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
-    kb.add("✅ UNBAN USER", "💳 WITHDRAWAL CHECK")
-    kb.add("🔙 BACK MAIN MENU")
-    return kb
-
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")
 def admin_panel_btn(m):
     if not is_admin(m.from_user.id):
@@ -301,14 +295,10 @@ def admin_panel_btn(m):
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
-    
     if banned_guard(m): return
-    
-    if is_admin(uid):
-        bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_menu())
-    else:
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+    back_main_menu(m.chat.id, uid)
 
+# ================= ADMIN FEATURES =================
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):
@@ -344,24 +334,14 @@ def add_balance_step(m):
     except:
         return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
 
-    # Telegram ID first
-    if uid_or_bid in users:
-        users[uid_or_bid]["balance"] += amt
-        save_users()
-        bot.send_message(int(uid_or_bid), f"💰 Admin added ${amt:.2f} to your balance!")
-        bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to Telegram ID {uid_or_bid}")
-        return
+    uid = uid_or_bid if uid_or_bid in users else find_user_by_botid(uid_or_bid)
+    if not uid:
+        return bot.send_message(m.chat.id,"❌ User not found")
 
-    # BOT ID
-    uid = find_user_by_botid(uid_or_bid)
-    if uid:
-        users[uid]["balance"] += amt
-        save_users()
-        bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
-        bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to BOT ID {uid_or_bid}")
-        return
-
-    bot.send_message(m.chat.id,"❌ User not found")
+    users[uid]["balance"] += amt
+    save_users()
+    bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
+    bot.send_message(m.chat.id, f"✅ Added ${amt:.2f} to user {uid}")
 
 # ================= REMOVE MONEY =================
 @bot.message_handler(func=lambda m: m.text=="➖ REMOVE MONEY")
@@ -378,28 +358,16 @@ def remove_money_step(m):
     except:
         return bot.send_message(m.chat.id,"❌ Invalid format! Use: BOT_ID/Telegram_ID AMOUNT")
 
-    # Telegram ID
-    if uid_or_bid in users:
-        if users[uid_or_bid]["balance"] < amt:
-            return bot.send_message(m.chat.id,"❌ Insufficient balance")
-        users[uid_or_bid]["balance"] -= amt
-        save_users()
-        bot.send_message(int(uid_or_bid), f"💸 Admin removed ${amt:.2f} from your balance!")
-        bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from Telegram ID {uid_or_bid}")
-        return
+    uid = uid_or_bid if uid_or_bid in users else find_user_by_botid(uid_or_bid)
+    if not uid:
+        return bot.send_message(m.chat.id,"❌ User not found")
+    if users[uid]["balance"] < amt:
+        return bot.send_message(m.chat.id,"❌ Insufficient balance")
 
-    # BOT ID
-    uid = find_user_by_botid(uid_or_bid)
-    if uid:
-        if users[uid]["balance"] < amt:
-            return bot.send_message(m.chat.id,"❌ Insufficient balance")
-        users[uid]["balance"] -= amt
-        save_users()
-        bot.send_message(int(uid), f"💸 Admin removed ${amt:.2f} from your balance!")
-        bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from BOT ID {uid_or_bid}")
-        return
-
-    bot.send_message(m.chat.id,"❌ User not found")
+    users[uid]["balance"] -= amt
+    save_users()
+    bot.send_message(int(uid), f"💸 Admin removed ${amt:.2f} from your balance!")
+    bot.send_message(m.chat.id, f"✅ Removed ${amt:.2f} from user {uid}")
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text=="✅ UNBAN USER")
@@ -411,22 +379,14 @@ def unban_start(m):
 def unban_process(m):
     if not is_admin(m.from_user.id): return
     text = m.text.strip()
-    # Telegram ID first
-    if text in users:
-        users[text]["banned"] = False
-        save_users()
-        bot.send_message(int(text),"✅ You are unbanned. You can use the bot again.")
-        bot.send_message(m.chat.id,"✅ User unbanned successfully")
-        return
-    # BOT ID
-    uid = find_user_by_botid(text)
-    if uid:
-        users[uid]["banned"] = False
-        save_users()
-        bot.send_message(int(uid),"✅ You are unbanned. You can use the bot again.")
-        bot.send_message(m.chat.id,f"✅ BOT ID {text} unbanned successfully")
-        return
-    bot.send_message(m.chat.id,"❌ User not found")
+    uid = text if text in users else find_user_by_botid(text)
+    if not uid:
+        return bot.send_message(m.chat.id,"❌ User not found")
+
+    users[uid]["banned"] = False
+    save_users()
+    bot.send_message(int(uid),"✅ You are unbanned. You can use the bot again.")
+    bot.send_message(m.chat.id,"✅ User unbanned successfully")
 
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
@@ -468,12 +428,10 @@ def withdrawal_check_process(m):
     try:
         wid = int(m.text.strip())
     except:
-        bot.send_message(m.chat.id,"❌ Invalid Request ID")
-        return
+        return bot.send_message(m.chat.id,"❌ Invalid Request ID")
     w = next((x for x in withdraws if x["id"]==wid), None)
     if not w:
-        bot.send_message(m.chat.id,"❌ Request ID not found")
-        return
+        return bot.send_message(m.chat.id,"❌ Request ID not found")
     uid = w["user"]
     bot_id = users.get(uid, {}).get("bot_id","Unknown")
     invited = users.get(uid, {}).get("invited",0)
@@ -490,106 +448,55 @@ def withdrawal_check_process(m):
     )
     bot.send_message(m.chat.id, msg_text)
 
-
 # ================= MEDIA DOWNLOADER =================
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
-    bot.send_video(
-        chat_id,
-        open(file, "rb"),
-        caption="Downloaded by @Downloadvedioytibot",
-        reply_markup=kb
-    )
+    bot.send_video(chat_id, open(file,"rb"), caption="Downloaded by @Downloadvedioytibot", reply_markup=kb)
 
 def download_media(chat_id, url):
     try:
         # ===== TIKTOK =====
         if "tiktok.com" in url:
-            try:
-                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
-
-                if res.get("code") == 0:
-                    data = res["data"]
-
-                    # ===== PHOTOS (MID MID) =====
-                    if data.get("images"):
-                        count = 1
-                        for img in data["images"]:
-                            img_data = requests.get(img, timeout=20).content
-                            filename = f"tt_{count}.jpg"
-
-                            with open(filename, "wb") as f:
-                                f.write(img_data)
-
-                            bot.send_photo(
-                                chat_id,
-                                open(filename, "rb"),
-                                caption=f"📸 Photo {count}\nDownloaded by @Downloadvedioytibot"
-                            )
-
-                            os.remove(filename)
-                            count += 1
-                        return
-
-                    # ===== VIDEO =====
-                    if data.get("play"):
-                        vid_data = requests.get(data["play"], timeout=60).content
-                        with open("tt_video.mp4", "wb") as f:
-                            f.write(vid_data)
-
-                        send_video_with_music(chat_id, "tt_video.mp4")
-                        return
-            except:
-                pass
-
+            res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
+            if res.get("code")==0:
+                data = res["data"]
+                if data.get("images"):
+                    for i,img in enumerate(data["images"],1):
+                        img_data = requests.get(img, timeout=20).content
+                        filename = f"tt_{i}.jpg"
+                        with open(filename,"wb") as f: f.write(img_data)
+                        bot.send_photo(chat_id, open(filename,"rb"), caption=f"📸 Photo {i}")
+                        os.remove(filename)
+                    return
+                if data.get("play"):
+                    vid_data = requests.get(data["play"], timeout=60).content
+                    with open("tt_video.mp4","wb") as f: f.write(vid_data)
+                    send_video_with_music(chat_id, "tt_video.mp4")
+                    return
         # ===== YOUTUBE =====
         if "youtube.com" in url or "youtu.be" in url:
-            ydl_opts = {
-                "outtmpl": "youtube.%(ext)s",
-                "format": "mp4",
-                "quiet": True
-            }
-
+            ydl_opts = {"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
-
             send_video_with_music(chat_id, file)
             return
-
-        bot.send_message(chat_id, "❌ Unsupported link")
-
+        bot.send_message(chat_id,"❌ Unsupported link")
     except Exception as e:
-        bot.send_message(chat_id, f"Download error: {e}")
+        bot.send_message(chat_id,f"Download error: {e}")
 
 # ================= MUSIC BUTTON =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
     file = call.data.split("|")[1]
-    audio = file.replace(".mp4", ".mp3")
-
+    audio = file.replace(".mp4",".mp3")
     try:
-        subprocess.run(
-            ["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-
+        subprocess.run(["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         kb = InlineKeyboardMarkup()
         kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
-
-        bot.send_audio(
-            call.message.chat.id,
-            open(audio,"rb"),
-            title="Downloaded Music",
-            performer="Downloadvedioytibot",
-            caption="Downloaded via @Downloadvedioytibot",
-            reply_markup=kb
-        )
-
+        bot.send_audio(call.message.chat.id, open(audio,"rb"), title="Downloaded Music", performer="Downloadvedioytibot", caption="Downloaded via @Downloadvedioytibot", reply_markup=kb)
         os.remove(audio)
-
     except:
         bot.send_message(call.message.chat.id,"❌ Music conversion failed")
 

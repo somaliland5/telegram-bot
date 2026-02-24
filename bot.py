@@ -1,7 +1,11 @@
 import telebot
+import requests
 from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 import os, json, random
 from datetime import datetime
+import yt_dlp
+import subprocess
+import os
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")

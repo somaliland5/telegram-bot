@@ -295,8 +295,16 @@ def admin_panel_btn(m):
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
-    if banned_guard(m): return
-    back_main_menu(m.chat.id, uid)
+
+    if banned_guard(m):  # check banned
+        return
+
+    # Haddii admin uu taabto Back, dib ugu celiso user menu
+    bot.send_message(
+        m.chat.id, 
+        "🏠 Main Menu", 
+        reply_markup=user_menu(is_admin(uid))
+    )
 
 # ================= ADMIN FEATURES =================
 # ================= STATS =================

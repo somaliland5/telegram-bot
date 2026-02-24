@@ -1,656 +1,239 @@
-import telebot
-from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-import os, json, random, requests, subprocess
-from datetime import datetime
-import yt_dlp
+import asyncio
+import logging
+import random
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import *
+from aiogram.filters import Command
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 
 # ================= CONFIG =================
-TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = 7983838654
-bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
+ADMIN_ID = 123456789  # Ku qor Telegram ID-gaaga
+LOCAL_NUMBER = "+252907868526"
 
-# ================= DATABASE =================
-USERS_FILE = "users.json"
-WITHDRAWS_FILE = "withdraws.json"
+BNB_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
+USDT_ADDRESS = "0x98ffcb29a4fc182d461ebdba54648d8fe24597ac"
 
-def load_json(path, default):
-    if not os.path.exists(path):
-        return default
-    with open(path, "r") as f:
-        return json.load(f)
+bot = Bot(BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+logging.basicConfig(level=logging.INFO)
 
-def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
+users = {}
 
-users = load_json(USERS_FILE, {})
-withdraws = load_json(WITHDRAWS_FILE, [])
+# ================= STATES =================
+class CardState(StatesGroup):
+    fullname = State()
+    mother = State()
+    face = State()
+    screenshot = State()
 
-def save_users(): save_json(USERS_FILE, users)
-def save_withdraws(): save_json(WITHDRAWS_FILE, withdraws)
+class CodeState(StatesGroup):
+    code = State()
+
+class AskState(StatesGroup):
+    msg = State()
 
 # ================= HELPERS =================
-def random_ref(): return str(random.randint(1000000000,9999999999))
-def random_botid(): return str(random.randint(10000000000,99999999999))
-def now_month(): return datetime.now().month
-def is_admin(uid): return int(uid) == ADMIN_ID
+def random_number():
+    return "+25263" + "".join(str(random.randint(0,9)) for _ in range(7))
 
-def user_menu(is_admin_user=False):
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💰 BALANCE","💸 WITHDRAWAL")
-    kb.add("👥 REFERRAL","🆔 GET ID")
-    kb.add("☎️ CUSTOMER")
-    if is_admin_user:
-        kb.add("👑 ADMIN PANEL")
-    return kb
+def vip_number():
+    d = str(random.randint(4,9))
+    return "+25263" + d*3 + str(random.randint(0,9)) + d*3
 
-def admin_menu():
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("📊 STATS","📢 BROADCAST")
-    kb.add("➕ ADD BALANCE","✅ UNBAN MONEY")
-    kb.add("💳 WITHDRAWAL CHECK")
-    kb.add("🔙 BACK MAIN MENU")
-    return kb
+def generate_code():
+    return "".join(random.choices("0123456789", k=6))
 
-def back_main_menu(chat_id, uid):
-    bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
-def find_user_by_botid(bid):
-    for u, data in users.items():
-        if data.get("bot_id") == bid:
-            return u
-    return None
-
-def banned_guard(m):
-    uid = str(m.from_user.id)
-    if uid in users and users[uid].get("banned"):
-        bot.send_message(m.chat.id, "🚫 You are banned.")
-        return True
-    return False
+async def live_animation(message, text_list, seconds=10):
+    for i in range(seconds):
+        await asyncio.sleep(1)
+        await message.edit_text(text_list[i % len(text_list)])
 
 # ================= START =================
-@bot.message_handler(commands=['start'])
-def start(m):
-    uid = str(m.from_user.id)
-    args = m.text.split()
-    if uid not in users:
-        ref = args[1] if len(args) > 1 else None
-        users[uid] = {
-            "balance":0.0,
-            "blocked":0.0,
-            "ref":random_ref(),
-            "bot_id":random_botid(),
-            "invited":0,
-            "banned":False,
-            "month": now_month()
-        }
-        if ref:
-            for u in users:
-                if users[u]["ref"] == ref:
-                    users[u]["balance"] += 0.2
-                    users[u]["invited"] += 1
-                    bot.send_message(int(u),"🎉 You earned $0.2 from referral.")
-                    break
-        save_users()
-    bot.send_message(m.chat.id,"👋 Welcome! To Vedio Downloader Download Video Using Link Or shere 🎬🫵", 
-    reply_markup=user_menu(is_admin(uid)))
-                     
-# ================= BALANCE =================
-@bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
-def balance(m):
-    if banned_guard(m): return
-    uid = str(m.from_user.id)
-    bal = users[uid]["balance"]
-    blk = users[uid].get("blocked",0.0)
-    bot.send_message(m.chat.id, f"💰 Available: ${bal:.2f}\n⏰️ Blocked: ${blk:.2f}")
+@dp.message(Command("start"))
+async def start(msg: Message):
+    kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="New Order"), KeyboardButton(text="Check Code")]],
+        resize_keyboard=True
+    )
+    await msg.answer("Ku soo dhawoow Service Bot 🤖", reply_markup=kb)
 
-# ================= GET ID =================
-@bot.message_handler(func=lambda m: m.text=="🆔 GET ID")
-def get_id(m):
-    if banned_guard(m): return
-    uid = str(m.from_user.id)
-    bot.send_message(m.chat.id, f"🆔 BOT ID: <code>{users[uid]['bot_id']}</code>\n👤 Telegram ID: <code>{uid}</code>")
+# ================= NEW ORDER =================
+@dp.message(F.text == "New Order")
+async def new_order(msg: Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="VIRTUAL ($0.8)", callback_data="virtual")],
+        [InlineKeyboardButton(text="CARD", callback_data="card")]
+    ])
+    await msg.answer("Dooro adeeg:", reply_markup=kb)
 
-# ================= REFERRAL =================
-from telebot.types import ReplyKeyboardMarkup
+# ================= CHECK CODE =================
+@dp.message(F.text == "Check Code")
+async def check_code(msg: Message, state: FSMContext):
+    await msg.answer("Geli Code-kaaga:")
+    await state.set_state(CodeState.code)
 
-@bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
-def referral(m):
-    if banned_guard(m):
-        return
-    uid = str(m.from_user.id)
+@dp.message(CodeState.code)
+async def process_code(msg: Message, state: FSMContext):
+    uid = msg.from_user.id
+    if uid in users and users[uid].get("code") == msg.text:
+        await msg.answer(f"✅ Code sax ah\nNumber-kaaga:\n{users[uid]['number']}")
+    else:
+        await msg.answer("❌ Code khaldan")
+    await state.clear()
 
-    # Samee referral link gaar ah
-    link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-
-    # Tirada dadka uu casuumay
-    invited = users[uid].get("invited", 0)
-
-    # Fariinta user-ka
-    msg_text = (
-        f"🔗 Your referral link:\n{link}\n"
-        f"👥 Invited: {invited}\n\n"
-        f"🎁 Each new user who joins using your link will automatically give you $0.2!"
+# ================= VIRTUAL =================
+@dp.callback_query(F.data == "virtual")
+async def virtual(call: CallbackQuery):
+    number = random_number()
+    users[call.from_user.id] = {
+        "type": "virtual",
+        "number": number,
+        "amount": "$0.8"
+    }
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="LOCAL", callback_data="v_local")],
+        [InlineKeyboardButton(text="CRYPTO", callback_data="v_crypto")]
+    ])
+    await call.message.edit_text(
+        f"Number: {number}\nQiimaha: $0.8\nDooro Payment Method:",
+        reply_markup=kb
     )
 
-    # Buttonka dib ugu noqo Main Menu
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🔙 BACK MAIN MENU")
-
-    bot.send_message(m.chat.id, msg_text, reply_markup=kb)
-
-# ================= CUSTOMER =================
-@bot.message_handler(func=lambda m: m.text=="☎️ CUSTOMER")
-def customer(m):
-    if banned_guard(m): return
-    bot.send_message(m.chat.id,"Contact support: @scholes1")
-
-# ================= WITHDRAWAL =================
-from telebot.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-
-@bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")
-def withdraw_menu(m):
-    if banned_guard(m): return
-    uid = str(m.from_user.id)
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("USDT-BEP20")
-    kb.add("🔙 CANCEL")
-    bot.send_message(m.chat.id, "Select withdrawal method:", reply_markup=kb)
-
-@bot.message_handler(func=lambda m: m.text in ["USDT-BEP20", "🔙 CANCEL"])
-def withdraw_method(m):
-    uid = str(m.from_user.id)
-    if m.text == "🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
-        return
-    if m.text == "USDT-BEP20":
-        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_address)
-
-def withdraw_address(m):
-    uid = str(m.from_user.id)
-    text = (m.text or "").strip()
-    if text == "🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
-        return
-    if not text.startswith("0x"):
-        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_address)
-        return
-    users[uid]["temp_addr"] = text
-    save_users()
-    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL")
-    bot.register_next_step_handler(msg, withdraw_amount)
-
-def withdraw_amount(m):
-    uid = str(m.from_user.id)
-    text = (m.text or "").strip()
-    if text == "🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
-        return
-    try:
-        amt = float(text)
-    except:
-        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_amount)
-        return
-    if amt < 1:
-        msg = bot.send_message(m.chat.id,f"❌ Minimum withdrawal is $1\nBalance: ${users[uid]['balance']:.2f}\nTry again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_amount)
-        return
-    if amt > users[uid]["balance"]:
-        msg = bot.send_message(m.chat.id,f"❌ Insufficient balance\nBalance: ${users[uid]['balance']:.2f}\nTry again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_amount)
-        return
-    wid = random.randint(10000,99999)
-    addr = users[uid].pop("temp_addr")
-    withdraws.append({"id":wid,"user":uid,"amount":amt,"blocked":amt,"address":addr,"status":"pending","time":str(datetime.now())})
-    users[uid]["balance"] -= amt
-    users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
-    save_users(); save_withdraws()
-    # ===== USER MSG =====
-    bot.send_message(m.chat.id,
-        f"✅ Withdrawal Request Sent\n🧾 Request ID: {wid}\n💵 Amount: ${amt:.2f}\n🏦 Address: {addr}\n💰 Balance Left: ${users[uid]['balance']:.2f}\n⏳ Status: Pending (6–12h)",
-        reply_markup=user_menu(is_admin(uid))
-    )
-    # ===== ADMIN INLINE BUTTON MSG =====
-    markup = InlineKeyboardMarkup()
-    markup.add(
-        InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
-        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
-        InlineKeyboardButton("🚫 BAN", callback_data=f"ban_{uid}")
-    )
-    bot.send_message(ADMIN_ID,
-        f"💳 NEW WITHDRAWAL\n\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
-        reply_markup=markup
+@dp.callback_query(F.data == "v_local")
+async def v_local(call: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="CONFIRM", callback_data="confirm_payment")]
+    ])
+    await call.message.edit_text(
+        f"Lacagta ku dir number-kan:\n{LOCAL_NUMBER}",
+        reply_markup=kb
     )
 
-@bot.callback_query_handler(func=lambda call: True)
-def admin_callbacks(call):
-    data = call.data
-    if data.startswith("confirm_"):
-        wid = int(data.split("_")[1])
-        w = next((x for x in withdraws if x["id"]==wid), None)
-        if not w or w["status"] != "pending": return
-        w["status"] = "paid"
-        users[w["user"]]["blocked"] -= w["blocked"]
-        save_users(); save_withdraws()
-        bot.answer_callback_query(call.id,"✅ Confirmed")
-        bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
-    elif data.startswith("reject_"):
-        wid = int(data.split("_")[1])
-        w = next((x for x in withdraws if x["id"]==wid), None)
-        if not w or w["status"] != "pending": return
-        w["status"] = "rejected"
-        users[w["user"]]["balance"] += w["blocked"]
-        users[w["user"]]["blocked"] -= w["blocked"]
-        save_users(); save_withdraws()
-        bot.answer_callback_query(call.id,"❌ Rejected")
-        bot.send_message(int(w["user"]), f"❌ Withdrawal #{wid} rejected")
-    elif data.startswith("ban_"):
-        uid = data.split("_")[1]
-        if uid in users:
-            users[uid]["banned"] = True
-            save_users()
-            bot.answer_callback_query(call.id,"🚫 User banned")
-
-# ================= ADMIN PANEL =================
-@bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")
-def admin_panel_btn(m):
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id,"❌ You are not admin")
-        return
-    bot.send_message(m.chat.id,"👑 ADMIN PANEL", reply_markup=admin_menu())
-
-@bot.message_handler(func=lambda m: m.text == "📊 STATS")
-def admin_stats(m):
-
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
-        return
-
-    # ===== TOTAL USERS =====
-    total_users = len(users)
-
-    # ===== TOTAL BALANCE (available + blocked) =====
-    total_balance = 0.0
-    for u in users.values():
-        total_balance += u.get("balance", 0.0)
-        total_balance += u.get("blocked", 0.0)
-
-    # ===== TOTAL WITHDRAW PAID =====
-    total_paid = sum(w["amount"] for w in withdraws if w["status"] == "paid")
-
-    # ===== TOTAL PENDING =====
-    total_pending = sum(w["amount"] for w in withdraws if w["status"] == "pending")
-
-    # ===== BANNED USERS =====
-    banned_users = sum(1 for u in users.values() if u.get("banned"))
-
-    msg = (
-        f"📊 ADMIN STATISTICS\n\n"
-        f"👥 TOTAL USERS: {total_users}\n"
-        f"💰 TOTAL BALANCE: ${total_balance:.2f}\n"
-        f"💸 TOTAL WITHDRAWAL (PAID): ${total_paid:.2f}\n"
-        f"⏳ TOTAL PENDING: ${total_pending:.2f}\n"
-        f"🚫 BANNED USERS: {banned_users}"
+@dp.callback_query(F.data == "v_crypto")
+async def v_crypto(call: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="CONFIRM", callback_data="confirm_payment")]
+    ])
+    await call.message.edit_text(
+        f"Send Crypto:\n\nBNB:\n`{BNB_ADDRESS}`\n\nUSDT-BEP20:\n`{USDT_ADDRESS}`\n\nTaabo si copy uu noqdo.",
+        parse_mode="Markdown",
+        reply_markup=kb
     )
 
-    bot.send_message(m.chat.id, msg)
+# ================= CARD =================
+@dp.callback_query(F.data == "card")
+async def card(call: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="VIP - $15", callback_data="vip")],
+        [InlineKeyboardButton(text="NORMAL - $1", callback_data="normal")]
+    ])
+    await call.message.edit_text("Dooro nooca Card:", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
-def back_main(m):
-    back_main_menu(m.chat.id, str(m.from_user.id))
+@dp.callback_query(F.data.in_(["vip","normal"]))
+async def card_type(call: CallbackQuery, state: FSMContext):
+    number = vip_number() if call.data=="vip" else random_number()
+    users[call.from_user.id] = {
+        "type":"card",
+        "number":number,
+        "amount":"$15" if call.data=="vip" else "$1"
+    }
+    await call.message.answer("Geli Magacaaga Saddexan:")
+    await state.set_state(CardState.fullname)
 
-# ================= ADD BALANCE =================
-@bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")
-def add_balance(m):
-    # Hubi admin
-    if not is_admin(m.from_user.id):
+@dp.message(CardState.fullname)
+async def fullname(msg: Message, state: FSMContext):
+    if len(msg.text.split()) < 3:
+        await msg.answer("Fadlan geli 3 magac sax ah.")
         return
-    msg = bot.send_message(
-        m.chat.id,
-        "Send BOT ID and amount to add.\nExample: 12345678901 2.5"
-    )
-    bot.register_next_step_handler(msg, add_balance_step)
+    users[msg.from_user.id]["name"] = msg.text
+    await msg.answer("Geli Magaca Hooyada:")
+    await state.set_state(CardState.mother)
 
+@dp.message(CardState.mother)
+async def mother(msg: Message, state: FSMContext):
+    users[msg.from_user.id]["mother"] = msg.text
+    await msg.answer("Soo dir Sawirka Wajigaaga:")
+    await state.set_state(CardState.face)
 
-def add_balance_step(m):
-    # Hubi admin
-    if not is_admin(m.from_user.id):
-        return
-
-    try:
-        bid, amt = m.text.split()
-        amt = float(amt)
-    except:
-        return bot.send_message(
-            m.chat.id,
-            "❌ Invalid format! Please send like: BOT_ID AMOUNT"
-        )
-
-    # Hel user ka ku jira BOT ID
-    uid = find_user_by_botid(bid)
-    if not uid:
-        return bot.send_message(m.chat.id, "❌ BOT ID not found!")
-
-    # Cusbooneysii balance-ka
-    users[uid]["balance"] += amt
-    save_users()
-
-    bot.send_message(int(uid), f"💰 Admin added ${amt:.2f} to your balance!")
-    bot.send_message(m.chat.id, f"✅ Successfully added ${amt:.2f} to BOT ID {bid}")
-
-# ================= WITHDRAWAL CHECK =================
-@bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
-def withdrawal_check_start(m):
-    if not is_admin(m.from_user.id):
-        return
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Enter Withdrawal Request ID\nExample: 402000"
-    )
-    bot.register_next_step_handler(msg, withdrawal_check_process)
-
-
-def withdrawal_check_process(m):
-    if not is_admin(m.from_user.id):
-        return
-
-    try:
-        wid = int(m.text.strip())
-    except:
-        bot.send_message(m.chat.id, "❌ Invalid Request ID")
-        return
-
-    # Raadi withdrawal-ka
-    w = next((x for x in withdraws if x["id"] == wid), None)
-
-    if not w:
-        bot.send_message(m.chat.id, "❌ Request ID not found")
-        return
-
-    uid = w["user"]
-
-    # Soo saar user info
-    bot_id = users.get(uid, {}).get("bot_id", "Unknown")
-    invited = users.get(uid, {}).get("invited", 0)
-
-    msg_text = (
-        f"💳 WITHDRAWAL DETAILS\n\n"
-        f"🧾 Request ID: {w['id']}\n"
-        f"👤 User ID: {uid}\n"
-        f"🤖 BOT ID: {bot_id}\n"
-        f"👥 Referrals: {invited}\n"
-        f"💵 Amount: ${w['amount']:.2f}\n"
-        f"🏦 Address: {w['address']}\n"
-        f"📊 Status: {w['status'].upper()}\n"
-        f"⏰ Time: {w['time']}"
+@dp.message(CardState.face, F.photo)
+async def face(msg: Message, state: FSMContext):
+    uid = msg.from_user.id
+    users[uid]["face"] = msg.photo[-1].file_id
+    m = await msg.answer("Searching...")
+    await live_animation(m, ["Searching.", "Searching..", "Checking...", "Checking...."], 10)
+    await msg.answer(
+        f"Number: {users[uid]['number']}\nQiimaha: {users[uid]['amount']}\nDooro Payment:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="LOCAL", callback_data="v_local")],
+            [InlineKeyboardButton(text="CRYPTO", callback_data="v_crypto")]
+        ])
     )
 
-    bot.send_message(m.chat.id, msg_text)
+# ================= CONFIRM PAYMENT =================
+@dp.callback_query(F.data == "confirm_payment")
+async def confirm_payment(call: CallbackQuery, state: FSMContext):
+    msg = await call.message.edit_text("Checking payment...")
+    await live_animation(msg, ["Checking.", "Checking..", "Checking...", "Checking...."], 10)
+    await call.message.answer("Soo dir Screenshot-ka Lacagta:")
+    await state.set_state(CardState.screenshot)
 
-# ================= UNBAN USER =================
-@bot.message_handler(func=lambda m: m.text == "✅ UNBAN MONEY")
-def unban_start(m):
-    if not is_admin(m.from_user.id):
-        return
-    msg = bot.send_message(
-        m.chat.id,
-        "Send BOT ID or Telegram ID to UNBAN"
+# ================= SCREENSHOT TO ADMIN =================
+@dp.message(CardState.screenshot, F.photo)
+async def screenshot(msg: Message, state: FSMContext):
+    uid = msg.from_user.id
+    users[uid]["screenshot"] = msg.photo[-1].file_id
+    await msg.answer("Waad mahadsantahay 🚀 Dalabkaaga waa la gudbiyay.")
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="CONFIRM", callback_data=f"admin_confirm_{uid}")],
+        [InlineKeyboardButton(text="REJECT", callback_data=f"admin_reject_{uid}")],
+        [InlineKeyboardButton(text="ASK", callback_data=f"admin_ask_{uid}")]
+    ])
+
+    await bot.send_photo(
+        ADMIN_ID,
+        users[uid].get("face"),
+        caption=f"New Order\nUser:{uid}\nNumber:{users[uid]['number']}\nAmount:{users[uid]['amount']}",
+        reply_markup=kb
     )
-    bot.register_next_step_handler(msg, unban_process)
+    await bot.send_photo(ADMIN_ID, users[uid]["screenshot"], caption="Payment Screenshot")
+    await state.clear()
 
-def unban_process(m):
-    if not is_admin(m.from_user.id):
-        return
+# ================= ADMIN ACTIONS =================
+@dp.callback_query(F.data.startswith("admin_confirm_"))
+async def admin_confirm(call: CallbackQuery):
+    uid = int(call.data.split("_")[2])
+    code = generate_code()
+    users[uid]["code"] = code
+    await bot.send_message(uid, f"OTP READY ✅\nCode: {code}")
+    await call.message.edit_text("Approved ✅")
 
-    text = m.text.strip()
+@dp.callback_query(F.data.startswith("admin_reject_"))
+async def admin_reject(call: CallbackQuery):
+    uid = int(call.data.split("_")[2])
+    await bot.send_message(uid, "❌ Codsiga waa la diiday. Fadlan lacagta soo dir.")
+    await call.message.edit_text("Rejected ❌")
 
-    # ===== Try Telegram ID first =====
-    if text in users:
-        users[text]["banned"] = False
-        save_users()
+@dp.callback_query(F.data.startswith("admin_ask_"))
+async def admin_ask(call: CallbackQuery, state: FSMContext):
+    uid = int(call.data.split("_")[2])
+    await call.message.answer("Qor fariinta user-ka:")
+    await state.update_data(uid=uid)
+    await state.set_state(AskState.msg)
 
-        bot.send_message(int(text), "✅ You are unbanned. You can use the bot again.")
-        bot.send_message(m.chat.id, "✅ User unbanned successfully")
-        return
+@dp.message(AskState.msg)
+async def send_ask(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    await bot.send_message(data["uid"], f"Admin: {msg.text}")
+    await msg.answer("Fariinta waa la diray.")
+    await state.clear()
 
-    # ===== Try BOT ID =====
-    uid = find_user_by_botid(text)
-    if uid:
-        users[uid]["banned"] = False
-        save_users()
+# ================= RUN =================
+async def main():
+    await dp.start_polling(bot)
 
-        bot.send_message(int(uid), "✅ You are unbanned. You can use the bot again.")
-        bot.send_message(m.chat.id, f"✅ BOT ID {text} unbanned successfully")
-        return
-
-    bot.send_message(m.chat.id, "❌ User not found")
-
-# ================= BROADCAST =================
-@bot.message_handler(func=lambda m: m.text=="📢 BROADCAST")
-def broadcast_start(m):
-    if not is_admin(m.from_user.id): 
-        return
-    msg = bot.send_message(m.chat.id, "📢 Send message / photo / video / link to broadcast")
-    bot.register_next_step_handler(msg, broadcast_send)
-
-def broadcast_send(m):
-    if not is_admin(m.from_user.id): 
-        return
-
-    sent = 0
-    failed = 0
-
-    # Loop over all users in your 'users' variable
-    for uid in users:
-        try:
-            # Check the type of message
-            if m.content_type == 'text':
-                bot.send_message(int(uid), m.text)
-            elif m.content_type == 'photo':
-                bot.send_photo(int(uid), m.photo[-1].file_id, caption=m.caption)
-            elif m.content_type == 'video':
-                bot.send_video(int(uid), m.video.file_id, caption=m.caption)
-            elif m.content_type == 'document':
-                bot.send_document(int(uid), m.document.file_id, caption=m.caption)
-            else:
-                bot.send_message(int(uid), "📢 New message available!")
-            sent += 1
-        except:
-            failed += 1
-
-    bot.send_message(m.chat.id, f"✅ Broadcast Finished\n📤 Sent: {sent}\n❌ Failed: {failed}")
-
-
-# ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file_path):
-
-    kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton(
-            "🎵 MUSIC",
-            callback_data=f"music|{file_path}"
-        )
-    )
-
-    with open(file_path, "rb") as video:
-        bot.send_video(
-            chat_id,
-            video,
-            caption="Downloaded via:\n@Downloadvedioytibot",
-            reply_markup=kb
-        )
-
-
-def download_media(chat_id, url):
-    try:
-        # ===== TIKTOK =====
-        if "tiktok.com" in url:
-
-            # ---- TikWM API ----
-            try:
-                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
-
-                if res.get("code") == 0:
-                    data = res["data"]
-
-                    # ===== PHOTOS (MID MID) =====
-                    if data.get("images"):
-                        count = 1
-                        for img in data["images"]:
-                            img_data = requests.get(img, timeout=20).content
-
-                            filename = f"tt_{count}.jpg"
-                            with open(filename, "wb") as f:
-                                f.write(img_data)
-
-                            bot.send_photo(
-                                chat_id,
-                                open(filename, "rb"),
-                                caption=f"Downloaded by:\n@Downloadvedioytibot\n📸 Photo {count}"
-                            )
-
-                            os.remove(filename)
-                            count += 1
-
-                        return
-
-                    # ===== VIDEO =====
-                    if data.get("play"):
-                        vid_data = requests.get(data["play"], timeout=60).content
-
-                        with open("tt_video.mp4", "wb") as f:
-                            f.write(vid_data)
-
-                        send_video_with_music(chat_id, "tt_video.mp4")
-                        return
-
-            except:
-                pass
-
-            # ---- FALLBACK YT-DLP ----
-            try:
-                ydl_opts = {
-                    "outtmpl": "tiktok.%(ext)s",
-                    "format": "mp4",
-                    "quiet": True
-                }
-
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                    file = ydl.prepare_filename(info)
-
-                send_video_with_music(chat_id, file)
-                return
-
-            except Exception as e:
-                bot.send_message(chat_id, f"TikTok error: {e}")
-                return
-
-        # ===== YOUTUBE =====
-        if "youtube.com" in url or "youtu.be" in url:
-            try:
-                ydl_opts = {
-                    "outtmpl": "youtube.%(ext)s",
-                    "format": "mp4",
-                    "quiet": True
-                }
-
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                    file = ydl.prepare_filename(info)
-
-                send_video_with_music(chat_id, file)
-                return
-
-            except Exception as e:
-                bot.send_message(chat_id, f"YouTube error: {e}")
-                return
-
-        bot.send_message(chat_id, "❌ Unsupported link")
-
-    except Exception as e:
-        bot.send_message(chat_id, f"Download error: {e}")
-
-
-# ================= MUSIC BUTTON =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
-def convert_music(call):
-
-    bot.answer_callback_query(call.id, "🎵 Converting to music...")
-
-    file_path = call.data.split("|")[1]
-
-    if not os.path.exists(file_path):
-        bot.send_message(call.message.chat.id, "❌ File not found")
-        return
-
-    audio_path = file_path.replace(".mp4", ".mp3")
-
-    try:
-        # Convert video → mp3
-        subprocess.run(
-            ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-
-        if not os.path.exists(audio_path):
-            bot.send_message(call.message.chat.id, "❌ Conversion failed")
-            return
-
-        # Channel button
-        markup = InlineKeyboardMarkup()
-        markup.add(
-            InlineKeyboardButton(
-                "📢 BOT CHANNEL",
-                url="https://t.me/tiktokvediodownload"  # Ku bedel channel-kaaga
-            )
-        )
-
-        with open(audio_path, "rb") as audio:
-            bot.send_audio(
-                call.message.chat.id,
-                audio,
-                title="Downloaded Music",
-                performer="Downloadvedioytibot",
-                caption="Downloaded via:\n@Downloadvedioytibot",
-                reply_markup=markup
-            )
-
-        # Nadiifi files
-        os.remove(audio_path)
-        os.remove(file_path)
-
-    except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music error:\n{e}")
-
-
-# ========= LINK HANDLER =========
-@bot.message_handler(func=lambda m: "http" in m.text)
-def handle_links(message):
-
-    try:
-        bot.set_message_reaction(
-            chat_id=message.chat.id,
-            message_id=message.message_id,
-            reaction=[{"type": "emoji", "emoji": "❤️"}]
-        )
-    except:
-        pass
-
-    bot.send_message(message.chat.id, "⏳ Downloading...")
-    download_media(message.chat.id, message.text)
-
-# ================= RUN BOT =================
 if __name__ == "__main__":
-    print("🤖 Bot is running...")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except KeyboardInterrupt:
-        print("🛑 Bot stopped by user")
-    except Exception as e:
-        print(f"❌ Bot crashed: {e}")
+    asyncio.run(main())

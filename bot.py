@@ -263,8 +263,7 @@ def withdraw_amount_step(m):
 
 if m.text == "🔙 CANCEL":
     back_main_menu(m.chat.id, uid)
-    return
-
+    
     try:
         amt = float(text)
     except:

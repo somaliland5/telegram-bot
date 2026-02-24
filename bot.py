@@ -300,8 +300,6 @@ def admin_panel_btn(m):
         return
     bot.send_message(m.chat.id,"👑 ADMIN PANEL", reply_markup=admin_menu())
 
-bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):

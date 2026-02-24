@@ -330,12 +330,16 @@ def admin_panel_btn(m):
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
-    if banned_guard(m):
+
+    if banned_guard(m):  # Haddii banned
         return
+
     if is_admin(uid):
+        # Haddii admin uu taabto BACK → admin menu
         bot.send_message(m.chat.id, "👑 Admin Menu", reply_markup=admin_panel_menu())
     else:
-        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        # User → user menu
+        bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(False))
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="➕ ADD BALANCE")

@@ -61,11 +61,16 @@ def admin_panel_menu():
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
-def back_main_menu(chat_id, uid):
-    if is_admin(uid):
-        bot.send_message(chat_id, "👑 Admin Menu", reply_markup=admin_panel_menu())
+def back_main_menu(chat_id, uid, context="user"):
+    """
+    Dib ugu celiso menu-ka saxda ah iyadoo ku xiran:
+    - Haddii context="user" → user menu
+    - Haddii context="admin" → admin panel
+    """
+    if is_admin(uid) and context == "admin":
+        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
     else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(False))
+        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
 @bot.message_handler(commands=['start'])
 def start(m):

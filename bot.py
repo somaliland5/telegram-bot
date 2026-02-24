@@ -740,7 +740,6 @@ def download_media(chat_id, url):
     except Exception as e:
         bot.send_message(chat_id,f"Download error: {e}")
 
-
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
@@ -766,13 +765,11 @@ def convert_music(call):
     except:
         bot.send_message(call.message.chat.id,"❌ Music conversion failed")
 
-
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
     bot.send_message(message.chat.id,"⏳ Downloading...")
     download_media(message.chat.id, message.text)
-
 
 # ================= RUN BOT =================
 if __name__ == "__main__":

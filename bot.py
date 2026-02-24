@@ -61,18 +61,18 @@ def banned_guard(m):
 # ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💰 BALANCE","💸 WITHDRAWAL")
-    kb.add("👥 REFERRAL","🆔 GET ID")
+    kb.add("💰 BALANCE", "💸 WITHDRAWAL")
+    kb.add("👥 REFERRAL", "🆔 GET ID")
     kb.add("☎️ CUSTOMER")
     if show_admin:
         kb.add("👑 ADMIN PANEL")
     return kb
 
-def admin_menu():
+def admin_panel_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("📊 STATS","📢 BROADCAST")
-    kb.add("➕ ADD BALANCE","➖ REMOVE MONEY")
-    kb.add("✅ UNBAN USER","💳 WITHDRAWAL CHECK")
+    kb.add("📊 STATS", "📢 BROADCAST")
+    kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
+    kb.add("✅ UNBAN USER", "💳 WITHDRAWAL CHECK")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -93,12 +93,12 @@ def start(m):
     if uid not in users:
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
-            "balance":0.0,
-            "blocked":0.0,
-            "ref":random_ref(),
-            "bot_id":random_botid(),
-            "invited":0,
-            "banned":False,
+            "balance": 0.0,
+            "blocked": 0.0,
+            "ref": random_ref(),
+            "bot_id": random_botid(),
+            "invited": 0,
+            "banned": False,
             "month": now_month()
         }
         # Referral reward
@@ -139,8 +139,7 @@ def get_id(m):
 # ================= REFERRAL HANDLER =================
 @bot.message_handler(func=lambda m: m.text=="👥 REFERRAL")
 def referral(m):
-    if banned_guard(m):
-        return
+    if banned_guard(m): return
     uid = str(m.from_user.id)
     link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
     invited = users[uid].get("invited", 0)
@@ -189,7 +188,10 @@ def withdraw_address(m):
         return
     users[uid]["temp_addr"] = text
     save_users()
-    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL")
+    msg = bot.send_message(
+        m.chat.id,
+        f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL"
+    )
     bot.register_next_step_handler(msg, withdraw_amount)
 
 def withdraw_amount(m):
@@ -204,11 +206,11 @@ def withdraw_amount(m):
         msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL")
         bot.register_next_step_handler(msg, withdraw_amount)
         return
-    if amt<1:
+    if amt < 1:
         msg = bot.send_message(m.chat.id,f"❌ Minimum withdrawal is $1\nBalance: ${users[uid]['balance']:.2f}")
         bot.register_next_step_handler(msg, withdraw_amount)
         return
-    if amt>users[uid]["balance"]:
+    if amt > users[uid]["balance"]:
         msg = bot.send_message(m.chat.id,f"❌ Insufficient balance\nBalance: ${users[uid]['balance']:.2f}")
         bot.register_next_step_handler(msg, withdraw_amount)
         return
@@ -225,11 +227,13 @@ def withdraw_amount(m):
         "time": str(datetime.now())
     })
     users[uid]["balance"] -= amt
-    users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
-    save_users(); save_withdraws()
+    users[uid]["blocked"] = users[uid].get("blocked",0.0) + amt
+    save_users()
+    save_withdraws()
 
     # User confirmation
-    bot.send_message(m.chat.id,
+    bot.send_message(
+        m.chat.id,
         f"✅ Withdrawal Request Sent\n🧾 Request ID: {wid}\n💵 Amount: ${amt:.2f}\n🏦 Address: {addr}\n💰 Balance Left: ${users[uid]['balance']:.2f}\n⏳ Status: Pending",
         reply_markup=user_menu(is_admin(uid))
     )
@@ -241,10 +245,11 @@ def withdraw_amount(m):
         InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}"),
         InlineKeyboardButton("🚫 BAN", callback_data=f"ban_{uid}")
     )
-    bot.send_message(ADMIN_ID,
+    bot.send_message(
+        ADMIN_ID,
         f"💳 NEW WITHDRAWAL\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
         reply_markup=markup
-    )
+                              )
 
 # ================= ADMIN CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_")))
@@ -258,7 +263,8 @@ def admin_callbacks(call):
             return
         w["status"] = "paid"
         users[w["user"]]["blocked"] -= w["blocked"]
-        save_users(); save_withdraws()
+        save_users()
+        save_withdraws()
         bot.answer_callback_query(call.id,"✅ Confirmed")
         bot.send_message(int(w["user"]), f"✅ Withdrawal #{wid} approved!")
 
@@ -270,7 +276,8 @@ def admin_callbacks(call):
         w["status"] = "rejected"
         users[w["user"]]["balance"] += w["blocked"]
         users[w["user"]]["blocked"] -= w["blocked"]
-        save_users(); save_withdraws()
+        save_users()
+        save_withdraws()
         bot.answer_callback_query(call.id,"❌ Rejected")
         bot.send_message(int(w["user"]), f"❌ Withdrawal #{wid} rejected")
 
@@ -280,6 +287,7 @@ def admin_callbacks(call):
             users[uid]["banned"] = True
             save_users()
             bot.answer_callback_query(call.id,"🚫 User banned")
+            bot.send_message(int(uid),"🚫 You are banned by admin")
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text=="👑 ADMIN PANEL")
@@ -287,19 +295,15 @@ def admin_panel_btn(m):
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id,"❌ You are not admin")
         return
-    bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_menu())
+    bot.send_message(m.chat.id,"👑 Admin Menu", reply_markup=admin_panel_menu())
 
 # ================= BACK MAIN MENU =================
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
+    if banned_guard(m): return
+    bot.send_message(m.chat.id,"🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
 
-    if banned_guard(m):
-        return
-
-    bot.send_message(m.chat.id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
-# ================= ADMIN FEATURES =================
 # ================= STATS =================
 @bot.message_handler(func=lambda m: m.text=="📊 STATS")
 def admin_stats(m):
@@ -457,13 +461,13 @@ def send_video_with_music(chat_id, file):
 
 def download_media(chat_id, url):
     try:
-        # TikTok
+        # ===== TIKTOK =====
         if "tiktok.com" in url:
             res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
-            if res.get("code")==0:
+            if res.get("code") == 0:
                 data = res["data"]
                 if data.get("images"):
-                    for i,img in enumerate(data["images"],1):
+                    for i, img in enumerate(data["images"],1):
                         img_data = requests.get(img, timeout=20).content
                         filename = f"tt_{i}.jpg"
                         with open(filename,"wb") as f: f.write(img_data)
@@ -475,7 +479,7 @@ def download_media(chat_id, url):
                     with open("tt_video.mp4","wb") as f: f.write(vid_data)
                     send_video_with_music(chat_id, "tt_video.mp4")
                     return
-        # YouTube
+        # ===== YOUTUBE =====
         if "youtube.com" in url or "youtu.be" in url:
             ydl_opts = {"outtmpl":"youtube.%(ext)s","format":"mp4","quiet":True}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -493,10 +497,21 @@ def convert_music(call):
     file = call.data.split("|")[1]
     audio = file.replace(".mp4",".mp3")
     try:
-        subprocess.run(["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["ffmpeg","-i",file,"-vn","-ab","128k","-ar","44100",audio],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
         kb = InlineKeyboardMarkup()
         kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
-        bot.send_audio(call.message.chat.id, open(audio,"rb"), title="Downloaded Music", performer="Downloadvedioytibot", caption="Downloaded via @Downloadvedioytibot", reply_markup=kb)
+        bot.send_audio(
+            call.message.chat.id,
+            open(audio,"rb"),
+            title="Downloaded Music",
+            performer="Downloadvedioytibot",
+            caption="Downloaded via @Downloadvedioytibot",
+            reply_markup=kb
+        )
         os.remove(audio)
     except:
         bot.send_message(call.message.chat.id,"❌ Music conversion failed")

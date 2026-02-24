@@ -166,25 +166,31 @@ def withdraw_method(m):
         back_main_menu(m.chat.id, uid)
         return
     if m.text=="USDT-BEP20":
-        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_address)
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"Enter your USDT BEP20 address (must start with 0x) or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_address_step)
 
-def withdraw_address(m):
+def withdraw_address_step(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
     if text=="🔙 CANCEL":
         back_main_menu(m.chat.id, uid)
         return
     if not text.startswith("0x"):
-        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_address)
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"❌ Invalid address. Must start with 0x. Try again or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_address_step)
         return
     users[uid]["temp_addr"] = text
     save_users()
-    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL")
-    bot.register_next_step_handler(msg, withdraw_amount)
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🔙 CANCEL")
+    msg = bot.send_message(m.chat.id,f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL", reply_markup=kb)
+    bot.register_next_step_handler(msg, withdraw_amount_step)
 
-def withdraw_amount(m):
+def withdraw_amount_step(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
     if text=="🔙 CANCEL":
@@ -193,16 +199,22 @@ def withdraw_amount(m):
     try:
         amt = float(text)
     except:
-        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL")
-        bot.register_next_step_handler(msg, withdraw_amount)
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,"❌ Invalid number. Enter again or press 🔙 CANCEL", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_amount_step)
         return
     if amt<1:
-        msg = bot.send_message(m.chat.id,f"❌ Minimum withdrawal is $1\nBalance: ${users[uid]['balance']:.2f}")
-        bot.register_next_step_handler(msg, withdraw_amount)
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,f"❌ Minimum withdrawal is $1\nBalance: ${users[uid]['balance']:.2f}", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_amount_step)
         return
     if amt>users[uid]["balance"]:
-        msg = bot.send_message(m.chat.id,f"❌ Insufficient balance\nBalance: ${users[uid]['balance']:.2f}")
-        bot.register_next_step_handler(msg, withdraw_amount)
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(m.chat.id,f"❌ Insufficient balance\nBalance: ${users[uid]['balance']:.2f}", reply_markup=kb)
+        bot.register_next_step_handler(msg, withdraw_amount_step)
         return
 
     wid = random.randint(10000,99999)
@@ -237,7 +249,7 @@ def withdraw_amount(m):
     bot.send_message(ADMIN_ID,
         f"💳 NEW WITHDRAWAL\n👤 User: {uid}\n🤖 BOT ID: {users[uid]['bot_id']}\n👥 Referrals: {users[uid]['invited']}\n💵 Amount: ${amt:.2f}\n🧾 Request ID: {wid}\n🏦 Address: {addr}",
         reply_markup=markup
-    )
+                    )
 
 # ================= ADMIN CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","block_")))

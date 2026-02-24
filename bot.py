@@ -363,7 +363,7 @@ def withdraw_amount_step(m):
     )
 
     # Loop through admin IDs
-    for admin in [ADMIN_ID]:  # Halkan waxaad ku dari kartaa liiska admin IDs
+    for admin in [7983838654]:  # Halkan waxaad ku dari kartaa liiska admin IDs
         bot.send_message(admin, admin_text, reply_markup=markup)
 
     # ================= ADMIN INLINE CALLBACKS =================

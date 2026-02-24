@@ -4,48 +4,43 @@ import os, json, random, requests, subprocess
 from datetime import datetime
 import yt_dlp
 
-# ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 7983838654
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
-# ================= DATABASE =================
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 
 def load_json(path, default):
     if not os.path.exists(path): return default
-    with open(path, "r") as f: return json.load(f)
+    with open(path,"r") as f: return json.load(f)
 
 def save_json(path, data):
-    with open(path, "w") as f: json.dump(data, f, indent=4)
+    with open(path,"w") as f: json.dump(data,f,indent=4)
 
-users = load_json(USERS_FILE, {})
-withdraws = load_json(WITHDRAWS_FILE, [])
+users = load_json(USERS_FILE,{})
+withdraws = load_json(WITHDRAWS_FILE,[])
 
 def save_users(): save_json(USERS_FILE, users)
 def save_withdraws(): save_json(WITHDRAWS_FILE, withdraws)
 
-# ================= HELPERS =================
 def random_ref(): return str(random.randint(1000000000,9999999999))
 def random_botid(): return str(random.randint(10000000000,99999999999))
 def now_month(): return datetime.now().month
 def is_admin(uid): return int(uid) == ADMIN_ID
 
 def find_user_by_botid(bid):
-    for u, data in users.items():
-        if data.get("bot_id") == bid:
-            return u
+    for u,data in users.items():
+        if data.get("bot_id")==bid: return u
     return None
 
 def banned_guard(m):
     uid = str(m.from_user.id)
     if uid in users and users[uid].get("banned"):
-        bot.send_message(m.chat.id, "🚫 You are banned.")
+        bot.send_message(m.chat.id,"🚫 You are banned.")
         return True
     return False
 
-# ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 BALANCE","💸 WITHDRAWAL")
@@ -62,51 +57,29 @@ def admin_panel_menu():
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
-# ================= BACK MAIN MENU =================
 def back_main_menu(chat_id, uid, context="user"):
-    """
-    Dib ugu celiso menu-ka saxda ah iyadoo ku xiran:
-    - Haddii context="user" → user menu
-    - Haddii context="admin" → admin panel
-    """
     if is_admin(uid) and context=="admin":
-        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
+        bot.send_message(chat_id,"👑 Admin Panel",reply_markup=admin_panel_menu())
     else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
+        bot.send_message(chat_id,"🏠 Main Menu",reply_markup=user_menu(is_admin(uid)))
 
-# ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start(m):
     uid = str(m.from_user.id)
     args = m.text.split()
-    
     if uid not in users:
-        ref = args[1] if len(args) > 1 else None
-        users[uid] = {
-            "balance": 0.0,
-            "pending": 0.0,
-            "blocked": 0.0,
-            "ref": random_ref(),
-            "bot_id": random_botid(),
-            "invited": 0,
-            "banned": False,
-            "month": now_month()
-        }
-        # Referral reward
+        ref = args[1] if len(args)>1 else None
+        users[uid] = {"balance":0.0,"pending":0.0,"blocked":0.0,"ref":random_ref(),"bot_id":random_botid(),
+                       "invited":0,"banned":False,"month":now_month()}
         if ref:
             for u in users:
-                if users[u]["ref"] == ref:
-                    users[u]["balance"] += 0.2
-                    users[u]["invited"] += 1
-                    bot.send_message(int(u), "🎉 You earned $0.2 from referral.")
+                if users[u]["ref"]==ref:
+                    users[u]["balance"]+=0.2
+                    users[u]["invited"]+=1
+                    bot.send_message(int(u),"🎉 You earned $0.2 from referral.")
                     break
         save_users()
-    
-    bot.send_message(
-        m.chat.id,
-        "👋 Welcome! Send Video Link to Download 🎬",
-        reply_markup=user_menu(is_admin(uid))
-    )
+    bot.send_message(m.chat.id,"👋 Welcome! Send Video Link to Download 🎬",reply_markup=user_menu(is_admin(uid))) 
 
 # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text=="💰 BALANCE")
@@ -114,8 +87,8 @@ def balance(m):
     if banned_guard(m): return
     uid = str(m.from_user.id)
     bal = users[uid]["balance"]
-    pending = users[uid].get("pending", 0.0)
-    blocked = users[uid].get("blocked", 0.0)
+    pending = users[uid].get("pending",0.0)
+    blocked = users[uid].get("blocked",0.0)
     bot.send_message(
         m.chat.id,
         f"💰 Available: ${bal:.2f}\n✋️ Pending: ${pending:.2f}\n🚫 Blocked: ${blocked:.2f}"
@@ -137,7 +110,7 @@ def referral(m):
     if banned_guard(m): return
     uid = str(m.from_user.id)
     link = f"https://t.me/{bot.get_me().username}?start={users[uid]['ref']}"
-    invited = users[uid].get("invited", 0)
+    invited = users[uid].get("invited",0)
     bot.send_message(
         m.chat.id,
         f"🔗 Your referral link:\n{link}\n👥 Invited: {invited}\n\n"
@@ -167,7 +140,6 @@ def withdraw_method(m):
         back_main_menu(m.chat.id, uid, context="user")
         return
     if m.text=="USDT-BEP20":
-        # Only show CANCEL now, hide USDT-BEP20 button
         kb = ReplyKeyboardMarkup(resize_keyboard=True)
         kb.add("🔙 CANCEL")
         msg = bot.send_message(
@@ -202,7 +174,7 @@ def withdraw_address(m):
         f"Enter withdrawal amount\nMinimum: $1 | Balance: ${users[uid]['balance']:.2f}\nOr press 🔙 CANCEL",
         reply_markup=kb
     )
-    bot.register_next_step_handler(msg, withdraw_amount)
+    bot.register_next_step_handler(msg, withdraw_amount)  # withdraw_amount function needed in Q3
 
 # ================= ADMIN CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_","reject_","ban_","banmoney_")))
@@ -214,66 +186,53 @@ def admin_callbacks(call):
         if not w or w["status"]!="pending":
             bot.answer_callback_query(call.id,"❌ Already processed")
             return
-        w["status"] = "paid"
-        uid = w["user"]
-        users[uid]["pending"] -= w["amount"]
+        w["status"]="paid"
+        uid=w["user"]
+        users[uid]["pending"]-=w["amount"]
         save_users(); save_withdraws()
         bot.answer_callback_query(call.id,"✅ Confirmed")
         bot.send_message(int(uid),f"✅ Withdrawal #{wid} approved and paid!")
 
     elif data.startswith("reject_"):
-        wid = int(data.split("_")[1])
-        w = next((x for x in withdraws if x["id"]==wid), None)
+        wid=int(data.split("_")[1])
+        w=next((x for x in withdraws if x["id"]==wid), None)
         if not w or w["status"]!="pending":
             bot.answer_callback_query(call.id,"❌ Already processed")
             return
-        w["status"] = "rejected"
-        uid = w["user"]
-        users[uid]["balance"] += w["amount"]
-        users[uid]["pending"] -= w["amount"]
+        w["status"]="rejected"
+        uid=w["user"]
+        users[uid]["balance"]+=w["amount"]
+        users[uid]["pending"]-=w["amount"]
         save_users(); save_withdraws()
         bot.answer_callback_query(call.id,"❌ Rejected")
         bot.send_message(int(uid),f"❌ Withdrawal #{wid} rejected. Funds returned to balance.")
 
     elif data.startswith("ban_"):
-        uid = data.split("_")[1]
+        uid=data.split("_")[1]
         if uid in users:
-            users[uid]["banned"] = True
+            users[uid]["banned"]=True
             save_users()
             bot.answer_callback_query(call.id,"🚫 User banned")
             bot.send_message(int(uid),"🚫 You are banned by admin.")
 
     elif data.startswith("banmoney_"):
-        wid = int(data.split("_")[1])
-        w = next((x for x in withdraws if x["id"]==wid), None)
+        wid=int(data.split("_")[1])
+        w=next((x for x in withdraws if x["id"]==wid), None)
         if not w or w["status"]!="pending":
             bot.answer_callback_query(call.id,"❌ Already processed")
             return
-        uid = w["user"]
-        amt = w["amount"]
-        users[uid]["pending"] -= amt
-        users[uid]["blocked"] = users[uid].get("blocked",0.0)+amt
-        w["status"] = "blocked"
-        # Generate 4-digit unblock code
-        code = str(random.randint(1000,9999))
-        w["block_code"] = code
+        uid=w["user"]
+        amt=w["amount"]
+        users[uid]["pending"]-=amt
+        users[uid]["blocked"]=users[uid].get("blocked",0.0)+amt
+        w["status"]="blocked"
+        code=str(random.randint(1000,9999))
+        w["block_code"]=code
         save_users(); save_withdraws()
         bot.answer_callback_query(call.id,"💰 Money blocked")
         bot.send_message(int(uid),f"🚫 Your ${amt:.2f} is blocked.\n💳 Block Code: {code}")
 
-
 # ================= BACK MAIN MENU =================
-def back_main_menu(chat_id, uid, context=None):
-    """
-    Dib ugu celiso menu-ka saxda ah iyadoo ku xiran:
-    - context="admin" → admin panel
-    - context="user" ama None → user menu
-    """
-    if is_admin(uid) and context=="admin":
-        bot.send_message(chat_id, "👑 Admin Panel", reply_markup=admin_panel_menu())
-    else:
-        bot.send_message(chat_id, "🏠 Main Menu", reply_markup=user_menu(is_admin(uid)))
-
 @bot.message_handler(func=lambda m: m.text=="🔙 BACK MAIN MENU")
 def back_main(m):
     uid = str(m.from_user.id)
@@ -416,7 +375,7 @@ def admin_withdrawals(m):
             msg += f"🧾 ID: {w['id']} | User: {w['user']} | Amount: ${w['amount']:.2f} | Address: {w['address']}\n"
     bot.send_message(m.chat.id, msg or "No pending withdrawals.")
 
-# ================= MEDIA DOWNLOADER & MUSIC =================
+    # ================= MEDIA DOWNLOADER & MUSIC =================
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
@@ -483,6 +442,7 @@ def convert_music(call):
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
+    if banned_guard(message): return
     bot.send_message(message.chat.id,"⏳ Downloading...")
     download_media(message.chat.id, message.text)
 

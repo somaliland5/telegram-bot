@@ -334,33 +334,66 @@ def withdraw_amount_step(m):
         return
 
     # Create withdrawal request
-    wid = random.randint(10000, 99999)
-    addr = users[uid].pop("temp_addr")
+    def create_withdrawal(uid, amount, address):
 
-    withdraws.append({
+    wid = random.randint(10000, 99999)
+
+    # balance → blocked
+    users[uid]["balance"] -= amount
+    users[uid]["blocked"] += amount
+
+    withdrawal = {
         "id": wid,
         "user": uid,
-        "amount": amt,
-        "blocked": amt,
-        "address": addr,
+        "amount": amount,
+        "blocked": amount,
+        "address": address,
         "status": "pending",
-        "time": str(datetime.now())
-    })
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
-    users[uid]["balance"] -= amt
-    users[uid]["blocked"] += amt
+    withdraws.append(withdrawal)
 
     save_users()
     save_withdraws()
 
+    # ================= USER MESSAGE =================
     bot.send_message(
-        m.chat.id,
-        f"✅ Withdrawal Request Sent\n"
+        int(uid),
+        f"✅ Withdrawal Sent\n\n"
         f"🧾 ID: {wid}\n"
-        f"💵 Amount: ${amt:.2f}\n"
-        f"⏳ Status: Pending",
-        reply_markup=user_menu(is_admin(uid))
+        f"💵 Amount: ${amount:.2f}\n"
+        f"⏳ Status: PENDING"
     )
+
+    # ================= ADMIN DATA =================
+    bot_id = users[uid].get("bot_id", "N/A")
+    referrals = users[uid].get("invited", 0)
+
+    admin_text = (
+        f"🚨 NEW WITHDRAWAL REQUEST\n\n"
+        f"🧾 Request ID: {wid}\n"
+        f"👤 Telegram ID: {uid}\n"
+        f"🤖 BOT ID: {bot_id}\n"
+        f"👥 Referrals: {referrals}\n"
+        f"💵 Amount: ${amount:.2f}\n"
+        f"🏦 Address: {address}\n"
+        f"⏰ Time: {withdrawal['time']}\n"
+        f"📊 Status: PENDING"
+    )
+
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("✅ CONFIRM", callback_data=f"confirm_{wid}"),
+        InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{wid}")
+    )
+    markup.add(
+        InlineKeyboardButton("🚫 BAN USER", callback_data=f"ban_{uid}"),
+        InlineKeyboardButton("💰 BAN MONEY", callback_data=f"block_{wid}")
+    )
+
+    for admin in ADMIN_IDS:
+        bot.send_message(admin, admin_text, reply_markup=markup)
 
 # ================= ADMIN INLINE CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_", "reject_", "ban_", "block_")))

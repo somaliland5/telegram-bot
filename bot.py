@@ -239,7 +239,9 @@ def withdraw_address_step(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
 
-    if text == "🔙 CANCEL":
+if m.text == "🔙 CANCEL":
+    back_main_menu(m.chat.id, uid)
+    return
         back_main_menu(m.chat.id, uid)
         return
 
@@ -272,9 +274,9 @@ def withdraw_amount_step(m):
     uid = str(m.from_user.id)
     text = (m.text or "").strip()
 
-    if text == "🔙 CANCEL":
-        back_main_menu(m.chat.id, uid)
-        return
+if m.text == "🔙 CANCEL":
+    back_main_menu(m.chat.id, uid)
+    return
 
     try:
         amt = float(text)

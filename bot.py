@@ -823,21 +823,6 @@ def convert_music(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
-# ================= CHECK IF VIDEO HAS AUDIO =================
-import subprocess
-
-def has_audio(file_path):
-    """
-    Returns True if the video file has an audio stream, False otherwise.
-    """
-    result = subprocess.run(
-        ["ffmpeg", "-i", file_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    return "Audio:" in result.stderr
-
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
@@ -845,8 +830,9 @@ def convert_music(call):
     audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
 
     try:
+        # isku day conversion, xitaa haddii audio la'aan
         subprocess.run(
-            ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
+            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True
@@ -865,7 +851,9 @@ def convert_music(call):
         os.remove(file_path)
 
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
+        # Hadday fashilanto, ugu dir video-ka user-ka
+        send_video_with_music(call.message.chat.id, file_path)
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed, sent original video instead.\n{e}")
 
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)

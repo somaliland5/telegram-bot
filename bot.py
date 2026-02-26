@@ -700,11 +700,6 @@ def remove_balance_process(m):
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
 # ================= MEDIA DOWNLOADER =================
-
-if not any(x in url for x in ["tiktok.com", "youtube.com", "youtu.be", "facebook.com", "fb.watch"]):
-    bot.send_message(chat_id, "❌ Please send a valid TikTok, YouTube or Facebook link.")
-    return
-
 def send_video_with_music(chat_id, file):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))

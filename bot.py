@@ -740,47 +740,44 @@ def download_media(chat_id, text):
                 pass
 
         # ================= TIKTOK =================
-        if "tiktok.com" in url:
-            ydl_opts = {"quiet": True}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+if "tiktok.com" in url:
+    ydl_opts = {
+        "format": "bv*+ba/b",
+        "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
+        "merge_output_format": "mp4",
+        "quiet": True
+    }
 
-                # ===== Slideshow (Sawirro badan) =====
-                if info.get("formats"):
-                    images = [
-                        f for f in info["formats"]
-                        if f.get("ext") in ["jpg", "jpeg", "png", "webp"]
-                    ]
-                    if images:
-                        for i, img in enumerate(images, 1):
-                            img_url = img.get("url")
-                            if not img_url:
-                                continue
-                            r = requests.get(img_url, timeout=20)
-                            filename = os.path.join(BASE_DIR, f"tt_{i}.jpg")
-                            with open(filename, "wb") as f:
-                                f.write(r.content)
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
 
-                            with open(filename, "rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                            os.remove(filename)
-                        return
+        # ===== SLIDESHOW (Sawirro badan) =====
+        if info.get("entries"):
+            for entry in info["entries"]:
+                if not entry:
+                    continue
 
-                # ===== Video =====
-                ydl_opts = {
-                    "format": "bv*+ba/b",
-                    "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
-                    "merge_output_format": "mp4",
-                    "quiet": True
-                }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
-                    info2 = ydl2.extract_info(url, download=True)
-                    filename = ydl2.prepare_filename(info2)
-                    if not filename.endswith(".mp4"):
-                        filename = filename.rsplit(".", 1)[0] + ".mp4"
+                filename = ydl.prepare_filename(entry)
 
+                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    with open(filename, "rb") as photo:
+                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                    os.remove(filename)
+
+                elif filename.endswith(".mp4"):
                     send_video_with_music(chat_id, filename)
-                    return
+                    os.remove(filename)
+            return
+
+        # ===== SINGLE VIDEO =====
+        filename = ydl.prepare_filename(info)
+
+        if not filename.endswith(".mp4"):
+            filename = filename.rsplit(".", 1)[0] + ".mp4"
+
+        send_video_with_music(chat_id, filename)
+        os.remove(filename)
+        return
 
         # ================= OTHER PLATFORMS =================
         ydl_opts = {

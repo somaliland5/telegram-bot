@@ -868,7 +868,7 @@ def convert_music(call):
         )
 
         kb = InlineKeyboardMarkup()
-        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/YOUR_CHANNEL_USERNAME"))
+        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
 
         with open(audio_path, "rb") as audio:
             bot.send_audio(

@@ -713,17 +713,12 @@ def extract_url(text):
 # ================= SEND VIDEO FUNCTION =================
 def send_video_with_music(chat_id, file_path):
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
+    kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
     with open(file_path, "rb") as video:
-        bot.send_video(
-            chat_id,
-            video,
-            caption=CAPTION_TEXT,
-            reply_markup=kb
-        )
+        bot.send_video(chat_id, video, caption=CAPTION_TEXT, reply_markup=kb)
 
-# ================= MEDIA DOWNLOADER =================
+# ================= MEDIA DOWNLOAD =================
 def download_media(chat_id, text):
     try:
         url = extract_url(text)
@@ -731,7 +726,7 @@ def download_media(chat_id, text):
             bot.send_message(chat_id, "❌ Invalid URL")
             return
 
-        # ===== Resolve Pinterest short link =====
+        # ===== Pinterest short link resolve =====
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -739,64 +734,22 @@ def download_media(chat_id, text):
             except:
                 pass
 
-# ===== Fix TikTok photo URL =====
-if "tiktok.com" in url and "/photo/" in url:
-    url = url.replace("/photo/", "/video/")
+        # ===== TikTok photo fix =====
+        if "tiktok.com" in url and "/photo/" in url:
+            url = url.replace("/photo/", "/video/")
 
-        # ================= TIKTOK =================
-if "tiktok.com" in url:
-
-    # Fix photo links
-    if "/photo/" in url:
-        url = url.replace("/photo/", "/video/")
-
-    ydl_opts = {
-        "format": "bv*+ba/b",
-        "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
-        "merge_output_format": "mp4",
-        "quiet": True
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-
-        # Slideshow
-        if info.get("entries"):
-            for entry in info["entries"]:
-                filename = ydl.prepare_filename(entry)
-
-                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    with open(filename, "rb") as photo:
-                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                    os.remove(filename)
-
-                elif filename.endswith(".mp4"):
-                    send_video_with_music(chat_id, filename)
-
-            return
-
-        # Single video
-        filename = ydl.prepare_filename(info)
-
-        if not filename.endswith(".mp4"):
-            filename = filename.rsplit(".", 1)[0] + ".mp4"
-
-        send_video_with_music(chat_id, filename)
-        return
-
-        # ================= OTHER PLATFORMS =================
         ydl_opts = {
-            "format": "bv*+ba/b",
+            "format": "bestvideo+bestaudio/best",
             "outtmpl": os.path.join(BASE_DIR, "%(extractor)s_%(id)s.%(ext)s"),
+            "merge_output_format": "mp4",
             "quiet": True,
-            "noplaylist": True,
-            "merge_output_format": "mp4"
+            "noplaylist": True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # ===== Multiple entries (Gallery) =====
+            # ===== Multiple entries (TikTok slideshow / Pinterest gallery) =====
             if isinstance(info, dict) and info.get("entries"):
                 for entry in info["entries"]:
                     if not entry:
@@ -804,29 +757,40 @@ if "tiktok.com" in url:
 
                     filename = ydl.prepare_filename(entry)
 
+                    # PHOTO
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                        with open(filename, "rb") as photo:
-                            bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                        os.remove(filename)
+                        if os.path.exists(filename):
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                            os.remove(filename)
+
+                    # VIDEO
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
-                        send_video_with_music(chat_id, filename)
-                        os.remove(filename)
+
+                        if os.path.exists(filename):
+                            send_video_with_music(chat_id, filename)
+
                 return
 
             # ===== Single file =====
             filename = ydl.prepare_filename(info)
 
+            # PHOTO
             if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                with open(filename, "rb") as photo:
-                    bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                os.remove(filename)
+                if os.path.exists(filename):
+                    with open(filename, "rb") as photo:
+                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                    os.remove(filename)
+
+            # VIDEO
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
-                send_video_with_music(chat_id, filename)
-                os.remove(filename)
+
+                if os.path.exists(filename):
+                    send_video_with_music(chat_id, filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
@@ -834,38 +798,20 @@ if "tiktok.com" in url:
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
-    file_path = call.data.split("|")[1]
 
-    if not os.path.exists(file_path):
-        bot.send_message(call.message.chat.id, "❌ File not found.")
-        return
-
+    file_path = call.data.split("|", 1)[1]
     audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
 
     try:
-        # Force convert xitaa haddii audio la'aan
         subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i", file_path,
-                "-vn",
-                "-f", "mp3",
-                "-ab", "128k",
-                "-ar", "44100",
-                audio_path
-            ],
+            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            check=True
         )
 
         kb = InlineKeyboardMarkup()
-        kb.add(
-            InlineKeyboardButton(
-                "📢 BOT CHANNEL",
-                url="https://t.me/YOUR_CHANNEL_USERNAME"
-            )
-        )
+        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/YOUR_CHANNEL_USERNAME"))
 
         with open(audio_path, "rb") as audio:
             bot.send_audio(
@@ -877,9 +823,12 @@ def convert_music(call):
                 reply_markup=kb
             )
 
-        # Hadda ka dib tirtir
-        os.remove(audio_path)
-        os.remove(file_path)
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+
+        # video tirtir ka dib conversion
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")

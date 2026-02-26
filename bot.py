@@ -797,6 +797,24 @@ def download_media(chat_id, url):
             return
 
 
+        # ===== PINTEREST =====
+        if "pinterest.com" in url or "pin.it" in url:
+
+            ydl_opts = {
+                "format": "best[ext=mp4]",
+                "outtmpl": "pinterest.%(ext)s",
+                "quiet": True
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+
+            send_video_with_music(chat_id, filename)
+            os.remove(filename)
+            return
+
+
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception as e:

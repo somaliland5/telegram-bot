@@ -7,6 +7,7 @@ import yt_dlp
 import subprocess
 import os
 import re
+import shutil
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
@@ -710,71 +711,115 @@ def extract_url(text):
     urls = re.findall(r'https?://[^\s]+', text)
     return urls[0] if urls else None
 
-# ================= SEND VIDEO FUNCTION =================
+# ================= CLEAN SEND VIDEO FUNCTION =================
 def send_video_with_music(chat_id, file_path):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
     with open(file_path, "rb") as video:
-        bot.send_video(chat_id, video, caption=CAPTION_TEXT, reply_markup=kb)
+        bot.send_video(
+            chat_id,
+            video,
+            caption=CAPTION_TEXT,
+            reply_markup=kb
+        )
 
 # ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
-    bot.send_video(
-        chat_id,
-        open(file, "rb"),
-        caption="Downloaded by @Downloadvedioytibot",
-        reply_markup=kb
-    )
-
-def download_media(chat_id, url):
+def download_media(chat_id, text):
     try:
-        # ===== TIKTOK =====
+        url = extract_url(text)
+        if not url:
+            bot.send_message(chat_id, "❌ Invalid link")
+            return
+
+        # ================= TIKTOK (PHOTO + VIDEO) =================
         if "tiktok.com" in url:
             try:
-                res = requests.get(f"https://tikwm.com/api/?url={url}", timeout=20).json()
+                api = f"https://tikwm.com/api/?url={url}"
+                res = requests.get(api, timeout=30).json()
 
                 if res.get("code") == 0:
                     data = res["data"]
 
-                    # ===== PHOTOS (MID MID) =====
+                    # ===== TIKTOK PHOTOS =====
                     if data.get("images"):
-                        count = 1
-                        for img in data["images"]:
-                            img_data = requests.get(img, timeout=20).content
-                            filename = f"tt_{count}.jpg"
+                        for i, img in enumerate(data["images"], start=1):
+                            img_data = requests.get(img, timeout=30).content
+                            filename = f"tiktok_{i}.jpg"
 
                             with open(filename, "wb") as f:
                                 f.write(img_data)
 
-                            bot.send_photo(
-                                chat_id,
-                                open(filename, "rb"),
-                                caption=f"📸 Photo {count}\nDownloaded by @Downloadvedioytibot"
-                            )
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(
+                                    chat_id,
+                                    photo,
+                                    caption=f"📸 Photo {i}\n{CAPTION_TEXT}"
+                                )
 
                             os.remove(filename)
-                            count += 1
                         return
 
-                    # ===== VIDEO =====
+                    # ===== TIKTOK VIDEO =====
                     if data.get("play"):
-                        vid_data = requests.get(data["play"], timeout=60).content
-                        with open("tt_video.mp4", "wb") as f:
-                            f.write(vid_data)
+                        video_data = requests.get(data["play"], timeout=60).content
+                        filename = "tiktok_video.mp4"
 
-                        send_video_with_music(chat_id, "tt_video.mp4")
+                        with open(filename, "wb") as f:
+                            f.write(video_data)
+
+                        send_video_with_music(chat_id, filename)
                         return
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
+                return
+
+        # ================= PINTEREST =================
+        if "pin.it" in url:
+            try:
+                r = requests.head(url, allow_redirects=True, timeout=10)
+                url = r.url
             except:
                 pass
 
-        # ===== YOUTUBE =====
-        if "youtube.com" in url or "youtu.be" in url:
+        if "pinterest.com" in url:
             ydl_opts = {
-                "outtmpl": "youtube.%(ext)s",
-                "format": "mp4",
+                "format": "best",
+                "outtmpl": "pinterest_%(id)s.%(ext)s",
+                "quiet": True
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+
+                if info.get("entries"):
+                    for entry in info["entries"]:
+                        file = ydl.prepare_filename(entry)
+
+                        if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
+                            with open(file, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                            os.remove(file)
+                        else:
+                            send_video_with_music(chat_id, file)
+                    return
+
+                file = ydl.prepare_filename(info)
+
+                if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
+                    with open(file, "rb") as photo:
+                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                    os.remove(file)
+                else:
+                    send_video_with_music(chat_id, file)
+                return
+
+        # ================= FACEBOOK =================
+        if "facebook.com" in url or "fb.watch" in url:
+            ydl_opts = {
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": "facebook_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
                 "quiet": True
             }
 
@@ -785,42 +830,26 @@ def download_media(chat_id, url):
             send_video_with_music(chat_id, file)
             return
 
-         # ===== Pinterest short link resolve =====
-        if "pin.it" in url:
-            try:
-                r = requests.head(url, allow_redirects=True, timeout=10)
-                url = r.url
-            except:
-                pass
-# ================= FACEBOOK DOWNLOADER =================
-def download_facebook(chat_id, url):
-    try:
-        ydl_opts = {
-            "format": "bestvideo+bestaudio/best",
-            "outtmpl": os.path.join(BASE_DIR, "facebook_%(id)s.%(ext)s"),
-            "merge_output_format": "mp4",
-            "quiet": True,
-            "noplaylist": True
-        }
+        # ================= YOUTUBE =================
+        if "youtube.com" in url or "youtu.be" in url:
+            ydl_opts = {
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
 
-            filename = ydl.prepare_filename(info)
-
-            if not filename.endswith(".mp4"):
-                filename = filename.rsplit(".", 1)[0] + ".mp4"
-
-            if os.path.exists(filename):
-                send_video_with_music(chat_id, filename)
-
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Facebook download error:\n{e}")
+            send_video_with_music(chat_id, file)
+            return
 
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception as e:
-        bot.send_message(chat_id, f"Download error: {e}")
+        bot.send_message(chat_id, f"❌ Download error:\n{e}")
 
 
 # ================= MUSIC CONVERSION =================

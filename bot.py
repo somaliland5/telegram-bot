@@ -703,6 +703,19 @@ def remove_balance_process(m):
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
+# ================= SEND VIDEO FUNCTION =================
+def send_video_with_music(chat_id, file_path):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
+
+    with open(file_path, "rb") as video:
+        bot.send_video(
+            chat_id,
+            video,
+            caption=CAPTION_TEXT,
+            reply_markup=kb
+        )
+
 # ================= MEDIA DOWNLOADER =================
 
 def download_media(chat_id, url):

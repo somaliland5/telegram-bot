@@ -703,6 +703,7 @@ def remove_balance_process(m):
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
+
 # ================= URL EXTRACTOR =================
 def extract_url(text):
     urls = re.findall(r'https?://\S+', text)
@@ -726,7 +727,7 @@ def download_media(chat_id, url):
             bot.send_message(chat_id, "❌ Invalid URL")
             return
 
-        # Resolve Pinterest short links (pin.it)
+        # Resolve Pinterest short link
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -749,7 +750,6 @@ def download_media(chat_id, url):
             if "entries" in info and info["entries"]:
                 for entry in info["entries"]:
                     filename = ydl.prepare_filename(entry)
-
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
@@ -807,7 +807,7 @@ def convert_music(call):
                 reply_markup=kb
             )
 
-        # Cleanup
+        # cleanup
         os.remove(audio_path)
         os.remove(file_path)
 

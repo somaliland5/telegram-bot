@@ -11,6 +11,10 @@ import os
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii loo baahdo
 
+BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
+CAPTION_TEXT = "✅ Downloaded via @YourBotUsername"
+
+
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # ================= DATABASE FILES =================

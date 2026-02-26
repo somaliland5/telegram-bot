@@ -800,8 +800,9 @@ def download_media(chat_id, url):
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception as e:
-    error_text = str(e).lower()
-    
+        bot.send_message(chat_id, f"❌ Download error:\n{e}")
+
+
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):

@@ -700,11 +700,12 @@ def remove_balance_process(m):
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
 # ================= MEDIA DOWNLOADER =================
-def send_video_with_music(chat_id, file):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file}"))
 
-    with open(file, "rb") as video:
+def send_video_with_music(chat_id, file_path):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
+
+    with open(file_path, "rb") as video:
         bot.send_video(
             chat_id,
             video,
@@ -726,48 +727,42 @@ def download_media(chat_id, url):
             if res.get("code") == 0:
                 data = res["data"]
 
-                # Images
                 if data.get("images"):
                     for i, img in enumerate(data["images"], 1):
                         img_data = requests.get(img, timeout=20).content
-                        filename = f"tt_{i}.jpg"
+                        filename = os.path.join(BASE_DIR, f"tt_{i}.jpg")
 
                         with open(filename, "wb") as f:
                             f.write(img_data)
 
                         with open(filename, "rb") as photo:
-                            bot.send_photo(
-                                chat_id,
-                                photo,
-                                caption=CAPTION_TEXT
-                            )
+                            bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
 
                         os.remove(filename)
                     return
 
-                # Video
                 if data.get("play"):
                     video_data = requests.get(
                         data["play"],
                         timeout=60
                     ).content
 
-                    filename = "tiktok_video.mp4"
+                    filename = os.path.join(BASE_DIR, "tiktok_video.mp4")
                     with open(filename, "wb") as f:
                         f.write(video_data)
 
                     send_video_with_music(chat_id, filename)
-                    os.remove(filename)
                     return
 
 
-        # ===== YOUTUBE (Normal + Shorts) =====
+        # ===== YOUTUBE =====
         if "youtube.com" in url or "youtu.be" in url:
 
             ydl_opts = {
-                "format": "best[ext=mp4]",
-                "outtmpl": "youtube.%(ext)s",
-                "quiet": True
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": os.path.join(BASE_DIR, "youtube.%(ext)s"),
+                "quiet": True,
+                "noplaylist": True
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -775,7 +770,6 @@ def download_media(chat_id, url):
                 filename = ydl.prepare_filename(info)
 
             send_video_with_music(chat_id, filename)
-            os.remove(filename)
             return
 
 
@@ -783,8 +777,8 @@ def download_media(chat_id, url):
         if "facebook.com" in url or "fb.watch" in url:
 
             ydl_opts = {
-                "format": "best[ext=mp4]",
-                "outtmpl": "facebook.%(ext)s",
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": os.path.join(BASE_DIR, "facebook.%(ext)s"),
                 "quiet": True
             }
 
@@ -793,7 +787,6 @@ def download_media(chat_id, url):
                 filename = ydl.prepare_filename(info)
 
             send_video_with_music(chat_id, filename)
-            os.remove(filename)
             return
 
 
@@ -801,9 +794,10 @@ def download_media(chat_id, url):
         if "pinterest.com" in url or "pin.it" in url:
 
             ydl_opts = {
-                "format": "best[ext=mp4]",
-                "outtmpl": "pinterest.%(ext)s",
-                "quiet": True
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": os.path.join(BASE_DIR, "pinterest.%(ext)s"),
+                "quiet": True,
+                "noplaylist": True
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -811,7 +805,6 @@ def download_media(chat_id, url):
                 filename = ydl.prepare_filename(info)
 
             send_video_with_music(chat_id, filename)
-            os.remove(filename)
             return
 
 
@@ -822,16 +815,16 @@ def download_media(chat_id, url):
 
 
 # ================= MUSIC CONVERSION =================
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
-    file = call.data.split("|")[1]
-    audio = file.replace(".mp4", ".mp3")
+    file_path = call.data.split("|")[1]
+    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
 
     try:
         subprocess.run(
-            ["ffmpeg", "-i", file, "-vn", "-ab", "128k", "-ar", "44100", audio],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
+            check=True
         )
 
         kb = InlineKeyboardMarkup()
@@ -842,7 +835,7 @@ def convert_music(call):
             )
         )
 
-        with open(audio, "rb") as a:
+        with open(audio_path, "rb") as a:
             bot.send_audio(
                 call.message.chat.id,
                 a,
@@ -852,7 +845,9 @@ def convert_music(call):
                 reply_markup=kb
             )
 
-        os.remove(audio)
+        # Cleanup
+        os.remove(audio_path)
+        os.remove(file_path)
 
     except Exception as e:
         bot.send_message(
@@ -862,6 +857,7 @@ def convert_music(call):
 
 
 # ================= LINK HANDLER =================
+
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
     bot.send_message(message.chat.id, "⏳ Downloading...")
@@ -869,9 +865,7 @@ def handle_links(message):
 
 
 # ================= RUN BOT =================
+
 if __name__ == "__main__":
     print("🤖 Bot is running...")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except Exception as e:
-        print("❌ Bot crashed:", e)
+    bot.infinity_polling(skip_pending=True)

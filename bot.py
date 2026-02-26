@@ -703,25 +703,30 @@ def remove_balance_process(m):
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
-# ================= SEND VIDEO FUNCTION =================
+# ================= URL EXTRACTOR =================
+def extract_url(text):
+    urls = re.findall(r'https?://\S+', text)
+    return urls[0] if urls else None
+
+
+# ================= SEND VIDEO WITH MUSIC =================
 def send_video_with_music(chat_id, file_path):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
 
     with open(file_path, "rb") as video:
-        bot.send_video(
-            chat_id,
-            video,
-            caption=CAPTION_TEXT,
-            reply_markup=kb
-        )
+        bot.send_video(chat_id, video, caption=CAPTION_TEXT, reply_markup=kb)
+
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, url):
     try:
-        import requests
+        url = extract_url(url)
+        if not url:
+            bot.send_message(chat_id, "❌ Invalid URL")
+            return
 
-        # ===== Resolve Pinterest short link =====
+        # Resolve Pinterest short link
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -745,7 +750,7 @@ def download_media(chat_id, url):
                 for entry in info["entries"]:
                     filename = ydl.prepare_filename(entry)
 
-                    # Photo
+                    # Sawir
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
@@ -755,14 +760,14 @@ def download_media(chat_id, url):
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
+
                         send_video_with_music(chat_id, filename)
-                        os.remove(filename)
                 return
 
             # ===== Single file =====
             filename = ydl.prepare_filename(info)
 
-            # Photo
+            # Sawir
             if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 with open(filename, "rb") as photo:
                     bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
@@ -772,15 +777,14 @@ def download_media(chat_id, url):
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
+
                 send_video_with_music(chat_id, filename)
-                os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
 
 
 # ================= MUSIC CONVERSION =================
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
     file_path = call.data.split("|")[1]
@@ -810,7 +814,7 @@ def convert_music(call):
                 reply_markup=kb
             )
 
-        # cleanup
+        # Cleanup
         os.remove(audio_path)
         os.remove(file_path)
 
@@ -822,15 +826,7 @@ def convert_music(call):
 
 
 # ================= LINK HANDLER =================
-
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
-
-
-# ================= RUN BOT =================
-
-if __name__ == "__main__":
-    print("🤖 Bot is running...")
-    bot.infinity_polling(skip_pending=True)

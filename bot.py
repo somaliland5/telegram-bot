@@ -726,7 +726,7 @@ def download_media(chat_id, url):
             bot.send_message(chat_id, "❌ Invalid URL")
             return
 
-        # Resolve Pinterest short link
+        # Resolve Pinterest short links (pin.it)
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -745,40 +745,33 @@ def download_media(chat_id, url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # ===== Multiple entries (TikTok slideshow / Pinterest gallery) =====
+            # Multiple entries (TikTok slideshow / Pinterest gallery)
             if "entries" in info and info["entries"]:
                 for entry in info["entries"]:
                     filename = ydl.prepare_filename(entry)
 
-                    # Sawir
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                         os.remove(filename)
-
-                    # Video
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
-
                         send_video_with_music(chat_id, filename)
+                        os.remove(filename)
                 return
 
-            # ===== Single file =====
+            # Single file
             filename = ydl.prepare_filename(info)
-
-            # Sawir
             if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 with open(filename, "rb") as photo:
                     bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                 os.remove(filename)
-
-            # Video
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
-
                 send_video_with_music(chat_id, filename)
+                os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
@@ -830,3 +823,9 @@ def convert_music(call):
 def handle_links(message):
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
+
+
+# ================= RUN BOT =================
+if __name__ == "__main__":
+    print("🤖 Bot is running...")
+    bot.infinity_polling(skip_pending=True, timeout=60)

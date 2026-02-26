@@ -740,44 +740,43 @@ def download_media(chat_id, text):
                 pass
 
         # ================= TIKTOK =================
-if "tiktok.com" in url:
-    ydl_opts = {
-        "format": "bv*+ba/b",
-        "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
-        "merge_output_format": "mp4",
-        "quiet": True
-    }
+        if "tiktok.com" in url:
+            ydl_opts = {
+                "format": "bv*+ba/b",
+                "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
 
-        # ===== SLIDESHOW (Sawirro badan) =====
-        if info.get("entries"):
-            for entry in info["entries"]:
-                if not entry:
-                    continue
+                # ===== SLIDESHOW (Sawirro badan) =====
+                if info.get("entries"):
+                    for entry in info["entries"]:
+                        if not entry:
+                            continue
 
-                filename = ydl.prepare_filename(entry)
+                        filename = ydl.prepare_filename(entry)
 
-                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    with open(filename, "rb") as photo:
-                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                    os.remove(filename)
+                        if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                            os.remove(filename)
 
-                elif filename.endswith(".mp4"):
-                    send_video_with_music(chat_id, filename)
-                    os.remove(filename)
-            return
+                        elif filename.endswith(".mp4"):
+                            send_video_with_music(chat_id, filename)
+                            os.remove(filename)
+                    return
 
-        # ===== SINGLE VIDEO =====
-        filename = ydl.prepare_filename(info)
+                # ===== SINGLE VIDEO =====
+                filename = ydl.prepare_filename(info)
+                if not filename.endswith(".mp4"):
+                    filename = filename.rsplit(".", 1)[0] + ".mp4"
 
-        if not filename.endswith(".mp4"):
-            filename = filename.rsplit(".", 1)[0] + ".mp4"
-
-        send_video_with_music(chat_id, filename)
-        os.remove(filename)
-        return
+                send_video_with_music(chat_id, filename)
+                os.remove(filename)
+                return
 
         # ================= OTHER PLATFORMS =================
         ydl_opts = {
@@ -791,11 +790,12 @@ if "tiktok.com" in url:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # ===== Gallery / Multiple entries =====
+            # ===== Multiple entries (Gallery) =====
             if isinstance(info, dict) and info.get("entries"):
                 for entry in info["entries"]:
                     if not entry:
                         continue
+
                     filename = ydl.prepare_filename(entry)
 
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
@@ -806,6 +806,7 @@ if "tiktok.com" in url:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
                         send_video_with_music(chat_id, filename)
+                        os.remove(filename)
                 return
 
             # ===== Single file =====
@@ -819,6 +820,7 @@ if "tiktok.com" in url:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
                 send_video_with_music(chat_id, filename)
+                os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")

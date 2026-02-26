@@ -740,43 +740,50 @@ def download_media(chat_id, text):
                 pass
 
         # ================= TIKTOK =================
-        if "tiktok.com" in url:
-            ydl_opts = {
-                "format": "bv*+ba/b",
-                "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
+if "tiktok.com" in url:
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+    ydl_opts = {
+        "format": "bv*+ba/b",
+        "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
+        "merge_output_format": "mp4",
+        "quiet": True
+    }
 
-                # ===== SLIDESHOW (Sawirro badan) =====
-                if info.get("entries"):
-                    for entry in info["entries"]:
-                        if not entry:
-                            continue
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
 
-                        filename = ydl.prepare_filename(entry)
+        # ===== SLIDESHOW (TikTok Photos) =====
+        if isinstance(info, dict) and info.get("entries"):
+            for entry in info["entries"]:
+                if not entry:
+                    continue
 
-                        if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                            with open(filename, "rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                            os.remove(filename)
+                filename = ydl.prepare_filename(entry)
 
-                        elif filename.endswith(".mp4"):
-                            send_video_with_music(chat_id, filename)
-                            os.remove(filename)
-                    return
+                # Sawir
+                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    if os.path.exists(filename):
+                        with open(filename, "rb") as photo:
+                            bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                        os.remove(filename)
 
-                # ===== SINGLE VIDEO =====
-                filename = ydl.prepare_filename(info)
-                if not filename.endswith(".mp4"):
-                    filename = filename.rsplit(".", 1)[0] + ".mp4"
+                # Mararka qaar slideshow wuxuu sameeyaa mp4
+                elif filename.endswith(".mp4"):
+                    if os.path.exists(filename):
+                        send_video_with_music(chat_id, filename)
+                        # HA TIRTIRIN halkan haddii music rabto
+            return
 
-                send_video_with_music(chat_id, filename)
-                os.remove(filename)
-                return
+        # ===== SINGLE VIDEO =====
+        filename = ydl.prepare_filename(info)
+
+        if not filename.endswith(".mp4"):
+            filename = filename.rsplit(".", 1)[0] + ".mp4"
+
+        if os.path.exists(filename):
+            send_video_with_music(chat_id, filename)
+
+        return
 
         # ================= OTHER PLATFORMS =================
         ydl_opts = {
@@ -829,17 +836,30 @@ def download_media(chat_id, text):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
     file_path = call.data.split("|")[1]
+
+    if not os.path.exists(file_path):
+        bot.send_message(call.message.chat.id, "❌ File not found.")
+        return
+
     audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
 
     try:
+        # Force convert xitaa haddii audio la'aan
         subprocess.run(
-            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
+            [
+                "ffmpeg",
+                "-y",
+                "-i", file_path,
+                "-vn",
+                "-f", "mp3",
+                "-ab", "128k",
+                "-ar", "44100",
+                audio_path
+            ],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True
+            stderr=subprocess.DEVNULL
         )
 
-        # ===== CHANNEL BUTTON =====
         kb = InlineKeyboardMarkup()
         kb.add(
             InlineKeyboardButton(
@@ -852,19 +872,18 @@ def convert_music(call):
             bot.send_audio(
                 call.message.chat.id,
                 audio,
-                title="Downloaded Music",
+                title="Converted Music",
                 performer="DownloadBot",
                 caption=CAPTION_TEXT,
                 reply_markup=kb
             )
 
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Hadda ka dib tirtir
+        os.remove(audio_path)
+        os.remove(file_path)
 
-    except Exception:
-        bot.send_message(call.message.chat.id, "❌ Music conversion failed.")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)

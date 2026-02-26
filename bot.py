@@ -739,8 +739,16 @@ def download_media(chat_id, text):
             except:
                 pass
 
+# ===== Fix TikTok photo URL =====
+if "tiktok.com" in url and "/photo/" in url:
+    url = url.replace("/photo/", "/video/")
+
         # ================= TIKTOK =================
 if "tiktok.com" in url:
+
+    # Fix photo links
+    if "/photo/" in url:
+        url = url.replace("/photo/", "/video/")
 
     ydl_opts = {
         "format": "bv*+ba/b",
@@ -752,37 +760,28 @@ if "tiktok.com" in url:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
-        # ===== SLIDESHOW (TikTok Photos) =====
-        if isinstance(info, dict) and info.get("entries"):
+        # Slideshow
+        if info.get("entries"):
             for entry in info["entries"]:
-                if not entry:
-                    continue
-
                 filename = ydl.prepare_filename(entry)
 
-                # Sawir
                 if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    if os.path.exists(filename):
-                        with open(filename, "rb") as photo:
-                            bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                        os.remove(filename)
+                    with open(filename, "rb") as photo:
+                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                    os.remove(filename)
 
-                # Mararka qaar slideshow wuxuu sameeyaa mp4
                 elif filename.endswith(".mp4"):
-                    if os.path.exists(filename):
-                        send_video_with_music(chat_id, filename)
-                        # HA TIRTIRIN halkan haddii music rabto
+                    send_video_with_music(chat_id, filename)
+
             return
 
-        # ===== SINGLE VIDEO =====
+        # Single video
         filename = ydl.prepare_filename(info)
 
         if not filename.endswith(".mp4"):
             filename = filename.rsplit(".", 1)[0] + ".mp4"
 
-        if os.path.exists(filename):
-            send_video_with_music(chat_id, filename)
-
+        send_video_with_music(chat_id, filename)
         return
 
         # ================= OTHER PLATFORMS =================

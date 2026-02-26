@@ -717,9 +717,18 @@ def send_video_with_music(chat_id, file_path):
         )
 
 # ================= MEDIA DOWNLOADER =================
-
 def download_media(chat_id, url):
     try:
+        import requests
+
+        # ===== Resolve Pinterest short link =====
+        if "pin.it" in url:
+            try:
+                r = requests.head(url, allow_redirects=True, timeout=10)
+                url = r.url
+            except:
+                pass
+
         ydl_opts = {
             "format": "bv*+ba/b",
             "outtmpl": os.path.join(BASE_DIR, "%(extractor)s_%(id)s.%(ext)s"),
@@ -731,83 +740,40 @@ def download_media(chat_id, url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # haddii post-ku yahay slideshow / multiple entries
+            # ===== Multiple entries (TikTok slideshow / Pinterest gallery) =====
             if "entries" in info and info["entries"]:
                 for entry in info["entries"]:
                     filename = ydl.prepare_filename(entry)
 
-                    if filename.endswith((".jpg", ".jpeg", ".png")):
+                    # Photo
+                    if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                         os.remove(filename)
+
+                    # Video
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
                         send_video_with_music(chat_id, filename)
+                        os.remove(filename)
                 return
 
-            # single file
+            # ===== Single file =====
             filename = ydl.prepare_filename(info)
 
-            if filename.endswith((".jpg", ".jpeg", ".png")):
+            # Photo
+            if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 with open(filename, "rb") as photo:
                     bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                 os.remove(filename)
+
+            # Video
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
                 send_video_with_music(chat_id, filename)
-
-    # ===== PINTEREST =====
-if "pinterest.com" in url or "pin.it" in url:
-
-    # Haddii uu yahay short link pin.it → resolve
-    if "pin.it" in url:
-        try:
-            r = requests.head(url, allow_redirects=True, timeout=10)
-            url = r.url
-        except:
-            pass
-
-    ydl_opts = {
-        "format": "bv*+ba/b",
-        "outtmpl": os.path.join(BASE_DIR, "pinterest_%(id)s.%(ext)s"),
-        "quiet": True,
-        "noplaylist": True,
-        "merge_output_format": "mp4"
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-
-        # Haddii uu yahay multiple entries (gallery)
-        if "entries" in info and info["entries"]:
-            for entry in info["entries"]:
-                filename = ydl.prepare_filename(entry)
-
-                if filename.endswith((".jpg", ".jpeg", ".png")):
-                    with open(filename, "rb") as photo:
-                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                    os.remove(filename)
-                else:
-                    if not filename.endswith(".mp4"):
-                        filename = filename.rsplit(".", 1)[0] + ".mp4"
-                    send_video_with_music(chat_id, filename)
-            return
-
-        # Single file
-        filename = ydl.prepare_filename(info)
-
-        if filename.endswith((".jpg", ".jpeg", ".png")):
-            with open(filename, "rb") as photo:
-                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-            os.remove(filename)
-        else:
-            if not filename.endswith(".mp4"):
-                filename = filename.rsplit(".", 1)[0] + ".mp4"
-            send_video_with_music(chat_id, filename)
-
-    return
+                os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")

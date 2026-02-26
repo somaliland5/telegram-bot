@@ -710,15 +710,13 @@ def extract_url(text):
     urls = re.findall(r'https?://[^\s]+', text)
     return urls[0] if urls else None
 
-
-# ================= SEND VIDEO WITH MUSIC =================
+# ================= SEND VIDEO WITH MUSIC BUTTON =================
 def send_video_with_music(chat_id, file_path):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
 
     with open(file_path, "rb") as video:
         bot.send_video(chat_id, video, caption=CAPTION_TEXT, reply_markup=kb)
-
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
@@ -736,8 +734,52 @@ def download_media(chat_id, text):
             except:
                 pass
 
+        # ================= TIKTOK =================
+        if "tiktok.com" in url:
+            ydl_opts = {"quiet": True}
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+
+                # ===== Slideshow (Sawirro badan) =====
+                if info.get("formats"):
+                    images = [
+                        f for f in info["formats"]
+                        if f.get("ext") in ["jpg", "jpeg", "png", "webp"]
+                    ]
+                    if images:
+                        for i, img in enumerate(images, 1):
+                            img_url = img.get("url")
+                            if not img_url:
+                                continue
+                            r = requests.get(img_url, timeout=20)
+                            filename = os.path.join(BASE_DIR, f"tt_{i}.jpg")
+                            with open(filename, "wb") as f:
+                                f.write(r.content)
+
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                            os.remove(filename)
+                        return
+
+                # ===== Video =====
+                ydl_opts = {
+                    "format": "bv*+ba/b",
+                    "outtmpl": os.path.join(BASE_DIR, "tiktok_%(id)s.%(ext)s"),
+                    "merge_output_format": "mp4",
+                    "quiet": True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                    info2 = ydl2.extract_info(url, download=True)
+                    filename = ydl2.prepare_filename(info2)
+                    if not filename.endswith(".mp4"):
+                        filename = filename.rsplit(".", 1)[0] + ".mp4"
+
+                    send_video_with_music(chat_id, filename)
+                    return
+
+        # ================= OTHER PLATFORMS =================
         ydl_opts = {
-            "format": "bestvideo+bestaudio/best",
+            "format": "bv*+ba/b",
             "outtmpl": os.path.join(BASE_DIR, "%(extractor)s_%(id)s.%(ext)s"),
             "quiet": True,
             "noplaylist": True,
@@ -747,81 +789,37 @@ def download_media(chat_id, text):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # ===== MULTIPLE ENTRIES (TikTok slideshow / Pinterest gallery) =====
+            # ===== Gallery / Multiple entries =====
             if isinstance(info, dict) and info.get("entries"):
                 for entry in info["entries"]:
                     if not entry:
                         continue
-
                     filename = ydl.prepare_filename(entry)
 
-                    # IMAGE
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                         os.remove(filename)
-
-                    # VIDEO
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
-
                         send_video_with_music(chat_id, filename)
-                        os.remove(filename)
                 return
 
-            # ===== SINGLE FILE =====
+            # ===== Single file =====
             filename = ydl.prepare_filename(info)
 
-            # IMAGE
             if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 with open(filename, "rb") as photo:
                     bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                 os.remove(filename)
-
-            # VIDEO
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
-
                 send_video_with_music(chat_id, filename)
-                os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
-
-# ================= MUSIC CHECK ==================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
-def convert_music(call):
-    file_path = call.data.split("|")[1]
-    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
-
-    try:
-        if not has_audio(file_path):
-            bot.send_message(call.message.chat.id, "❌ This video has no audio.")
-            return
-
-        subprocess.run(
-            ["ffmpeg", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True
-        )
-
-        with open(audio_path, "rb") as audio:
-            bot.send_audio(
-                call.message.chat.id,
-                audio,
-                title="Downloaded Music",
-                performer="DownloadBot",
-                caption=CAPTION_TEXT
-            )
-
-        os.remove(audio_path)
-        os.remove(file_path)
-
-    except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
@@ -830,7 +828,6 @@ def convert_music(call):
     audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
 
     try:
-        # isku day conversion, xitaa haddii audio la'aan
         subprocess.run(
             ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
@@ -847,20 +844,19 @@ def convert_music(call):
                 caption=CAPTION_TEXT
             )
 
-        os.remove(audio_path)
-        os.remove(file_path)
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-    except Exception as e:
-        # Hadday fashilanto, ugu dir video-ka user-ka
-        send_video_with_music(call.message.chat.id, file_path)
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed, sent original video instead.\n{e}")
+    except Exception:
+        bot.send_message(call.message.chat.id, "❌ Music conversion failed.")
 
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
-
 
 # ================= RUN BOT =================
 if __name__ == "__main__":

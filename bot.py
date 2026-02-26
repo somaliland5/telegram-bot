@@ -802,14 +802,11 @@ def download_media(chat_id, url):
     except Exception as e:
     error_text = str(e).lower()
 
-    if "only available for registered users" in error_text:
-        bot.send_message(chat_id, "❌ This Facebook video is private or requires login.")
-    elif "unsupported url" in error_text:
-        bot.send_message(chat_id, "❌ Unsupported link. Please send a valid TikTok, YouTube or Facebook or tiktok link.")
-    else:
-        bot.send_message(chat_id, "👀 Failed to download. Please try another link.")
-
-
+    except Exception as e:
+        bot.send_message(
+            call.message.chat.id,
+            f"❌ Music conversion failed:\n{e}"
+        )
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):

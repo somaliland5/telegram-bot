@@ -790,6 +790,39 @@ def download_media(chat_id, text):
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
 
+# ================= MUSIC CHECK ==================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    file_path = call.data.split("|")[1]
+    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+
+    try:
+        if not has_audio(file_path):
+            bot.send_message(call.message.chat.id, "❌ This video has no audio.")
+            return
+
+        subprocess.run(
+            ["ffmpeg", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+
+        with open(audio_path, "rb") as audio:
+            bot.send_audio(
+                call.message.chat.id,
+                audio,
+                title="Downloaded Music",
+                performer="DownloadBot",
+                caption=CAPTION_TEXT
+            )
+
+        os.remove(audio_path)
+        os.remove(file_path)
+
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
+
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):

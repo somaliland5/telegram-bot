@@ -701,114 +701,45 @@ CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
 # ================= MEDIA DOWNLOADER =================
 
-def send_video_with_music(chat_id, file_path):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 MUSIC", callback_data=f"music|{file_path}"))
-
-    with open(file_path, "rb") as video:
-        bot.send_video(
-            chat_id,
-            video,
-            caption=CAPTION_TEXT,
-            reply_markup=kb
-        )
-
-
 def download_media(chat_id, url):
     try:
+        ydl_opts = {
+            "format": "bv*+ba/b",
+            "outtmpl": os.path.join(BASE_DIR, "%(extractor)s_%(id)s.%(ext)s"),
+            "quiet": True,
+            "noplaylist": True,
+            "merge_output_format": "mp4"
+        }
 
-        # ===== TIKTOK =====
-        if "tiktok.com" in url:
-            res = requests.get(
-                f"https://tikwm.com/api/?url={url}",
-                timeout=20
-            ).json()
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
 
-            if res.get("code") == 0:
-                data = res["data"]
+            # haddii post-ku yahay slideshow / multiple entries
+            if "entries" in info and info["entries"]:
+                for entry in info["entries"]:
+                    filename = ydl.prepare_filename(entry)
 
-                if data.get("images"):
-                    for i, img in enumerate(data["images"], 1):
-                        img_data = requests.get(img, timeout=20).content
-                        filename = os.path.join(BASE_DIR, f"tt_{i}.jpg")
-
-                        with open(filename, "wb") as f:
-                            f.write(img_data)
-
+                    if filename.endswith((".jpg", ".jpeg", ".png")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-
                         os.remove(filename)
-                    return
+                    else:
+                        if not filename.endswith(".mp4"):
+                            filename = filename.rsplit(".", 1)[0] + ".mp4"
+                        send_video_with_music(chat_id, filename)
+                return
 
-                if data.get("play"):
-                    video_data = requests.get(
-                        data["play"],
-                        timeout=60
-                    ).content
+            # single file
+            filename = ydl.prepare_filename(info)
 
-                    filename = os.path.join(BASE_DIR, "tiktok_video.mp4")
-                    with open(filename, "wb") as f:
-                        f.write(video_data)
-
-                    send_video_with_music(chat_id, filename)
-                    return
-
-
-        # ===== YOUTUBE =====
-        if "youtube.com" in url or "youtu.be" in url:
-
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": os.path.join(BASE_DIR, "youtube.%(ext)s"),
-                "quiet": True,
-                "noplaylist": True
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
-            send_video_with_music(chat_id, filename)
-            return
-
-
-        # ===== FACEBOOK =====
-        if "facebook.com" in url or "fb.watch" in url:
-
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": os.path.join(BASE_DIR, "facebook.%(ext)s"),
-                "quiet": True
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
-            send_video_with_music(chat_id, filename)
-            return
-
-
-        # ===== PINTEREST =====
-        if "pinterest.com" in url or "pin.it" in url:
-
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": os.path.join(BASE_DIR, "pinterest.%(ext)s"),
-                "quiet": True,
-                "noplaylist": True
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
-            send_video_with_music(chat_id, filename)
-            return
-
-
-        bot.send_message(chat_id, "❌ Unsupported link")
+            if filename.endswith((".jpg", ".jpeg", ".png")):
+                with open(filename, "rb") as photo:
+                    bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                os.remove(filename)
+            else:
+                if not filename.endswith(".mp4"):
+                    filename = filename.rsplit(".", 1)[0] + ".mp4"
+                send_video_with_music(chat_id, filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
@@ -835,17 +766,17 @@ def convert_music(call):
             )
         )
 
-        with open(audio_path, "rb") as a:
+        with open(audio_path, "rb") as audio:
             bot.send_audio(
                 call.message.chat.id,
-                a,
+                audio,
                 title="Downloaded Music",
-                performer="Downloadvedioytibot",
+                performer="DownloadBot",
                 caption=CAPTION_TEXT,
                 reply_markup=kb
             )
 
-        # Cleanup
+        # cleanup
         os.remove(audio_path)
         os.remove(file_path)
 

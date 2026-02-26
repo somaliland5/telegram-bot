@@ -6,6 +6,7 @@ from datetime import datetime
 import yt_dlp
 import subprocess
 import os
+import re
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
@@ -706,7 +707,7 @@ CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
 # ================= URL EXTRACTOR =================
 def extract_url(text):
-    urls = re.findall(r'https?://\S+', text)
+    urls = re.findall(r'https?://[^\s]+', text)
     return urls[0] if urls else None
 
 
@@ -720,9 +721,12 @@ def send_video_with_music(chat_id, file_path):
 
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(chat_id, url):
+def download_media(chat_id, text):
     try:
-        import requests
+        url = extract_url(text)
+        if not url:
+            bot.send_message(chat_id, "❌ Invalid URL")
+            return
 
         # ===== Resolve Pinterest short link =====
         if "pin.it" in url:
@@ -733,7 +737,7 @@ def download_media(chat_id, url):
                 pass
 
         ydl_opts = {
-            "format": "bv*+ba/b",
+            "format": "bestvideo+bestaudio/best",
             "outtmpl": os.path.join(BASE_DIR, "%(extractor)s_%(id)s.%(ext)s"),
             "quiet": True,
             "noplaylist": True,
@@ -743,43 +747,77 @@ def download_media(chat_id, url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # ===== Multiple entries (TikTok slideshow / Pinterest gallery) =====
-            if "entries" in info and info["entries"]:
+            # ===== MULTIPLE ENTRIES (TikTok slideshow / Pinterest gallery) =====
+            if isinstance(info, dict) and info.get("entries"):
                 for entry in info["entries"]:
+                    if not entry:
+                        continue
+
                     filename = ydl.prepare_filename(entry)
 
-                    # Photo
+                    # IMAGE
                     if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(filename, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                         os.remove(filename)
 
-                    # Video
+                    # VIDEO
                     else:
                         if not filename.endswith(".mp4"):
                             filename = filename.rsplit(".", 1)[0] + ".mp4"
+
                         send_video_with_music(chat_id, filename)
                         os.remove(filename)
                 return
 
-            # ===== Single file =====
+            # ===== SINGLE FILE =====
             filename = ydl.prepare_filename(info)
 
-            # Photo
+            # IMAGE
             if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 with open(filename, "rb") as photo:
                     bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
                 os.remove(filename)
 
-            # Video
+            # VIDEO
             else:
                 if not filename.endswith(".mp4"):
                     filename = filename.rsplit(".", 1)[0] + ".mp4"
+
                 send_video_with_music(chat_id, filename)
                 os.remove(filename)
 
     except Exception as e:
         bot.send_message(chat_id, f"❌ Download error:\n{e}")
+
+# ================= MUSIC CONVERSION =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
+def convert_music(call):
+    file_path = call.data.split("|")[1]
+    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+
+    try:
+        subprocess.run(
+            ["ffmpeg", "-i", file_path, "-vn", "-ab", "128k", "-ar", "44100", audio_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+
+        with open(audio_path, "rb") as audio:
+            bot.send_audio(
+                call.message.chat.id,
+                audio,
+                title="Downloaded Music",
+                performer="DownloadBot",
+                caption=CAPTION_TEXT
+            )
+
+        os.remove(audio_path)
+        os.remove(file_path)
+
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)

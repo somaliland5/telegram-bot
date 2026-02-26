@@ -837,13 +837,23 @@ def convert_music(call):
             check=True
         )
 
+        # ===== CHANNEL BUTTON =====
+        kb = InlineKeyboardMarkup()
+        kb.add(
+            InlineKeyboardButton(
+                "📢 BOT CHANNEL",
+                url="https://t.me/YOUR_CHANNEL_USERNAME"
+            )
+        )
+
         with open(audio_path, "rb") as audio:
             bot.send_audio(
                 call.message.chat.id,
                 audio,
                 title="Downloaded Music",
                 performer="DownloadBot",
-                caption=CAPTION_TEXT
+                caption=CAPTION_TEXT,
+                reply_markup=kb
             )
 
         if os.path.exists(audio_path):

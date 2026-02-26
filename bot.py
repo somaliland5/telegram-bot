@@ -823,6 +823,21 @@ def convert_music(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
+# ================= CHECK IF VIDEO HAS AUDIO =================
+import subprocess
+
+def has_audio(file_path):
+    """
+    Returns True if the video file has an audio stream, False otherwise.
+    """
+    result = subprocess.run(
+        ["ffmpeg", "-i", file_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    return "Audio:" in result.stderr
+
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):

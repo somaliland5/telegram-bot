@@ -801,12 +801,7 @@ def download_media(chat_id, url):
 
     except Exception as e:
     error_text = str(e).lower()
-
-    except Exception as e:
-        bot.send_message(
-            call.message.chat.id,
-            f"❌ Music conversion failed:\n{e}"
-        )
+    
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):

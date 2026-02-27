@@ -835,7 +835,7 @@ def download_media(chat_id, text):
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
 
-# ================= PINTEREST =================
+ # ================= PINTEREST =================
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -856,25 +856,29 @@ def download_media(chat_id, text):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
 
-                entries = info.get("entries", [info])
-
-                for entry in entries:
-                    file = yt_dlp.YoutubeDL(ydl_opts).prepare_filename(entry)
-
-                    # ===== PHOTO =====
-                    if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                        with open(file, "rb") as photo:
-                            bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-
-                    # ===== VIDEO =====
+                    # ===== haddii ay tahay carousel =====
+                    if "entries" in info:
+                        entries = info["entries"]
                     else:
-                        send_video_with_music(chat_id, file)
+                        entries = [info]
 
-                    # delete file
-                    try:
-                        os.remove(file)
-                    except Exception:
-                        pass
+                    for entry in entries:
+                        file = ydl.prepare_filename(entry)
+
+                        # ===== PHOTO =====
+                        if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                            with open(file, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+
+                        # ===== VIDEO =====
+                        else:
+                            send_video_with_music(chat_id, file)
+
+                        # delete file
+                        try:
+                            os.remove(file)
+                        except Exception:
+                            pass
 
                 return
 

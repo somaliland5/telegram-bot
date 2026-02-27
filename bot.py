@@ -809,7 +809,7 @@ def download_media(chat_id, text):
                                 f.write(img_data)
 
                             with open(filename, "rb") as photo:
-                                bot.send_photo(
+                                bot.send_media_group(
                                     chat_id,
                                     photo,
                                     caption=f"📸 Photo {i}\n{CAPTION_TEXT}"

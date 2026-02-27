@@ -14,7 +14,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii loo baahdo
 
 BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
-CAPTION_TEXT = "✅ Downloaded via @YourBotUsername"
+CHANNEL_USERNAME = "@tiktokvediodownload"
 
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
@@ -129,6 +129,70 @@ def start_handler(m):
         save_users()
 
     bot.send_message(m.chat.id, "👋 Welcome!", reply_markup=user_menu(is_admin(uid)))
+
+                             
+@bot.message_handler(commands=['start'])
+def start(message):
+    check_membership(message.chat.id)
+
+def check_membership(user_id):
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+
+        if member.status in ["member", "administrator", "creator"]:
+            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.")
+        else:
+            send_join_message(user_id)
+
+    except:
+        send_join_message(user_id)
+
+def send_join_message(user_id):
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "➕ JOIN CHANNEL",
+            url="https://t.me/tiktokvediodownload"
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
+            "✅ CONFIRM",
+            callback_data="confirm_join"
+        )
+    )
+
+    bot.send_message(
+        user_id,
+        "⚠️ You must join our channel to use this bot.",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
+def confirm_join(call):
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, call.from_user.id)
+
+        if member.status in ["member", "administrator", "creator"]:
+            bot.answer_callback_query(call.id, "✅ Verified!")
+            bot.edit_message_text(
+                "🎉 Welcome!\nNow send your link.",
+                call.message.chat.id,
+                call.message.message_id
+            )
+        else:
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
+    except:
+        bot.answer_callback_query(
+            call.id,
+            "❌ Join the channel first!",
+            show_alert=True
+        )
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")

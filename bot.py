@@ -909,8 +909,13 @@ def download_media(chat_id, text):
 
         bot.send_message(chat_id, "❌ Unsupported link")
 
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Download error:\n{e}")
+            except Exception:
+    bot.send_message(
+        chat_id,
+        "❌ Incorrect Tik Tok link.\n\n"
+        "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
+    )
+    return
 
 
 # ================= MUSIC CONVERSION =================

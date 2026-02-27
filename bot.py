@@ -856,17 +856,21 @@ def download_media(chat_id, text):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
 
-                entries = info["entries"] if info.get("entries") else [info]
+                entries = info.get("entries", [info])
 
                 for entry in entries:
                     file = yt_dlp.YoutubeDL(ydl_opts).prepare_filename(entry)
 
+                    # ===== PHOTO =====
                     if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         with open(file, "rb") as photo:
                             bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+
+                    # ===== VIDEO =====
                     else:
                         send_video_with_music(chat_id, file)
 
+                    # delete file
                     try:
                         os.remove(file)
                     except Exception:

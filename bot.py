@@ -801,34 +801,25 @@ def download_media(chat_id, text):
 
             
 
-# ===== TIKTOK PHOTOS =====
-if data.get("images"):
-    media = []
+                        # ===== TIKTOK PHOTOS =====
+                    if data.get("images"):
+                        for i, img in enumerate(data["images"], start=1):
+                            img_data = requests.get(img, timeout=30).content
+                            filename = f"tiktok_{i}.jpg"
 
-    for i, img in enumerate(data["images"], start=1):
-        img_data = requests.get(img, timeout=30).content
-        filename = f"tiktok_{i}.jpg"
+                            with open(filename, "wb") as f:
+                                f.write(img_data)
 
-        with open(filename, "wb") as f:
-            f.write(img_data)
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(
+                                    chat_id,
+                                    photo,
+                                    caption=f"📸 Photo {i}\n{CAPTION_TEXT}"
+                                )
 
-        photo_file = open(filename, "rb")
-        media.append(types.InputMediaPhoto(photo_file))
+                            os.remove(filename)
+                        return
 
-    # 👉 hal mar ku dir album ahaan
-    bot.send_media_group(chat_id, media)
-
-    # caption gaar ah haddii aad rabto (optional)
-    bot.send_message(chat_id, CAPTION_TEXT)
-
-    # nadiifi files
-    for i in range(1, len(data["images"]) + 1):
-        try:
-            os.remove(f"tiktok_{i}.jpg")
-        except:
-            pass
-
-    return
 
                     # ===== TIKTOK VIDEO =====
                     if data.get("play"):

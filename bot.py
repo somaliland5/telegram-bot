@@ -14,7 +14,9 @@ TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii loo baahdo
 
 BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
-CHANNEL_USERNAME = "@tiktokvediodownload"
+
+CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
+member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
@@ -102,11 +104,12 @@ def back_button_handler(m):
     back_to_main_menu(m)
 
 # ================= START HANDLER =================
-@bot.message_handler(commands=['start'])
-def start_handler(m):
-    uid = str(m.from_user.id)
-    args = m.text.split()
+    @bot.message_handler(commands=['start'])
+def start_handler(message):
+    uid = str(message.from_user.id)
+    args = message.text.split()
 
+    # Haddii user cusub
     if uid not in users:
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
@@ -118,7 +121,6 @@ def start_handler(m):
             "banned": False,
             "month": now_month()
         }
-        # Referral reward
         if ref:
             ref_user = next((u for u, d in users.items() if d["ref"] == ref), None)
             if ref_user:
@@ -127,6 +129,9 @@ def start_handler(m):
                 bot.send_message(int(ref_user), "🎉 You earned $0.2 from referral!")
 
         save_users()
+
+    # Hubinta join
+    check_membership(uid)
 
     bot.send_message(m.chat.id, "👋 Welcome!", reply_markup=user_menu(is_admin(uid)))
 

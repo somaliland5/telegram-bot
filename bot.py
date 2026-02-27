@@ -155,7 +155,7 @@ def check_membership(user_id):
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/{CHANNEL_USERNAME[1:]}"),
+        InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/tiktokvediodownload[1:]}"),
         InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join")
     )
     bot.send_message(

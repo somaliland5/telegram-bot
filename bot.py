@@ -16,7 +16,6 @@ ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii 
 BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
 
 CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
-member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")

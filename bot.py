@@ -109,7 +109,7 @@ def start_handler(message):
     uid = str(message.from_user.id)
     args = message.text.split()
 
-    # ===== User cusub =====
+    # ===== Add user to database hal mar =====
     if uid not in users:
         ref = args[1] if len(args) > 1 else None
         users[uid] = {
@@ -121,34 +121,41 @@ def start_handler(message):
             "banned": False,
             "month": now_month()
         }
-        # ===== Referral reward =====
+
+        # Referral reward
         if ref:
             ref_user = next((u for u, d in users.items() if d["ref"] == ref), None)
             if ref_user:
                 users[ref_user]["balance"] += 0.2
                 users[ref_user]["invited"] += 1
                 bot.send_message(int(ref_user), "🎉 You earned $0.2 from referral!")
+
         save_users()
 
-    # ===== Hubinta join =====
+    # ===== Check channel membership =====
     check_membership(uid)
 
-# ================= HUBINTA CHANNEL JOIN =================
+
 def check_membership(user_id):
     try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        member = bot.get_chat_member(CHANNEL_USERNAME, int(user_id))
+
         if member.status in ["member", "administrator", "creator"]:
-            bot.send_message(user_id, "✅ Welcome! Send your download link.")
+            # User-ku horey ayuu join-gareeyay
+            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.",
+                             reply_markup=user_menu(is_admin(user_id)))
         else:
             send_join_message(user_id)
-    except:
+
+    except Exception:
+        # Haddii user-ka uusan join-gareyn ama bot-ka private channel ma jiro
         send_join_message(user_id)
 
-# ================= FORCE JOIN MESSAGE =================
+
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/{CHANNEL_USERNAME}"),
+        InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/{CHANNEL_USERNAME[1:]}"),
         InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join")
     )
     bot.send_message(
@@ -157,17 +164,19 @@ def send_join_message(user_id):
         reply_markup=kb
     )
 
-# ================= CONFIRM JOIN CALLBACK =================
+
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, call.from_user.id)
+
         if member.status in ["member", "administrator", "creator"]:
             bot.answer_callback_query(call.id, "✅ Verified!")
             bot.edit_message_text(
-                "🎉 Welcome!\nNow send your download link.",
+                "🎉 Welcome!\nNow send your link.",
                 call.message.chat.id,
-                call.message.message_id
+                call.message.message_id,
+                reply_markup=user_menu(is_admin(call.from_user.id))
             )
         else:
             bot.answer_callback_query(
@@ -175,7 +184,7 @@ def confirm_join(call):
                 "❌ You must join the channel first!",
                 show_alert=True
             )
-    except:
+    except Exception:
         bot.answer_callback_query(
             call.id,
             "❌ Join the channel first!",

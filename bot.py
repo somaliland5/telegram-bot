@@ -835,45 +835,68 @@ def download_media(chat_id, text):
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
 
-        # ================= PINTEREST =================
-        if "pin.it" in url:
-            try:
-                r = requests.head(url, allow_redirects=True, timeout=10)
-                url = r.url
-            except:
-                pass
+     # ================= PINTEREST =================
+if "pin.it" in url:
+    try:
+        r = requests.head(url, allow_redirects=True, timeout=10)
+        url = r.url
+    except Exception:
+        pass
 
-        if "pinterest.com" in url:
-            ydl_opts = {
-                "format": "best",
-                "outtmpl": "pinterest_%(id)s.%(ext)s",
-                "quiet": True
-            }
+if "pinterest.com" in url:
+    try:
+        ydl_opts = {
+            "format": "bv*+ba/b",  # fallback smart
+            "outtmpl": "pinterest_%(id)s.%(ext)s",
+            "quiet": True,
+            "noplaylist": False,
+            "merge_output_format": "mp4"
+        }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
 
-                if info.get("entries"):
-                    for entry in info["entries"]:
-                        file = ydl.prepare_filename(entry)
+        entries = []
 
-                        if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
-                            with open(file, "rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                            os.remove(file)
-                        else:
-                            send_video_with_music(chat_id, file)
-                    return
+        # ===== carousel / multiple media =====
+        if info.get("entries"):
+            entries = info["entries"]
+        else:
+            entries = [info]
 
-                file = ydl.prepare_filename(info)
+        for entry in entries:
+            file = f"pinterest_{entry.get('id')}.{entry.get('ext', 'mp4')}"
 
-                if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
+            # haddii filename ka duwan yahay
+            if not os.path.exists(file):
+                file = yt_dlp.YoutubeDL(ydl_opts).prepare_filename(entry)
+
+            # ===== send photo =====
+            if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                try:
                     with open(file, "rb") as photo:
                         bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                    os.remove(file)
-                else:
+                except Exception:
+                    bot.send_message(chat_id, "❌ Photo send failed")
+
+            # ===== send video =====
+            else:
+                try:
                     send_video_with_music(chat_id, file)
-                return
+                except Exception:
+                    bot.send_message(chat_id, "❌ Video send failed")
+
+            # ===== delete file =====
+            try:
+                os.remove(file)
+            except Exception:
+                pass
+
+        return
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Download error:\n{e}")
+        return
 
         # ================= FACEBOOK =================
         if "facebook.com" in url or "fb.watch" in url:

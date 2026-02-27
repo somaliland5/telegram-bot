@@ -102,17 +102,18 @@ def back_to_main_menu(m):
 def back_button_handler(m):
     back_to_main_menu(m)
 
+CHANNEL_USERNAME = "@tiktokvediodownload"
 
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-    uid = str(message.from_user.id)
+    uid = message.from_user.id
     args = message.text.split()
 
-    # ===== Add user to database hal mar =====
-    if uid not in users:
+    # Haddii user cusub, ku dar database
+    if str(uid) not in users:
         ref = args[1] if len(args) > 1 else None
-        users[uid] = {
+        users[str(uid)] = {
             "balance": 0.0,
             "blocked": 0.0,
             "ref": random_ref(),
@@ -121,7 +122,6 @@ def start_handler(message):
             "banned": False,
             "month": now_month()
         }
-
         # Referral reward
         if ref:
             ref_user = next((u for u, d in users.items() if d["ref"] == ref), None)
@@ -132,38 +132,35 @@ def start_handler(message):
 
         save_users()
 
-    # ===== Check channel membership =====
+    # Hubinta join
     check_membership(uid)
-
 
 def check_membership(user_id):
     try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, int(user_id))
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
         if member.status in ["member", "administrator", "creator"]:
-            # User-ku horey ayuu join-gareeyay
-            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.",
-                             reply_markup=user_menu(is_admin(user_id)))
+            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
         else:
             send_join_message(user_id)
 
-    except Exception:
-        # Haddii user-ka uusan join-gareyn ama bot-ka private channel ma jiro
+    except:
         send_join_message(user_id)
-
 
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/tiktokvediodownload[1:]}"),
+        InlineKeyboardButton("➕ JOIN CHANNEL", url="https://t.me/tiktokvediodownload")
+    )
+    kb.add(
         InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join")
     )
+
     bot.send_message(
         user_id,
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
-
 
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
@@ -172,10 +169,9 @@ def confirm_join(call):
 
         if member.status in ["member", "administrator", "creator"]:
             bot.answer_callback_query(call.id, "✅ Verified!")
-            bot.edit_message_text(
-                "🎉 Welcome!\nNow send your link.",
-                call.message.chat.id,
-                call.message.message_id,
+            bot.send_message(
+                call.from_user.id,
+                "🎉 Welcome! Now send your download link.",
                 reply_markup=user_menu(is_admin(call.from_user.id))
             )
         else:
@@ -184,7 +180,8 @@ def confirm_join(call):
                 "❌ You must join the channel first!",
                 show_alert=True
             )
-    except Exception:
+
+    except:
         bot.answer_callback_query(
             call.id,
             "❌ Join the channel first!",

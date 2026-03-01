@@ -25,9 +25,6 @@ USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
 
-def save_videos():
-    save_json(VIDEOS_FILE, videos_data)
-
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
     if not os.path.exists(path):
@@ -47,6 +44,18 @@ def save_users():
 
 def save_withdraws():
     save_json(WITHDRAWS_FILE, withdraws)
+
+# ================= LOAD DATA =================
+users = load_json(USERS_FILE, {})
+withdraws = load_json(WITHDRAWS_FILE, [])
+
+videos_data = load_json(VIDEOS_FILE, {
+    "total": 0,
+    "users": {}
+})
+
+def save_videos():
+    save_json(VIDEOS_FILE, videos_data)
 
 # ================= HELPER FUNCTIONS =================
 def random_ref():
@@ -90,6 +99,7 @@ def admin_menu():
     kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
     kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
+    kb.add("🔥 UN BAN-USER")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 

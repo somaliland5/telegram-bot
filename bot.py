@@ -702,25 +702,31 @@ def raadi_stats(m):
         return
 
     total_videos = videos_data.get("total", 0)
+    platform_stats = videos_data.get("platforms", {"tiktok": 0, "youtube": 0, "facebook": 0, "pinterest": 0})
     users_stats = videos_data.get("users", {})
 
     if not users_stats:
         bot.send_message(m.chat.id, "❌ No video data found yet.")
         return
 
-    # Sort users by number of videos downloaded (descending)
-    sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
-    top_user_id, top_count = sorted_users[0]
+    # Top downloader
+    top_user_id, top_count = max(users_stats.items(), key=lambda x: x[1])
 
     # Build message
     msg_lines = [
         f"🔍 DOWNLOAD ANALYTICS\n",
         f"🎬 Total Videos Downloaded: {total_videos}",
-        f"🏆 Top Downloader: <a href='tg://user?id={top_user_id}'>{top_user_id}</a> ({top_count} videos)"
+        f"🏆 Top Downloader: <a href='tg://user?id={top_user_id}'>{top_user_id}</a> ({top_count} videos)\n",
+        "📊 Downloads by Platform:",
+        f"• TikTok: {platform_stats.get('tiktok',0)}",
+        f"• YouTube: {platform_stats.get('youtube',0)}",
+        f"• Facebook: {platform_stats.get('facebook',0)}",
+        f"• Pinterest: {platform_stats.get('pinterest',0)}\n",
+        "🥇 Top 3 Users:"
     ]
 
-    # Top 3 Users
-    msg_lines.append("\n🥇 Top 3 Users:")
+    # Top 3 users
+    sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
     for i, (uid, count) in enumerate(sorted_users[:3], start=1):
         bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
         msg_lines.append(f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}")

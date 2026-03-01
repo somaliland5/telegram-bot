@@ -51,6 +51,12 @@ withdraws = load_json(WITHDRAWS_FILE, [])
 
 videos_data = load_json(VIDEOS_FILE, {
     "total": 0,
+    "platforms": {
+        "tiktok": 0,
+        "youtube": 0,
+        "facebook": 0,
+        "pinterest": 0
+    },
     "users": {}
 })
 
@@ -863,8 +869,20 @@ def send_video_with_music(chat_id, file_path):
     uid = str(chat_id)
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
+
+    # ===== COUNT PLATFORM =====
+    if platform:
+        if "platforms" not in videos_data:
+            videos_data["platforms"] = {
+                "tiktok": 0,
+                "youtube": 0,
+                "facebook": 0,
+                "pinterest": 0
+            }
+        videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
+
     save_videos()
-    
+
     with open(file_path, "rb") as video:
         bot.send_video(
             chat_id,
@@ -920,7 +938,7 @@ def download_media(chat_id, text):
                         with open(filename, "wb") as f:
                             f.write(video_data)
 
-                        send_video_with_music(chat_id, filename)
+                        send_video_with_music(chat_id, filename, "tiktok")
                         return
             except Exception as e:
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
@@ -963,7 +981,7 @@ def download_media(chat_id, text):
 
                         # ===== VIDEO =====
                         else:
-                            send_video_with_music(chat_id, file)
+                            send_video_with_music(chat_id, file, "pinterest")
 
                         # delete file
                         try:
@@ -990,7 +1008,7 @@ def download_media(chat_id, text):
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file)
+            send_video_with_music(chat_id, file, "facebook")
             return
 
         # ================= YOUTUBE =================
@@ -1006,7 +1024,7 @@ def download_media(chat_id, text):
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file)
+            send_video_with_music(chat_id, file, "youtube")
             return
 
         bot.send_message(chat_id, "❌ Unsupported link")

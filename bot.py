@@ -22,8 +22,8 @@ bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
+WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
-
 
 videos_data = load_json(VIDEOS_FILE, {
     "total": 0,
@@ -32,9 +32,6 @@ videos_data = load_json(VIDEOS_FILE, {
 
 def save_videos():
     save_json(VIDEOS_FILE, videos_data)
-
-
-WITHDRAWS_FILE = "withdraws.json"
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):

@@ -25,11 +25,6 @@ USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
 
-videos_data = load_json(VIDEOS_FILE, {
-    "total": 0,
-    "users": {}
-})
-
 def save_videos():
     save_json(VIDEOS_FILE, videos_data)
 

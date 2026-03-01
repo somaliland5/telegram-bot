@@ -704,20 +704,29 @@ def raadi_stats(m):
     total_videos = videos_data.get("total", 0)
     users_stats = videos_data.get("users", {})
 
-    if users_stats:
-        top_user = max(users_stats, key=users_stats.get)
-        top_count = users_stats[top_user]
-    else:
-        top_user = "None"
-        top_count = 0
+    if not users_stats:
+        bot.send_message(m.chat.id, "❌ No video data found yet.")
+        return
 
-    bot.send_message(
-        m.chat.id,
-        f"🔍 DOWNLOAD ANALYTICS\n\n"
-        f"🎬 Total Videos Downloaded: {total_videos}\n"
-        f"🏆 Top Downloader: {top_user}\n"
-        f"📥 Downloads by Top User: {top_count}"
-    )
+    # Sort users by number of videos downloaded (descending)
+    sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
+    top_user_id, top_count = sorted_users[0]
+
+    # Build message
+    msg_lines = [
+        f"🔍 DOWNLOAD ANALYTICS\n",
+        f"🎬 Total Videos Downloaded: {total_videos}",
+        f"🏆 Top Downloader: <a href='tg://user?id={top_user_id}'>{top_user_id}</a> ({top_count} videos)"
+    ]
+
+    # Top 3 Users
+    msg_lines.append("\n🥇 Top 3 Users:")
+    for i, (uid, count) in enumerate(sorted_users[:3], start=1):
+        bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
+        msg_lines.append(f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}")
+
+    msg_text = "\n".join(msg_lines)
+    bot.send_message(m.chat.id, msg_text, parse_mode="HTML")
 
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text == "📢 BROADCAST")

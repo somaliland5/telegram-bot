@@ -861,7 +861,7 @@ def extract_url(text):
     return urls[0] if urls else None
 
 # ================= CLEAN SEND VIDEO FUNCTION =================
-def send_video_with_music(chat_id, file_path):
+def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 

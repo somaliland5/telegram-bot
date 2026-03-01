@@ -22,6 +22,15 @@ bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
+VIDEOS_FILE = "videos.json"
+videos_data = load_json(VIDEOS_FILE, {
+    "total": 0,
+    "users": {}
+})
+
+def save_videos():
+    save_json(VIDEOS_FILE, videos_data)
+    
 WITHDRAWS_FILE = "withdraws.json"
 
 # ================= JSON FUNCTIONS =================
@@ -84,8 +93,8 @@ def admin_menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📊 STATS", "📢 BROADCAST")
     kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
-    kb.add("✅ UNBAN USER", "💳 WITHDRAWAL CHECK")
-    kb.add("💰 UNBLOCK MONEY")
+    kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
+    kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -648,6 +657,62 @@ def stats_handler(m):
 
     bot.send_message(m.chat.id, msg)
 
+# ================= MANUAL BAN =================
+@bot.message_handler(func=lambda m: m.text == "🚫 BAN USER MANUAL")
+def manual_ban_start(m):
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send Telegram ID or BOT ID to BAN user:"
+    )
+    bot.register_next_step_handler(msg, manual_ban_process)
+
+
+def manual_ban_process(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    uid_input = (m.text or "").strip()
+
+    uid = uid_input if uid_input in users else find_user_by_botid(uid_input)
+
+    if not uid:
+        bot.send_message(m.chat.id, "❌ User not found")
+        return
+
+    users[uid]["banned"] = True
+    save_users()
+
+    bot.send_message(m.chat.id, f"🚫 User {uid} banned")
+    bot.send_message(int(uid), "🚫 You have been banned by admin.")
+
+# ================= RAADI (DOWNLOAD STATS) =================
+@bot.message_handler(func=lambda m: m.text == "🔍 RAADI")
+def raadi_stats(m):
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    total_videos = videos_data.get("total", 0)
+    users_stats = videos_data.get("users", {})
+
+    if users_stats:
+        top_user = max(users_stats, key=users_stats.get)
+        top_count = users_stats[top_user]
+    else:
+        top_user = "None"
+        top_count = 0
+
+    bot.send_message(
+        m.chat.id,
+        f"🔍 DOWNLOAD ANALYTICS\n\n"
+        f"🎬 Total Videos Downloaded: {total_videos}\n"
+        f"🏆 Top Downloader: {top_user}\n"
+        f"📥 Downloads by Top User: {top_count}"
+    )
 
 # ================= BROADCAST =================
 @bot.message_handler(func=lambda m: m.text == "📢 BROADCAST")
@@ -774,6 +839,12 @@ def send_video_with_music(chat_id, file_path):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
+# ===== COUNT VIDEO =====
+    uid = str(chat_id)
+    videos_data["total"] += 1
+    videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
+    save_videos()
+    
     with open(file_path, "rb") as video:
         bot.send_video(
             chat_id,

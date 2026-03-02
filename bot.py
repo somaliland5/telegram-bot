@@ -140,6 +140,7 @@ def start_handler(message):
     uid = message.from_user.id
     args = message.text.split()
 
+    # Haddii user-ka cusub yahay, ku dar dictionary-ga users
     if str(uid) not in users:
         ref = args[1] if len(args) > 1 else None
         users[str(uid)] = {
@@ -159,26 +160,33 @@ def start_handler(message):
                 bot.send_message(int(ref_user), "🎉 You earned $0.2 from referral!")
         save_users()
 
+    # Hubi membership ka hor inta user-ka uusan isticmaali bot-ka
     check_membership(uid)
 
+# ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
     try:
-        member = bot.get_chat_member(tiktokvediodownload, user_id)
-        # Hubi haddii user-ka uu ku jiro channel
+        member = bot.get_chat_member("@tiktokvediodownload", user_id)  # Hubi channel
+        # Haddii user-ka ku jiro channel
         if member.status in ["member", "administrator", "creator"]:
-            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
+            bot.send_message(
+                user_id,
+                "✅ Bot is ready.\nSend your download link.",
+                reply_markup=user_menu(is_admin(user_id))
+            )
             return True
         else:
             send_join_message(user_id)
             return False
     except Exception as e:
-        print(f"Error checking membership: {e}")
+        print(f"[Membership Error] {e}")
         send_join_message(user_id)
         return False
 
+# ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("➕ JOIN CHANNEL", url=f"https://t.me/{CHANNEL_USERNAME}"))
+    kb.add(InlineKeyboardButton("➕ JOIN CHANNEL", url="https://t.me/tiktokvediodownload"))
     kb.add(InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join"))
     bot.send_message(
         user_id,
@@ -186,10 +194,11 @@ def send_join_message(user_id):
         reply_markup=kb
     )
 
+# ================= CALLBACK CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
     try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, call.from_user.id)
+        member = bot.get_chat_member("@tiktokvediodownload", call.from_user.id)
         if member.status in ["member", "administrator", "creator"]:
             bot.answer_callback_query(call.id, "✅ Verified!")
             bot.send_message(

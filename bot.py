@@ -164,12 +164,17 @@ def start_handler(message):
 def check_membership(user_id):
     try:
         member = bot.get_chat_member(tiktokvediodownload, user_id)
+        # Hubi haddii user-ka uu ku jiro channel
         if member.status in ["member", "administrator", "creator"]:
             bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
+            return True
         else:
             send_join_message(user_id)
-    except:
+            return False
+    except Exception as e:
+        print(f"Error checking membership: {e}")
         send_join_message(user_id)
+        return False
 
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()

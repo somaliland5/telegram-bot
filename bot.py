@@ -163,7 +163,7 @@ def start_handler(message):
 
 def check_membership(user_id):
     try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        member = bot.get_chat_member(tiktokvediodownload, user_id)
         if member.status in ["member", "administrator", "creator"]:
             bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
         else:

@@ -8,20 +8,17 @@ import subprocess
 import os
 import re
 import shutil
-import time
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = [7983838654]
+ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii loo baahdo
 
-BASE_DIR = os.getcwd()
-CHANNEL_USERNAME = "tiktokvediodownload"
+BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
+
+CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
+
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
-
-# ================= GLOBAL STATES =================
-ASK_MODE = {}
-bot_closed_until = 0
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -49,6 +46,9 @@ def save_withdraws():
     save_json(WITHDRAWS_FILE, withdraws)
 
 # ================= LOAD DATA =================
+users = load_json(USERS_FILE, {})
+withdraws = load_json(WITHDRAWS_FILE, [])
+
 videos_data = load_json(VIDEOS_FILE, {
     "total": 0,
     "platforms": {
@@ -89,14 +89,6 @@ def banned_guard(m):
         return True
     return False
 
-# ================= BOT CLOSED GUARD =================
-def bot_closed_guard(chat_id):
-    global bot_closed_until
-    if time.time() < bot_closed_until:
-        bot.send_message(chat_id, "🚫 This bot is temporarily closed by admin.")
-        return True
-    return False
-
 # ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -114,7 +106,6 @@ def admin_menu():
     kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER")
-    kb.add("💌 GAVE", "🛑 STOP BOT", "💬 CHAT")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -131,16 +122,15 @@ def back_to_main_menu(m):
 def back_button_handler(m):
     back_to_main_menu(m)
 
+CHANNEL_USERNAME = "@tiktokvediodownload"
+
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-    if bot_closed_guard(message.chat.id):
-        return
-
     uid = message.from_user.id
     args = message.text.split()
 
-    # Haddii user-ka cusub yahay, ku dar dictionary-ga users
+    # Haddii user cusub, ku dar database
     if str(uid) not in users:
         ref = args[1] if len(args) > 1 else None
         users[str(uid)] = {
@@ -152,53 +142,51 @@ def start_handler(message):
             "banned": False,
             "month": now_month()
         }
+        # Referral reward
         if ref:
             ref_user = next((u for u, d in users.items() if d["ref"] == ref), None)
             if ref_user:
                 users[ref_user]["balance"] += 0.2
                 users[ref_user]["invited"] += 1
                 bot.send_message(int(ref_user), "🎉 You earned $0.2 from referral!")
+
         save_users()
 
-    # Hubi membership ka hor inta user-ka uusan isticmaali bot-ka
+    # Hubinta join
     check_membership(uid)
 
-# ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
     try:
-        member = bot.get_chat_member("@tiktokvediodownload", user_id)  # Hubi channel
-        # Haddii user-ka ku jiro channel
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+
         if member.status in ["member", "administrator", "creator"]:
-            bot.send_message(
-                user_id,
-                "✅ Bot is ready.\nSend your download link.",
-                reply_markup=user_menu(is_admin(user_id))
-            )
-            return True
+            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
         else:
             send_join_message(user_id)
-            return False
-    except Exception as e:
-        print(f"[Membership Error] {e}")
-        send_join_message(user_id)
-        return False
 
-# ================= SEND JOIN MESSAGE =================
+    except:
+        send_join_message(user_id)
+
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("➕ JOIN CHANNEL", url="https://t.me/tiktokvediodownload"))
-    kb.add(InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join"))
+    kb.add(
+        InlineKeyboardButton("➕ JOIN CHANNEL", url="https://t.me/tiktokvediodownload")
+    )
+    kb.add(
+        InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_join")
+    )
+
     bot.send_message(
         user_id,
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
 
-# ================= CALLBACK CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
     try:
-        member = bot.get_chat_member("@tiktokvediodownload", call.from_user.id)
+        member = bot.get_chat_member(CHANNEL_USERNAME, call.from_user.id)
+
         if member.status in ["member", "administrator", "creator"]:
             bot.answer_callback_query(call.id, "✅ Verified!")
             bot.send_message(
@@ -207,9 +195,18 @@ def confirm_join(call):
                 reply_markup=user_menu(is_admin(call.from_user.id))
             )
         else:
-            bot.answer_callback_query(call.id, "❌ You must join the channel first!", show_alert=True)
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
     except:
-        bot.answer_callback_query(call.id, "❌ Join the channel first!", show_alert=True)
+        bot.answer_callback_query(
+            call.id,
+            "❌ Join the channel first!",
+            show_alert=True
+        )
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
@@ -270,25 +267,6 @@ def customer_handler(m):
         m.chat.id,
         "☎️ Customer Support:\n@scholes1"
     )
-
-# ================= ASK SYSTEM =================
-ASK_MODE = {}
-
-@bot.message_handler(func=lambda m: m.text == "❓ ASK")
-def ask_user(m):
-    if banned_guard(m):
-        return
-    msg = bot.send_message(m.chat.id, "✍️ Send your message to admin:")
-    ASK_MODE[m.from_user.id] = True
-
-@bot.message_handler(func=lambda m: True)
-def handle_ask_message(m):
-    uid = m.from_user.id
-    if ASK_MODE.get(uid):
-        for admin in ADMIN_IDS:
-            bot.send_message(admin, f"✉️ Message from {uid}:\n\n{m.text}")
-        bot.send_message(uid, "✅ Your message has been sent to admin!")
-        ASK_MODE.pop(uid)
 
 # ================= WITHDRAWAL MENU =================
 @bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")
@@ -383,6 +361,44 @@ def withdraw_amount_step(m):
         )
         return
 
+    # ================= CREATE WITHDRAWAL REQUEST =================
+def withdraw_amount_step(m):
+    uid = str(m.from_user.id)
+    text = (m.text or "").strip()
+
+    if text == "🔙 CANCEL":
+        back_to_main_menu(m)
+        return
+
+    try:
+        amt = float(text)
+    except:
+        kb = ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🔙 CANCEL")
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Invalid number.\nEnter again or press 🔙 CANCEL",
+            reply_markup=kb
+        )
+        bot.register_next_step_handler(msg, withdraw_amount_step)
+        return
+
+    if amt < 1:
+        bot.send_message(
+            m.chat.id,
+            "❌ Minimum withdrawal is $1",
+            reply_markup=user_menu(is_admin(uid))
+        )
+        return
+
+    if amt > users[uid]["balance"]:
+        bot.send_message(
+            m.chat.id,
+            "❌ Insufficient balance",
+            reply_markup=user_menu(is_admin(uid))
+        )
+        return
+
     # ===== Create withdrawal request =====
     wid = random.randint(10000, 99999)
 
@@ -435,10 +451,10 @@ def withdraw_amount_step(m):
     )
 
     # Loop through admin IDs
-    for admin in ADMIN_IDS:
+    for admin in [7983838654]:  # Halkan waxaad ku dari kartaa liiska admin IDs
         bot.send_message(admin, admin_text, reply_markup=markup)
 
-# ================= ADMIN INLINE CALLBACKS =================
+    # ================= ADMIN INLINE CALLBACKS =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm_", "reject_", "ban_", "block_")))
 def admin_callbacks(call):
 
@@ -549,6 +565,7 @@ def unblock_money_process(m):
         m.chat.id,
         f"✅ Money unblocked for user {uid}"
     )
+
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text == "🔥 UN BAN-USER")
@@ -837,112 +854,6 @@ def remove_balance_process(m):
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
-# ================= ADMIN PANEL EXTENSIONS =================
-@bot.message_handler(func=lambda m: m.text == "GAVE")
-def gave_broadcast_start(m):
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
-        return
-    msg = bot.send_message(
-        m.chat.id,
-        "📝 Send the broadcast message to ALL users (including old & new users):"
-    )
-    bot.register_next_step_handler(msg, gave_broadcast_send)
-
-def gave_broadcast_send(m):
-    if not is_admin(m.from_user.id):
-        return
-    text = m.text
-    count = 0
-    for uid in users:
-        try:
-            bot.send_message(int(uid), text)
-            count += 1
-        except:
-            continue
-    bot.send_message(m.chat.id, f"✅ GAVE broadcast sent to {count} users")
-
-# ================= ADMIN STOP BOT =================
-STOPPED_BOT = {"active": False, "timer": None}
-
-@bot.message_handler(func=lambda m: m.text == "STOP")
-def stop_bot_start(m):
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
-        return
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("⏹️ CANCEL", callback_data="stop_cancel"))
-    msg = bot.send_message(
-        m.chat.id,
-        "⏸️ Bot STOP command activated. Send time in minutes or press CANCEL",
-        reply_markup=kb
-    )
-    bot.register_next_step_handler(msg, stop_bot_timer)
-
-def stop_bot_timer(m):
-    if not is_admin(m.from_user.id):
-        return
-    text = m.text.strip()
-    if text.lower() == "cancel":
-        bot.send_message(m.chat.id, "❌ Stop canceled")
-        return
-    try:
-        minutes = int(text)
-        STOPPED_BOT["active"] = True
-        bot.send_message(m.chat.id, f"⏸️ Bot stopped for {minutes} minute(s). Users see: 'Bot admin closed'")
-        # Start timer
-        from threading import Timer
-        def resume_bot():
-            STOPPED_BOT["active"] = False
-            bot.send_message(m.chat.id, "✅ Bot resumed automatically after stop period")
-        STOPPED_BOT["timer"] = Timer(minutes*60, resume_bot)
-        STOPPED_BOT["timer"].start()
-    except:
-        bot.send_message(m.chat.id, "❌ Invalid number. Cancel or send integer minutes")
-
-@bot.callback_query_handler(func=lambda call: call.data == "stop_cancel")
-def stop_cancel(call):
-    if not is_admin(call.from_user.id):
-        return
-    if STOPPED_BOT["timer"]:
-        STOPPED_BOT["timer"].cancel()
-    STOPPED_BOT["active"] = False
-    bot.answer_callback_query(call.id, "❌ Stop canceled")
-    bot.send_message(call.message.chat.id, "❌ Stop canceled successfully")
-
-# ================= ASK REPLY =================
-ASK_MODE = {}
-
-@bot.message_handler(func=lambda m: m.text == "❓ ASK")
-def ask_user(m):
-    if banned_guard(m):
-        return
-    msg = bot.send_message(m.chat.id, "✍️ Send your message to admin:")
-    ASK_MODE[m.from_user.id] = True
-
-@bot.message_handler(func=lambda m: True)
-def handle_ask_message(m):
-    uid = m.from_user.id
-    if ASK_MODE.get(uid):
-        for admin in ADMIN_IDS:
-            bot.send_message(admin, f"✉️ Message from {uid}:\n\n{m.text}")
-        bot.send_message(uid, "✅ Your message has been sent to admin!")
-        ASK_MODE.pop(uid)
-        return
-
-# ================= INLINE WORK BUTTON =================
-WORKING_USERS = set()
-
-@bot.message_handler(func=lambda m: m.text == "WORK")
-def admin_work_button(m):
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
-        return
-    for uid in users:
-        WORKING_USERS.add(uid)
-        bot.send_message(uid, "⚡ Bot is working! Admin activated WORK mode")
-    bot.send_message(m.chat.id, f"✅ WORK message sent to {len(WORKING_USERS)} users")
-    WORKING_USERS.clear()
 
 # ================= URL EXTRACTOR =================
 def extract_url(text):
@@ -954,7 +865,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-    # ===== COUNT VIDEO =====
+# ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
@@ -997,7 +908,9 @@ def download_media(chat_id, text):
                 if res.get("code") == 0:
                     data = res["data"]
 
-                    # ===== TIKTOK PHOTOS =====
+            
+
+                        # ===== TIKTOK PHOTOS =====
                     if data.get("images"):
                         for i, img in enumerate(data["images"], start=1):
                             img_data = requests.get(img, timeout=30).content
@@ -1016,6 +929,7 @@ def download_media(chat_id, text):
                             os.remove(filename)
                         return
 
+
                     # ===== TIKTOK VIDEO =====
                     if data.get("play"):
                         video_data = requests.get(data["play"], timeout=60).content
@@ -1030,7 +944,7 @@ def download_media(chat_id, text):
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
 
-# ================= PINTEREST =================
+ # ================= PINTEREST =================
         if "pin.it" in url:
             try:
                 r = requests.head(url, allow_redirects=True, timeout=10)
@@ -1168,7 +1082,7 @@ def handle_links(message):
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
 
-# ================= FINAL BOT START =================
+# ================= RUN BOT =================
 if __name__ == "__main__":
     print("🤖 Bot is running...")
     bot.infinity_polling(skip_pending=True, timeout=60)

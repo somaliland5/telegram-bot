@@ -106,8 +106,8 @@ def admin_menu():
     kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER")
+     kb.add("📌 POST CHANNEL")
     kb.add("🔙 BACK MAIN MENU")
-    kb.add("📌 POST CHANNEL")
     return kb
 
 # ================= BACK TO MAIN MENU =================

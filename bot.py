@@ -16,7 +16,8 @@ ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii 
 BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
 
 CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
-POST_CHANNEL = None
+POST_CHANNELS = []
+CHANNEL_WINDOW_OPEN = False
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -106,7 +107,7 @@ def admin_menu():
     kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER")
-    kb.add("📌 POST-CHANNEL")
+    kb.add("📌 POST CHANNEL", ("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -759,14 +760,18 @@ def post_channel_start(m):
     bot.register_next_step_handler(msg, post_channels_send)
 
 def post_channels_send(m):
-    global POST_CHANNELS
+    global POST_CHANNELS, CHANNEL_WINDOW_OPEN
+
     if not is_admin(m.from_user.id):
         return
 
     channels = [c.replace("@","").strip() for c in m.text.split()][:5]
+
     POST_CHANNELS = channels
+    CHANNEL_WINDOW_OPEN = True
 
     text = "✅ Channels saved:\n" + "\n".join([f"@{c}" for c in channels])
+
     bot.send_message(m.chat.id, text)
 
 # ================= CHECKING DOWNLOAD =================
@@ -775,7 +780,7 @@ def handle_links(message):
 
     user_id = message.from_user.id
 
-    if POST_CHANNELS:
+    if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
         kb = InlineKeyboardMarkup()
         joined_all = True
@@ -855,6 +860,22 @@ def multi_check_join(call):
             "❌ You must join all channels first!",
             show_alert=True
         )
+
+# ================= CLOSE WINDOWS =================
+@bot.message_handler(func=lambda m: m.text == "❌ CLOSE WINDOWS")
+def close_channel_windows(m):
+
+    global CHANNEL_WINDOW_OPEN
+
+    if not is_admin(m.from_user.id):
+        return
+
+    CHANNEL_WINDOW_OPEN = False
+
+    bot.send_message(
+        m.chat.id,
+        "✅ Channel join system disabled."
+    )
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")

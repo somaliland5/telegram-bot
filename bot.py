@@ -162,7 +162,53 @@ def check_membership(user_id):
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
         if member.status in ["member", "administrator", "creator"]:
-            bot.send_message(user_id, "✅ Bot is ready.\nSend your download link.", reply_markup=user_menu(is_admin(user_id)))
+            bot.send_message(
+                user_id,
+                """🎬 Welcome to Video Downloader Bot!
+
+This bot helps you easily download videos and music from many popular platforms directly to Telegram.
+
+With this bot you can download content from platforms like:
+• TikTok
+• Instagram
+• Facebook
+• Pinterest
+• YouTube
+• And many other video links available on the internet.
+
+📥 How to use the bot:
+
+1. Copy the video link from any supported platform.
+2. Send the link here in the bot.
+3. The bot will automatically download the video for you.
+4. You will receive the video file directly in this chat.
+
+⚡ Fast & Easy Downloads
+Our system processes your request quickly and sends the highest available quality whenever possible.
+
+💰 Earn Money With Referrals
+You can also earn rewards by inviting your friends to use the bot.
+
+Here is how it works:
+• Share your personal referral link with others.
+• When someone joins the bot using your link, you receive a reward.
+• The more people you invite, the more rewards you earn.
+
+🚀 Why use this bot?
+• Fast downloading system
+• Supports multiple platforms
+• Simple and easy to use
+• Earn rewards through referrals
+
+📌 Important:
+Please make sure you follow the required channel(s) to continue using the bot and to keep the service running.
+
+Now you're ready to start!
+
+👇 Send any video link to begin downloading.""",
+                reply_markup=user_menu(is_admin(user_id))
+            )
+
         else:
             send_join_message(user_id)
 

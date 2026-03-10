@@ -108,6 +108,7 @@ def admin_menu():
     kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
+    kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -830,6 +831,90 @@ def broadcast_send(m):
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
+# ================= SEE USERS LIST =================
+@bot.message_handler(func=lambda m: m.text == "👥 SEE LIST")
+def see_users(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    total = len(users)
+    count = 0
+
+    for uid in users:
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "💬 OPEN CHAT",
+                url=f"tg://user?id={uid}"
+            )
+        )
+
+        bot.send_message(
+            m.chat.id,
+            f"👤 User ID: {uid}",
+            reply_markup=kb
+        )
+
+        count += 1
+
+        if count >= 20:
+            break
+
+    bot.send_message(
+        m.chat.id,
+        f"📊 Total Users: {total}"
+    )
+
+# ================= SEARCH USER =================
+@bot.message_handler(func=lambda m: m.text == "🔎 SEARCH USER")
+def search_user(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(m.chat.id,"Send User Telegram ID")
+
+    bot.register_next_step_handler(msg, search_user_result)
+
+
+def search_user_result(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    uid = m.text.strip()
+
+    if uid in users:
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "💬 OPEN CHAT",
+                url=f"tg://user?id={uid}"
+            )
+        )
+
+        kb.add(
+            InlineKeyboardButton(
+                "✉️ MESSAGE USER",
+                callback_data=f"msguser|{uid}"
+            )
+        )
+
+        bot.send_message(
+            m.chat.id,
+            f"👤 User Found\nID: {uid}",
+            reply_markup=kb
+        )
+
+    else:
+
+        bot.send_message(m.chat.id,"❌ User not found")
+
 # ================= POST CHANNEL =================
 @bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
 def post_channel_start(m):
@@ -1282,7 +1367,35 @@ def download_media(chat_id, text):
             "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
         )
         return
+        
+# ================= MESSAGE USER =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))
+def message_user(call):
 
+    if not is_admin(call.from_user.id):
+        return
+
+    uid = call.data.split("|")[1]
+
+    msg = bot.send_message(call.message.chat.id,"Send message for user")
+
+    bot.register_next_step_handler(msg, send_user_message, uid)
+
+
+def send_user_message(m, uid):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    try:
+
+        bot.send_message(int(uid), m.text)
+
+        bot.send_message(m.chat.id,"✅ Message sent")
+
+    except:
+
+        bot.send_message(m.chat.id,"❌ Failed to send message")
 
 # ================= MUSIC CONVERSION =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))

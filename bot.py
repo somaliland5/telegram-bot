@@ -25,6 +25,7 @@ bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
+pending_links = {}
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
@@ -914,37 +915,43 @@ def handle_links(message):
     download_media(message.chat.id, message.text)
 
 # ================= CONFIRM JOIN =================
-@bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
-def multi_check_join(call):
+@bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
+def confirm_join(call):
 
-    joined_all = True
+    user_id = call.from_user.id
 
-    for ch in POST_CHANNELS:
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        try:
-            member = bot.get_chat_member(f"@{ch}", call.from_user.id)
+        if member.status in ["member","administrator","creator"]:
 
-            if member.status not in ["member","administrator","creator"]:
-                joined_all = False
+            bot.answer_callback_query(call.id,"✅ Join verified")
 
-        except:
-            joined_all = False
+            if user_id in pending_links:
 
+                link = pending_links[user_id]
+                del pending_links[user_id]
 
-    if joined_all:
+                bot.send_message(user_id,"⬇️ Processing your previous link...")
+                download_video(user_id, link)
 
-        bot.answer_callback_query(call.id,"✅ Join verified")
+            else:
 
-        bot.send_message(
-            call.from_user.id,
-            "✅ Now send the video link again."
-        )
+                bot.send_message(user_id,"✅ Join confirmed. Send your video link.")
 
-    else:
+        else:
+
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
+    except:
 
         bot.answer_callback_query(
             call.id,
-            "❌ You must join all channels first!",
+            "❌ Please join the channel first!",
             show_alert=True
         )
 

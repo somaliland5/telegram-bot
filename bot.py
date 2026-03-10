@@ -157,6 +157,7 @@ def start_handler(message):
     # Hubinta join
     check_membership(uid)
 
+# ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
@@ -208,13 +209,14 @@ Now you're ready to start!
 👇 Send any video link to begin downloading.""",
                 reply_markup=user_menu(is_admin(user_id))
             )
-
         else:
             send_join_message(user_id)
 
     except:
         send_join_message(user_id)
 
+
+# ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
     kb = InlineKeyboardMarkup()
     kb.add(
@@ -229,6 +231,41 @@ def send_join_message(user_id):
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
+
+
+# ================= CONFIRM JOIN =================
+@bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
+def confirm_join(call):
+
+    user_id = call.from_user.id
+
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+
+        if member.status in ["member","administrator","creator"]:
+
+            bot.answer_callback_query(call.id,"✅ Join verified")
+
+            bot.send_message(
+                user_id,
+                "✅ Join confirmed!\nNow you can use the bot.\nSend your video link."
+            )
+
+        else:
+
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
+    except:
+
+        bot.answer_callback_query(
+            call.id,
+            "❌ Please join the channel first!",
+            show_alert=True
+        )
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")

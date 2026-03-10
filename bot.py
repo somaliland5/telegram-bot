@@ -746,70 +746,61 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
 # ================= POST CHANNEL =================
-
-@bot.message_handler(func=lambda m: m.text == "📌 POST-CHANNEL")
+@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
 def post_channel_start(m):
-
     if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ You are not admin")
+        bot.send_message(m.chat.id,"❌ You are not admin")
         return
 
     msg = bot.send_message(
         m.chat.id,
-        "Send channel username\nExample:\n@mychannel"
+        "Send up to 5 channel usernames separated by space\nExample:\n@channel1 @channel2"
     )
+    bot.register_next_step_handler(msg, post_channels_send)
 
-    bot.register_next_step_handler(msg, post_channel_send)
-
-
-def post_channel_send(m):
-
-    global POST_CHANNEL
-
+def post_channels_send(m):
+    global POST_CHANNELS
     if not is_admin(m.from_user.id):
         return
 
-    channel = m.text.replace("@", "").strip()
+    channels = [c.replace("@","").strip() for c in m.text.split()][:5]
+    POST_CHANNELS = channels
 
-    POST_CHANNEL = channel
+    text = "✅ Channels saved:\n" + "\n".join([f"@{c}" for c in channels])
+    bot.send_message(m.chat.id, text)
 
-    bot.send_message(
-        m.chat.id,
-        f"✅ Post channel saved: @{channel}\nUsers will be asked to join when downloading."
-    )
+# ================= CONFIRM JOIN =================
+@bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
+def multi_check_join(call):
 
-    # ================= CALLBACKS =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("checkjoin|"))
-def check_join_post(call):
+    joined_all = True
 
-    channel = call.data.split("|")[1]
+    for ch in POST_CHANNELS:
 
-    try:
+        try:
+            member = bot.get_chat_member(f"@{ch}", call.from_user.id)
 
-        member = bot.get_chat_member(f"@{channel}", call.from_user.id)
+            if member.status not in ["member","administrator","creator"]:
+                joined_all = False
 
-        if member.status in ["member","administrator","creator"]:
+        except:
+            joined_all = False
 
-            bot.answer_callback_query(call.id,"✅ Join verified")
 
-            bot.send_message(
-                call.from_user.id,
-                "✅ Join verified.\nNow send the video link again."
-            )
+    if joined_all:
 
-        else:
+        bot.answer_callback_query(call.id,"✅ Join verified")
 
-            bot.answer_callback_query(
-                call.id,
-                "❌ You must join the channel first!",
-                show_alert=True
-            )
+        bot.send_message(
+            call.from_user.id,
+            "✅ Now send the video link again."
+        )
 
-    except:
+    else:
 
         bot.answer_callback_query(
             call.id,
-            "❌ Join the channel first!",
+            "❌ You must join all channels first!",
             show_alert=True
         )
 
@@ -1125,34 +1116,50 @@ def handle_links(message):
 
     user_id = message.from_user.id
 
-    if POST_CHANNEL:
-        try:
+    if POST_CHANNELS:
 
-            member = bot.get_chat_member(f"@{POST_CHANNEL}", user_id)
+        kb = InlineKeyboardMarkup()
+        joined_all = True
 
-            if member.status not in ["member","administrator","creator"]:
-                kb = InlineKeyboardMarkup()
+        for ch in POST_CHANNELS:
+            try:
+                member = bot.get_chat_member(f"@{ch}", user_id)
+
+                if member.status not in ["member","administrator","creator"]:
+                    joined_all = False
+
+                    kb.add(
+                        InlineKeyboardButton(
+                            f"📢 JOIN @{ch}",
+                            url=f"https://t.me/{ch}"
+                        )
+                    )
+
+            except:
+                joined_all = False
+
                 kb.add(
                     InlineKeyboardButton(
-                        "📢 JOIN CHANNEL",
-                        url=f"https://t.me/{POST_CHANNEL}"
-                    )
-                )
-                kb.add(
-                    InlineKeyboardButton(
-                        "✅ CONFIRM",
-                        callback_data=f"checkjoin|{POST_CHANNEL}"
+                        f"📢 JOIN @{ch}",
+                        url=f"https://t.me/{ch}"
                     )
                 )
 
-                bot.send_message(
-                    message.chat.id,
-                    "⚠️ Join this channel before downloading.",
-                    reply_markup=kb
-                )
-                return
+        if not joined_all:
 
-        except:
+            kb.add(
+                InlineKeyboardButton(
+                    "✅ CONFIRM JOIN",
+                    callback_data="multi_checkjoin"
+                )
+            )
+
+            bot.send_message(
+                message.chat.id,
+                "⚠️ You must join all channels before downloading.",
+                reply_markup=kb
+            )
+
             return
 
     bot.send_message(message.chat.id, "⏳ Downloading...")

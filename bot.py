@@ -826,6 +826,10 @@ def handle_links(message):
 
             return
 
+    # ✅ Halkan download bilaabmaya
+    bot.send_message(message.chat.id, "⏳ Downloading...")
+    download_media(message.chat.id, message.text)
+
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
 def multi_check_join(call):
@@ -1182,10 +1186,6 @@ def convert_music(call):
 
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
-
-# ================= LINK HANDLER =================
-    bot.send_message(message.chat.id, "⏳ Downloading...")
-    download_media(message.chat.id, message.text)
 
 # ================= RUN BOT =================
 if __name__ == "__main__":

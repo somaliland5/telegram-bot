@@ -895,24 +895,81 @@ def handle_links(message):
 
         if not joined_all:
 
-            kb.add(
-                InlineKeyboardButton(
-                    "✅ CONFIRM JOIN",
-                    callback_data="multi_checkjoin"
-                )
-            )
+    pending_links[user_id] = message.text  # KEYDI LINK
 
-            bot.send_message(
-                message.chat.id,
-                "⚠️ You must join all channels before downloading.",
-                reply_markup=kb
-            )
+    kb.add(
+        InlineKeyboardButton(
+            "✅ CONFIRM JOIN",
+            callback_data="multi_checkjoin"
+        )
+    )
 
-            return
+    bot.send_message(
+        message.chat.id,
+        "⚠️ You must join all channels before downloading.",
+        reply_markup=kb
+    )
+
+    return
 
     # ✅ Halkan download bilaabmaya
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
+
+# ================= MULTI CHANNEL CONFIRM =================
+@bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
+def multi_checkjoin(call):
+
+    user_id = call.from_user.id
+
+    try:
+
+        joined_all = True
+
+        for ch in POST_CHANNELS:
+
+            member = bot.get_chat_member(f"@{ch}", user_id)
+
+            if member.status not in ["member", "administrator", "creator"]:
+                joined_all = False
+                break
+
+        if joined_all:
+
+            bot.answer_callback_query(call.id, "✅ Join verified")
+
+            # tirtir buttons
+            bot.edit_message_reply_markup(
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=None
+            )
+
+            if user_id in pending_links:
+
+                link = pending_links[user_id]
+                del pending_links[user_id]
+
+                bot.send_message(user_id, "⏳ Downloading...")
+                download_media(user_id, link)
+
+            else:
+                bot.send_message(user_id, "Send video link.")
+
+        else:
+
+            bot.answer_callback_query(
+                call.id,
+                "❌ Join all channels first!",
+                show_alert=True
+            )
+
+    except:
+        bot.answer_callback_query(
+            call.id,
+            "❌ Please join channels first!",
+            show_alert=True
+        )
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")

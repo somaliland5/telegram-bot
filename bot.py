@@ -17,6 +17,7 @@ BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
 
 CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
 POST_CHANNELS = []
+pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
@@ -25,7 +26,6 @@ bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
-pending_links = {}
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
@@ -864,56 +864,48 @@ def handle_links(message):
 
     user_id = message.from_user.id
 
-    if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
+    if POST_CHANNELS:
 
         kb = InlineKeyboardMarkup()
         joined_all = True
 
         for ch in POST_CHANNELS:
+
             try:
                 member = bot.get_chat_member(f"@{ch}", user_id)
 
                 if member.status not in ["member","administrator","creator"]:
                     joined_all = False
-
                     kb.add(
-                        InlineKeyboardButton(
-                            f"📢 JOIN @{ch}",
-                            url=f"https://t.me/{ch}"
-                        )
+                        InlineKeyboardButton("📢 JOIN CHANNEL", url=f"https://t.me/{ch}")
                     )
 
             except:
                 joined_all = False
-
                 kb.add(
-    InlineKeyboardButton(
-        "📢 JOIN CHANNEL",
-        url=f"https://t.me/{ch}"
-    )
+                    InlineKeyboardButton("📢 JOIN CHANNEL", url=f"https://t.me/{ch}")
                 )
 
         if not joined_all:
 
-    pending_links[user_id] = message.text  # KEYDI LINK
+            pending_links[user_id] = message.text
 
-    kb.add(
-        InlineKeyboardButton(
-            "✅ CONFIRM JOIN",
-            callback_data="multi_checkjoin"
-        )
-    )
+            kb.add(
+                InlineKeyboardButton(
+                    "✅ CONFIRM JOIN",
+                    callback_data="multi_checkjoin"
+                )
+            )
 
-    bot.send_message(
-        message.chat.id,
-        "⚠️ You must join all channels before downloading.",
-        reply_markup=kb
-    )
+            bot.send_message(
+                message.chat.id,
+                "⚠️ Please join the required channels first.",
+                reply_markup=kb
+            )
 
-    return
+            return
 
-    # ✅ Halkan download bilaabmaya
-    bot.send_message(message.chat.id, "⏳ Downloading...")
+    bot.send_message(message.chat.id,"⏳ Downloading...")
     download_media(message.chat.id, message.text)
 
 # ================= MULTI CHANNEL CONFIRM =================
@@ -922,52 +914,42 @@ def multi_checkjoin(call):
 
     user_id = call.from_user.id
 
-    try:
+    joined_all = True
 
-        joined_all = True
+    for ch in POST_CHANNELS:
 
-        for ch in POST_CHANNELS:
-
+        try:
             member = bot.get_chat_member(f"@{ch}", user_id)
 
-            if member.status not in ["member", "administrator", "creator"]:
+            if member.status not in ["member","administrator","creator"]:
                 joined_all = False
                 break
 
-        if joined_all:
+        except:
+            joined_all = False
+            break
 
-            bot.answer_callback_query(call.id, "✅ Join verified")
+    if joined_all:
 
-            # tirtir buttons
-            bot.edit_message_reply_markup(
-                call.message.chat.id,
-                call.message.message_id,
-                reply_markup=None
-            )
+        bot.answer_callback_query(call.id,"✅ Join verified")
 
-            if user_id in pending_links:
+        if user_id in pending_links:
 
-                link = pending_links[user_id]
-                del pending_links[user_id]
+            link = pending_links[user_id]
+            del pending_links[user_id]
 
-                bot.send_message(user_id, "⏳ Downloading...")
-                download_media(user_id, link)
-
-            else:
-                bot.send_message(user_id, "Send video link.")
+            bot.send_message(user_id,"⬇️ Processing your video...")
+            download_media(user_id, link)
 
         else:
 
-            bot.answer_callback_query(
-                call.id,
-                "❌ Join all channels first!",
-                show_alert=True
-            )
+            bot.send_message(user_id,"Send your video link.")
 
-    except:
+    else:
+
         bot.answer_callback_query(
             call.id,
-            "❌ Please join channels first!",
+            "❌ You must join all channels first!",
             show_alert=True
         )
 

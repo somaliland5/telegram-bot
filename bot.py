@@ -183,61 +183,6 @@ def send_join_message(user_id):
         reply_markup=kb
     )
 
-@bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
-def confirm_join(call):
-    try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, call.from_user.id)
-
-        if member.status in ["member", "administrator", "creator"]:
-            bot.answer_callback_query(call.id, "✅ Verified!")
-            bot.send_message(
-                call.from_user.id,
-                "🎉 Welcome! Now send your download link.",
-                reply_markup=user_menu(is_admin(call.from_user.id))
-            )
-        else:
-            bot.answer_callback_query(
-                call.id,
-                "❌ You must join the channel first!",
-                show_alert=True
-            )
-
-    except:
-        bot.answer_callback_query(
-            call.id,
-            "❌ Join the channel first!",
-            show_alert=True
-        )
-
-            @bot.callback_query_handler(func=lambda call: call.data.startswith("checkjoin|"))
-def check_join_post(call):
-
-    channel = call.data.split("|")[1]
-
-    try:
-        member = bot.get_chat_member(channel, call.from_user.id)
-
-        if member.status in ["member","administrator","creator"]:
-
-            bot.answer_callback_query(call.id,"✅ Join verified!")
-            bot.send_message(call.from_user.id,"🎉 Thank you for joining!")
-
-        else:
-
-            bot.answer_callback_query(
-                call.id,
-                "❌ You must join the channel first!",
-                show_alert=True
-            )
-
-    except:
-
-        bot.answer_callback_query(
-            call.id,
-            "❌ Join the channel first!",
-            show_alert=True
-        )
-
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
 def open_admin_panel(m):

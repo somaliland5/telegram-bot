@@ -107,6 +107,7 @@ def admin_menu():
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER")
     kb.add("🔙 BACK MAIN MENU")
+    kb.add("📌 POST CHANNEL")
     return kb
 
 # ================= BACK TO MAIN MENU =================
@@ -202,6 +203,35 @@ def confirm_join(call):
             )
 
     except:
+        bot.answer_callback_query(
+            call.id,
+            "❌ Join the channel first!",
+            show_alert=True
+        )
+
+            @bot.callback_query_handler(func=lambda call: call.data.startswith("checkjoin|"))
+def check_join_post(call):
+
+    channel = call.data.split("|")[1]
+
+    try:
+        member = bot.get_chat_member(channel, call.from_user.id)
+
+        if member.status in ["member","administrator","creator"]:
+
+            bot.answer_callback_query(call.id,"✅ Join verified!")
+            bot.send_message(call.from_user.id,"🎉 Thank you for joining!")
+
+        else:
+
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
+    except:
+
         bot.answer_callback_query(
             call.id,
             "❌ Join the channel first!",
@@ -769,6 +799,58 @@ def broadcast_send(m):
             continue
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
+
+# ================= POST CHANNEL =================
+
+@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
+def post_channel_start(m):
+
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id,"❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send channel username\nExample:\n@mychannel"
+    )
+
+    bot.register_next_step_handler(msg, post_channel_send)
+
+def post_channel_send(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    channel = m.text.strip()
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "📢 JOIN CHANNEL",
+            url=f"https://t.me/{channel.replace('@','')}"
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
+            "✅ CONFIRM",
+            callback_data=f"checkjoin|{channel}"
+        )
+    )
+
+    sent = 0
+
+    for uid in users:
+        try:
+            bot.send_message(
+                uid,
+                f"📢 Please join our channel first",
+                reply_markup=kb
+            )
+            sent += 1
+        except:
+            continue
+
+    bot.send_message(m.chat.id,f"✅ Post sent to {sent} users")
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")

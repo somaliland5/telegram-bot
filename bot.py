@@ -769,6 +769,58 @@ def post_channels_send(m):
     text = "✅ Channels saved:\n" + "\n".join([f"@{c}" for c in channels])
     bot.send_message(m.chat.id, text)
 
+# ================= CHECKING DOWNLOAD =================
+@bot.message_handler(func=lambda m: m.text and "http" in m.text)
+def handle_links(message):
+
+    user_id = message.from_user.id
+
+    if POST_CHANNELS:
+
+        kb = InlineKeyboardMarkup()
+        joined_all = True
+
+        for ch in POST_CHANNELS:
+            try:
+                member = bot.get_chat_member(f"@{ch}", user_id)
+
+                if member.status not in ["member","administrator","creator"]:
+                    joined_all = False
+
+                    kb.add(
+                        InlineKeyboardButton(
+                            f"📢 JOIN @{ch}",
+                            url=f"https://t.me/{ch}"
+                        )
+                    )
+
+            except:
+                joined_all = False
+
+                kb.add(
+                    InlineKeyboardButton(
+                        f"📢 JOIN @{ch}",
+                        url=f"https://t.me/{ch}"
+                    )
+                )
+
+        if not joined_all:
+
+            kb.add(
+                InlineKeyboardButton(
+                    "✅ CONFIRM JOIN",
+                    callback_data="multi_checkjoin"
+                )
+            )
+
+            bot.send_message(
+                message.chat.id,
+                "⚠️ You must join all channels before downloading.",
+                reply_markup=kb
+            )
+
+            return
+
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
 def multi_check_join(call):
@@ -1111,57 +1163,6 @@ def convert_music(call):
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
 # ================= LINK HANDLER =================
-@bot.message_handler(func=lambda m: m.text and "http" in m.text)
-def handle_links(message):
-
-    user_id = message.from_user.id
-
-    if POST_CHANNELS:
-
-        kb = InlineKeyboardMarkup()
-        joined_all = True
-
-        for ch in POST_CHANNELS:
-            try:
-                member = bot.get_chat_member(f"@{ch}", user_id)
-
-                if member.status not in ["member","administrator","creator"]:
-                    joined_all = False
-
-                    kb.add(
-                        InlineKeyboardButton(
-                            f"📢 JOIN @{ch}",
-                            url=f"https://t.me/{ch}"
-                        )
-                    )
-
-            except:
-                joined_all = False
-
-                kb.add(
-                    InlineKeyboardButton(
-                        f"📢 JOIN @{ch}",
-                        url=f"https://t.me/{ch}"
-                    )
-                )
-
-        if not joined_all:
-
-            kb.add(
-                InlineKeyboardButton(
-                    "✅ CONFIRM JOIN",
-                    callback_data="multi_checkjoin"
-                )
-            )
-
-            bot.send_message(
-                message.chat.id,
-                "⚠️ You must join all channels before downloading.",
-                reply_markup=kb
-            )
-
-            return
-
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
 

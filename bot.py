@@ -16,7 +16,7 @@ ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii 
 BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
 
 CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
-
+POST_CHANNEL = None
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -751,7 +751,7 @@ def broadcast_send(m):
 def post_channel_start(m):
 
     if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id,"❌ You are not admin")
+        bot.send_message(m.chat.id, "❌ You are not admin")
         return
 
     msg = bot.send_message(
@@ -761,41 +761,58 @@ def post_channel_start(m):
 
     bot.register_next_step_handler(msg, post_channel_send)
 
+
 def post_channel_send(m):
+
+    global POST_CHANNEL
 
     if not is_admin(m.from_user.id):
         return
 
-    channel = m.text.strip()
+    channel = m.text.replace("@", "").strip()
 
-    kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton(
-            "📢 JOIN CHANNEL",
-            url=f"https://t.me/{channel.replace('@','')}"
-        )
-    )
-    kb.add(
-        InlineKeyboardButton(
-            "✅ CONFIRM",
-            callback_data=f"checkjoin|{channel}"
-        )
+    POST_CHANNEL = channel
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Post channel saved: @{channel}\nUsers will be asked to join when downloading."
     )
 
-    sent = 0
+    # ================= CALLBACKS =================
 
-    for uid in users:
-        try:
+@bot.callback_query_handler(func=lambda call: call.data.startswith("checkjoin|"))
+def check_join_post(call):
+
+    channel = call.data.split("|")[1]
+
+    try:
+
+        member = bot.get_chat_member(channel, call.from_user.id)
+
+        if member.status in ["member","administrator","creator"]:
+
+            bot.answer_callback_query(call.id,"✅ Join verified")
+
             bot.send_message(
-                uid,
-                f"📢 Please join our channel first",
-                reply_markup=kb
+                call.from_user.id,
+                "✅ Now send the video link again."
             )
-            sent += 1
-        except:
-            continue
 
-    bot.send_message(m.chat.id,f"✅ Post sent to {sent} users")
+        else:
+
+            bot.answer_callback_query(
+                call.id,
+                "❌ You must join the channel first!",
+                show_alert=True
+            )
+
+    except:
+
+        bot.answer_callback_query(
+            call.id,
+            "❌ Join the channel first!",
+            show_alert=True
+        )
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")
@@ -1106,6 +1123,39 @@ def convert_music(call):
 # ================= LINK HANDLER =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
+
+    user_id = message.from_user.id
+
+    if POST_CHANNEL:
+        try:
+
+            member = bot.get_chat_member(f"@{POST_CHANNEL}", user_id)
+
+            if member.status not in ["member","administrator","creator"]:
+                kb = InlineKeyboardMarkup()
+                kb.add(
+                    InlineKeyboardButton(
+                        "📢 JOIN CHANNEL",
+                        url=f"https://t.me/{POST_CHANNEL}"
+                    )
+                )
+                kb.add(
+                    InlineKeyboardButton(
+                        "✅ CONFIRM",
+                        callback_data=f"checkjoin|{POST_CHANNEL}"
+                    )
+                )
+
+                bot.send_message(
+                    message.chat.id,
+                    "⚠️ Join this channel before downloading.",
+                    reply_markup=kb
+                )
+                return
+
+        except:
+            return
+
     bot.send_message(message.chat.id, "⏳ Downloading...")
     download_media(message.chat.id, message.text)
 

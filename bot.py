@@ -747,7 +747,7 @@ def broadcast_send(m):
 
 # ================= POST CHANNEL =================
 
-@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
+@bot.message_handler(func=lambda m: m.text == "📌 POST-CHANNEL")
 def post_channel_start(m):
 
     if not is_admin(m.from_user.id):

@@ -779,7 +779,6 @@ def post_channel_send(m):
     )
 
     # ================= CALLBACKS =================
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("checkjoin|"))
 def check_join_post(call):
 
@@ -787,7 +786,7 @@ def check_join_post(call):
 
     try:
 
-        member = bot.get_chat_member(channel, call.from_user.id)
+        member = bot.get_chat_member(f"@{channel}", call.from_user.id)
 
         if member.status in ["member","administrator","creator"]:
 
@@ -795,7 +794,7 @@ def check_join_post(call):
 
             bot.send_message(
                 call.from_user.id,
-                "✅ Now send the video link again."
+                "✅ Join verified.\nNow send the video link again."
             )
 
         else:

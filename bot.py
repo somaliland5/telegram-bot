@@ -803,10 +803,10 @@ def handle_links(message):
                 joined_all = False
 
                 kb.add(
-                    InlineKeyboardButton(
-                        f"📢 JOIN @{ch}",
-                        url=f"https://t.me/{ch}"
-                    )
+    InlineKeyboardButton(
+        "📢 JOIN CHANNEL",
+        url=f"https://t.me/{ch}"
+    )
                 )
 
         if not joined_all:

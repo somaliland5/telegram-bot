@@ -917,38 +917,44 @@ def handle_links(message):
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
-
     user_id = call.from_user.id
 
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        if member.status in ["member","administrator","creator"]:
+        if member.status in ["member", "administrator", "creator"]:
 
-            bot.answer_callback_query(call.id,"✅ Join verified")
+            bot.answer_callback_query(call.id, "✅ Join verified")
 
+            # ✅ Tirtir inline keyboard
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=None
+            )
+
+            # Haddii uu hore link u diray, ka soo qaad pending_links
             if user_id in pending_links:
-
                 link = pending_links[user_id]
                 del pending_links[user_id]
 
-                bot.send_message(user_id,"⬇️ Processing your previous link...")
-                download_video(user_id, link)
+                # Fariin u dir user
+                msg = bot.send_message(user_id, "⏳ Downloading...")
+
+                # Download video
+                download_media(user_id, link)
 
             else:
-
-                bot.send_message(user_id,"✅ Join confirmed. Send your video link.")
+                bot.send_message(user_id, "✅ Join confirmed. Send your video link.")
 
         else:
-
             bot.answer_callback_query(
                 call.id,
                 "❌ You must join the channel first!",
                 show_alert=True
             )
 
-    except:
-
+    except Exception as e:
         bot.answer_callback_query(
             call.id,
             "❌ Please join the channel first!",

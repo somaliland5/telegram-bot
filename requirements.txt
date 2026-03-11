@@ -1,6 +1,6 @@
-pyTelegramBotAPI
-yt-dlp
-requests
-beautifulsoup4
 flask
 flask_cors
+requests
+yt-dlp
+beautifulsoup4
+pyTelegramBotAPI

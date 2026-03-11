@@ -1225,6 +1225,10 @@ def send_video_with_music(chat_id, file_path, platform=None):
         )
 
 # ================= MEDIA DOWNLOADER =================
+msg = bot.send_message(chat_id,"⏳ Downloading...")
+bot.delete_message(chat_id,msg.message_id)
+
+
 def download_media(chat_id, text):
     try:
         url = extract_url(text)
@@ -1279,40 +1283,24 @@ def download_media(chat_id, text):
 
      # ================= INSTAGRAM =================
         if "instagram.com" in url:
-            try:
-                ydl_opts = {
-                    "format": "best",
-                    "outtmpl": "instagram_%(id)s.%(ext)s",
-                    "quiet": True
-                }
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
+    msg = bot.send_message(chat_id,"⏳ Downloading...")
 
-                    if "entries" in info:
-                        entries = info["entries"]
-                    else:
-                        entries = [info]
+    ydl_opts = {
+        "format": "best",
+        "outtmpl": "instagram_%(id)s.%(ext)s",
+        "quiet": True
+    }
 
-                    for entry in entries:
-                        file = ydl.prepare_filename(entry)
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        file = ydl.prepare_filename(info)
 
-                        if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
-                            with open(file,"rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                        else:
-                            send_video_with_music(chat_id, file, "instagram")
+    send_video_with_music(chat_id,file,"instagram")
 
-                        try:
-                            os.remove(file)
-                        except:
-                            pass
+    bot.delete_message(chat_id,msg.message_id)
 
-                return
-
-            except Exception:
-                bot.send_message(chat_id, "❌ Instagram download failed")
-                return
+    return
 
  # ================= PINTEREST =================
         if "pin.it" in url:
@@ -1383,30 +1371,24 @@ def download_media(chat_id, text):
 
         # ================= YOUTUBE =================
         if "youtube.com" in url or "youtu.be" in url:
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                file = ydl.prepare_filename(info)
+    msg = bot.send_message(chat_id,"⏳ Downloading...")
 
-            send_video_with_music(chat_id, file, "youtube")
-            return
+    ydl_opts = {
+        "format": "best[ext=mp4]",
+        "outtmpl": "youtube_%(id)s.%(ext)s",
+        "quiet": True
+    }
 
-        bot.send_message(chat_id, "❌ Unsupported link")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        file = ydl.prepare_filename(info)
 
-    except Exception:
-        bot.send_message(
-            chat_id,
-            "❌ Invalid link.\n\n"
-            "📥 Send a video link from:\n"
-            "Send link From Tiktok, pinterest, youtube, instagram, facebook."
-        )
-        return
+    send_video_with_music(chat_id,file,"youtube")
+
+    bot.delete_message(chat_id,msg.message_id)
+
+    return
 
         
 # ================= MESSAGE USER =================

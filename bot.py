@@ -112,32 +112,20 @@ def start_verification(user_id):
     code = generate_code()
     pending_verify[str(user_id)] = code
 
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🔘 GET CODE",
+            url="https://t.me/Verifyd_bot"
+        )
+    )
+
     bot.send_message(
         user_id,
         "🔐 Verification Required\n\n"
-        "Fadlan riix badhanka hoose si aad code-ka u hesho kadibna halkaan ku soo dir."
+        "Riix GET CODE si aad u hesho code-ka kadibna halkaan ku soo dir.",
+        reply_markup=kb
     )
-
-    try:
-        bot2.send_message(
-            user_id,
-            f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
-        )
-    except:
-        # ===== INLINE BUTTON =====
-        kb = InlineKeyboardMarkup()
-        kb.add(
-            InlineKeyboardButton(
-                "🔘 GET CODE",
-                url="http://t.me/Verifyd_bot"
-            )
-        )
-
-        bot.send_message(
-            user_id,
-            "⚠️ Fadlan marka hore fur bot-ka verification.",
-            reply_markup=kb
-        )
 
 # ================= MENUS =================
 def user_menu(show_admin=False):
@@ -207,6 +195,23 @@ def start_handler(message):
 
     # Hubinta join
     check_membership(uid)
+
+# ================= BOT2 ================
+@bot2.message_handler(commands=['start'])
+def bot2_start(m):
+    uid = str(m.from_user.id)
+
+    if uid in pending_verify:
+        code = pending_verify[uid]
+        bot2.send_message(
+            m.chat.id,
+            f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
+        )
+    else:
+        bot2.send_message(
+            m.chat.id,
+            "ℹ️ No verification pending.\nMarka hore ka bilow bot-ka weyn."
+        )
 
 # ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):

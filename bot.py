@@ -102,8 +102,9 @@ def banned_guard(m):
         return True
     return False
 
-
 # ================= VERIFY HELPERS =================
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 def generate_code():
     return str(random.randint(100000, 999999))
 
@@ -114,7 +115,7 @@ def start_verification(user_id):
     bot.send_message(
         user_id,
         "🔐 Verification Required\n\n"
-        "Fadlan ka soo qaado code-ka bot-ka verification kadibna halkaan ku soo dir."
+        "Fadlan riix badhanka hoose si aad code-ka u hesho kadibna halkaan ku soo dir."
     )
 
     try:
@@ -123,9 +124,19 @@ def start_verification(user_id):
             f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
         )
     except:
+        # ===== INLINE BUTTON =====
+        kb = InlineKeyboardMarkup()
+        kb.add(
+            InlineKeyboardButton(
+                "🔘 GET CODE",
+                url="https://t.me/verifydbbot"
+            )
+        )
+
         bot.send_message(
             user_id,
-            "⚠️ Fadlan marka hore fur bot-ka verification."
+            "⚠️ Fadlan marka hore fur bot-ka verification.",
+            reply_markup=kb
         )
 
 # ================= MENUS =================

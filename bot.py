@@ -129,7 +129,7 @@ def start_verification(user_id):
         kb.add(
             InlineKeyboardButton(
                 "🔘 GET CODE",
-                url="https://t.me/verifydbbot"
+                url="http://t.me/Verifyd_bot"
             )
         )
 

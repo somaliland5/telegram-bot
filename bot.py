@@ -1226,15 +1226,9 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
-
-    bot.send_chat_action(chat_id, "typing")
-    msg = bot.send_message(chat_id, "⏳ Downloading...")
-
     try:
         url = extract_url(text)
-
         if not url:
-            bot.delete_message(chat_id, msg.message_id)
             bot.send_message(chat_id, "❌ Invalid link")
             return
 
@@ -1268,9 +1262,6 @@ def download_media(chat_id, text):
                             os.remove(filename)
                         return
 
-                    bot.delete_message(chat_id,msg.message_id)
-                    return
-
 
                     # ===== TIKTOK VIDEO =====
                     if data.get("play"):
@@ -1285,9 +1276,6 @@ def download_media(chat_id, text):
             except Exception as e:
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
-
-        bot.delete_message(chat_id,msg.message_id)
-                    return
 
      # ================= INSTAGRAM =================
         if "instagram.com" in url:
@@ -1325,9 +1313,6 @@ def download_media(chat_id, text):
             except Exception:
                 bot.send_message(chat_id, "❌ Instagram download failed")
                 return
-
-        bot.delete_message(chat_id,msg.message_id)
-                    return
 
  # ================= PINTEREST =================
         if "pin.it" in url:
@@ -1371,9 +1356,14 @@ def download_media(chat_id, text):
                         # delete file
                         try:
                             os.remove(file)
+                        except Exception:
+                            pass
 
-            bot.delete_message(chat_id,msg.message_id)
-                    return
+                return
+
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Download error:\n{e}")
+                return
 
         # ================= FACEBOOK =================
         if "facebook.com" in url or "fb.watch" in url:
@@ -1390,11 +1380,6 @@ def download_media(chat_id, text):
 
             send_video_with_music(chat_id, file, "facebook")
             return
-
-        os.remove(file)
-
-        bot.delete_message(chat_id,msg.message_id)
-                    return
 
         # ================= YOUTUBE =================
         if "youtube.com" in url or "youtu.be" in url:

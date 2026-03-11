@@ -1226,195 +1226,200 @@ def send_video_with_music(chat_id, file_path, platform=None):
         )
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(chat_id, text):
+def download_media(chat_id,text):
 
-    # status user-ka
-    bot.send_chat_action(chat_id, "typing")
-
-    msg = bot.send_message(chat_id, "⏳ Downloading...")
+    bot.send_chat_action(chat_id,"typing")
+    msg = bot.send_message(chat_id,"⏳ Downloading...")
 
     try:
+
         url = extract_url(text)
+
         if not url:
-            bot.delete_message(chat_id, msg.message_id)
-            bot.send_message(chat_id, "❌ Invalid link")
+            bot.delete_message(chat_id,msg.message_id)
+            bot.send_message(chat_id,"❌ Invalid link")
             return
 
-        # ================= TIKTOK (PHOTO + VIDEO) =================
+
+        # ================= TIKTOK =================
         if "tiktok.com" in url:
-            try:
-                api = f"https://tikwm.com/api/?url={url}"
-                res = requests.get(api, timeout=30).json()
 
-                if res.get("code") == 0:
-                    data = res["data"]
+            api = f"https://tikwm.com/api/?url={url}"
+            res = requests.get(api).json()
 
-            
+            if res["code"] == 0:
 
-                        # ===== TIKTOK PHOTOS =====
-                    if data.get("images"):
-                        for i, img in enumerate(data["images"], start=1):
-                            img_data = requests.get(img, timeout=30).content
-                            filename = f"tiktok_{i}.jpg"
+                data = res["data"]
 
-                            with open(filename, "wb") as f:
-                                f.write(img_data)
+                # PHOTOS
+                if data.get("images"):
 
-                            with open(filename, "rb") as photo:
-                                bot.send_photo(
-                                    chat_id,
-                                    photo,
-                                    caption=f"📸 Photo {i}\n{CAPTION_TEXT}"
-                                )
+                    for img in data["images"]:
 
-                            os.remove(filename)
-                        return
+                        bot.send_chat_action(chat_id,"upload_photo")
+
+                        img_data = requests.get(img).content
+                        file = "tiktok.jpg"
+
+                        with open(file,"wb") as f:
+                            f.write(img_data)
+
+                        with open(file,"rb") as p:
+                            bot.send_photo(chat_id,p,caption=CAPTION_TEXT)
+
+                        os.remove(file)
+
+                    bot.delete_message(chat_id,msg.message_id)
+                    return
 
 
-                    # ===== TIKTOK VIDEO =====
-                    if data.get("play"):
-                        video_data = requests.get(data["play"], timeout=60).content
-                        filename = "tiktok_video.mp4"
+                # VIDEO
+                if data.get("play"):
 
-                        with open(filename, "wb") as f:
-                            f.write(video_data)
+                    video = requests.get(data["play"]).content
+                    file = "tiktok.mp4"
 
-                        send_video_with_music(chat_id, filename, "tiktok")
-                        return
-            except Exception as e:
-                bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
-                return
+                    with open(file,"wb") as f:
+                        f.write(video)
 
-     # ================= INSTAGRAM =================
+                    send_video_with_music(chat_id,file,"tiktok")
+
+                    os.remove(file)
+
+                    bot.delete_message(chat_id,msg.message_id)
+                    return
+
+
+        # ================= INSTAGRAM =================
         if "instagram.com" in url:
-            try:
-                ydl_opts = {
-                    "format": "best",
-                    "outtmpl": "instagram_%(id)s.%(ext)s",
-                    "quiet": True
-                }
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
+            ydl_opts={
+                "format":"best[height<=720]",
+                "outtmpl":"insta_%(id)s.%(ext)s",
+                "quiet":True
+            }
 
-                    if "entries" in info:
-                        entries = info["entries"]
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                info = ydl.extract_info(url,download=True)
+
+                entries = info["entries"] if "entries" in info else [info]
+
+                for entry in entries:
+
+                    file = ydl.prepare_filename(entry)
+
+                    if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
+
+                        bot.send_chat_action(chat_id,"upload_photo")
+
+                        with open(file,"rb") as p:
+                            bot.send_photo(chat_id,p,caption=CAPTION_TEXT)
+
                     else:
-                        entries = [info]
 
-                    for entry in entries:
-                        file = ydl.prepare_filename(entry)
+                        send_video_with_music(chat_id,file,"instagram")
 
-                        if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
-                            with open(file,"rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
-                        else:
-                            send_video_with_music(chat_id, file, "instagram")
+                    os.remove(file)
 
-                        try:
-                            os.remove(file)
-                        except:
-                            pass
+            bot.delete_message(chat_id,msg.message_id)
+            return
 
-                return
 
-            except Exception:
-                bot.send_message(chat_id, "❌ Instagram download failed")
-                return
+        # ================= PINTEREST =================
+        if "pinterest.com" in url or "pin.it" in url:
 
- # ================= PINTEREST =================
-        if "pin.it" in url:
-            try:
-                r = requests.head(url, allow_redirects=True, timeout=10)
-                url = r.url
-            except Exception:
-                pass
+            ydl_opts={
+                "format":"best[height<=720]",
+                "outtmpl":"pin_%(id)s.%(ext)s",
+                "quiet":True
+            }
 
-        if "pinterest.com" in url:
-            try:
-                ydl_opts = {
-                    "format": "bv*+ba/b",
-                    "outtmpl": "pinterest_%(id)s.%(ext)s",
-                    "quiet": True,
-                    "noplaylist": False,
-                    "merge_output_format": "mp4"
-                }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
+                info = ydl.extract_info(url,download=True)
 
-                    # ===== haddii ay tahay carousel =====
-                    if "entries" in info:
-                        entries = info["entries"]
+                entries = info["entries"] if "entries" in info else [info]
+
+                for entry in entries:
+
+                    file = ydl.prepare_filename(entry)
+
+                    if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
+
+                        bot.send_chat_action(chat_id,"upload_photo")
+
+                        with open(file,"rb") as p:
+                            bot.send_photo(chat_id,p,caption=CAPTION_TEXT)
+
                     else:
-                        entries = [info]
 
-                    for entry in entries:
-                        file = ydl.prepare_filename(entry)
+                        send_video_with_music(chat_id,file,"pinterest")
 
-                        # ===== PHOTO =====
-                        if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                            with open(file, "rb") as photo:
-                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                    os.remove(file)
 
-                        # ===== VIDEO =====
-                        else:
-                            send_video_with_music(chat_id, file, "pinterest")
+            bot.delete_message(chat_id,msg.message_id)
+            return
 
-                        # delete file
-                        try:
-                            os.remove(file)
-                        except Exception:
-                            pass
-
-                return
-
-            except Exception as e:
-                bot.send_message(chat_id, f"❌ Download error:\n{e}")
-                return
 
         # ================= FACEBOOK =================
         if "facebook.com" in url or "fb.watch" in url:
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": "facebook_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
+
+            ydl_opts={
+                "format":"best[height<=720]",
+                "outtmpl":"fb_%(id)s.%(ext)s",
+                "quiet":True
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+
+                info = ydl.extract_info(url,download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file, "facebook")
+            send_video_with_music(chat_id,file,"facebook")
+
+            os.remove(file)
+
+            bot.delete_message(chat_id,msg.message_id)
             return
+
 
         # ================= YOUTUBE =================
         if "youtube.com" in url or "youtu.be" in url:
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
+
+            ydl_opts={
+                "format":"best[height<=720]",
+                "outtmpl":"yt_%(id)s.%(ext)s",
+                "quiet":True
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+
+                info = ydl.extract_info(url,download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file, "youtube")
+            send_video_with_music(chat_id,file,"youtube")
+
+            os.remove(file)
+
+            bot.delete_message(chat_id,msg.message_id)
             return
 
-        bot.send_message(chat_id, "❌ Unsupported link")
+
+        bot.delete_message(chat_id,msg.message_id)
+        bot.send_message(chat_id,"❌ Unsupported link")
+
 
     except Exception:
+
+        bot.delete_message(chat_id,msg.message_id)
+
         bot.send_message(
             chat_id,
             "❌ Invalid link.\n\n"
-            "📥 Send a video link from:\n"
-            "Send link From Tiktok, pinterest, youtube, instagram, facebook."
+            "Send link from:\n"
+            "TikTok, Instagram, YouTube, Facebook, Pinterest"
         )
-        return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

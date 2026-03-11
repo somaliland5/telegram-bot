@@ -1,1 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Video Downloader</title>
 
+<style>
+
+body{
+background:#0b1220;
+font-family:Arial;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+color:white;
+}
+
+.container{
+text-align:center;
+width:320px;
+}
+
+input{
+width:100%;
+padding:14px;
+border-radius:25px;
+border:none;
+margin-top:10px;
+outline:none;
+}
+
+button{
+margin-top:15px;
+padding:14px;
+width:100%;
+background:#3b82f6;
+border:none;
+border-radius:25px;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#2563eb;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Download Video</h2>
+
+<input id="link" placeholder="Paste video link">
+
+<button onclick="send()">Download</button>
+
+</div>
+
+<script>
+
+function send(){
+
+let link = document.getElementById("link").value
+
+let botToken = "BOT_TOKEN"
+let chatId = "CHAT_ID"
+
+fetch(`https://api.telegram.org/bot${botToken}/sendMessage`,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+chat_id:chatId,
+text:link
+})
+})
+
+alert("Link sent to downloader bot")
+
+}
+
+</script>
+
+</body>
+</html>

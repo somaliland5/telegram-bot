@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Video Downloader</title>
+<title>VIP Video Downloader</title>
 
 <style>
 
@@ -15,7 +15,7 @@ color:white;
 
 .page{
 display:none;
-padding:20px;
+padding:25px;
 text-align:center;
 }
 
@@ -44,6 +44,10 @@ font-size:16px;
 cursor:pointer;
 }
 
+button:hover{
+background:#2563eb;
+}
+
 video{
 width:90%;
 margin-top:20px;
@@ -67,20 +71,73 @@ color:white;
 font-size:16px;
 }
 
+a{
+color:#60a5fa;
+cursor:pointer;
+}
+
 </style>
 </head>
 
 <body>
 
-<!-- HOME PAGE -->
+<!-- LOGIN PAGE -->
 
-<div id="home" class="page active">
+<div id="login" class="page active">
 
-<h2>Video Downloader</h2>
+<h2>Login</h2>
+
+<input id="login_email" placeholder="Gmail">
+
+<input id="login_pass" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<br><br>
+
+<a onclick="showPage('signup')">Create Account</a>
+
+</div>
+
+<!-- SIGNUP PAGE -->
+
+<div id="signup" class="page">
+
+<h2>Create Account</h2>
+
+<input id="signup_email" placeholder="Gmail">
+
+<input id="signup_pass" type="password" placeholder="Password">
+
+<button onclick="signup()">Signup</button>
+
+<br><br>
+
+<a onclick="showPage('login')">Back to Login</a>
+
+</div>
+
+<!-- VERIFY PAGE -->
+
+<div id="verify" class="page">
+
+<h2>Email Verification</h2>
+
+<input id="verify_code" placeholder="Enter Code">
+
+<button onclick="verify()">Verify</button>
+
+</div>
+
+<!-- HOME DOWNLOADER -->
+
+<div id="home" class="page">
+
+<h2>VIP Video Downloader</h2>
 
 <input id="link" placeholder="Paste video link">
 
-<button onclick="download()">Download</button>
+<button onclick="downloadVideo()">Download</button>
 
 </div>
 
@@ -98,7 +155,7 @@ font-size:16px;
 
 </div>
 
-<!-- BOTTOM MENU -->
+<!-- MENU -->
 
 <div class="nav">
 
@@ -110,20 +167,93 @@ font-size:16px;
 
 <script>
 
+let API="https://telegram-bot-production-c8d3.up.railway.app"
+
 function showPage(page){
 
-document.getElementById("home").classList.remove("active")
-document.getElementById("downloads").classList.remove("active")
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
 
 document.getElementById(page).classList.add("active")
 
 }
 
-async function download(){
+async function signup(){
+
+let email=document.getElementById("signup_email").value
+let password=document.getElementById("signup_pass").value
+
+let res = await fetch(API+"/signup",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+email:email,
+password:password
+})
+})
+
+let data = await res.json()
+
+alert(data.message)
+
+showPage("verify")
+
+}
+
+async function verify(){
+
+let code=document.getElementById("verify_code").value
+
+let res = await fetch(API+"/verify",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+code:code
+})
+})
+
+let data = await res.json()
+
+alert(data.message)
+
+showPage("login")
+
+}
+
+async function login(){
+
+let email=document.getElementById("login_email").value
+let password=document.getElementById("login_pass").value
+
+let res = await fetch(API+"/login",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+email:email,
+password:password
+})
+})
+
+let data = await res.json()
+
+alert(data.message)
+
+if(data.success){
+showPage("home")
+}
+
+}
+
+async function downloadVideo(){
 
 let link=document.getElementById("link").value
 
-let res = await fetch("https://YOUR-RAILWAY-APP.up.railway.app/download",{
+let res = await fetch(API+"/download",{
 method:"POST",
 headers:{
 "Content-Type":"application/json"

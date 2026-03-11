@@ -102,7 +102,9 @@ def banned_guard(m):
         return True
     return False
 
-    def generate_code():
+
+# ================= VERIFY HELPERS =================
+def generate_code():
     return str(random.randint(100000, 999999))
 
 def start_verification(user_id):
@@ -115,10 +117,16 @@ def start_verification(user_id):
         "Fadlan ka soo qaado code-ka bot-ka verification kadibna halkaan ku soo dir."
     )
 
-    bot2.send_message(
-        user_id,
-        f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
-    )
+    try:
+        bot2.send_message(
+            user_id,
+            f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
+        )
+    except:
+        bot.send_message(
+            user_id,
+            "⚠️ Fadlan marka hore fur bot-ka verification."
+        )
 
 # ================= MENUS =================
 def user_menu(show_admin=False):

@@ -1417,6 +1417,8 @@ if "instagram.com" in url:
         "• Instagram\n"
         "• Facebook"
     )
+    
+    return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

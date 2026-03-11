@@ -1457,11 +1457,11 @@ def send_user_message(m, uid):
 def convert_music(call):
 
     file_path = call.data.split("|", 1)[1]
-    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+    audio_path = file_path.rsplit(".", 1)[0] + ".mp4"
 
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
+            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp4", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True

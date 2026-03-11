@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
 import random
 import smtplib
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 EMAIL = "yous01888@gmail.com"
 PASSWORD = "jzip muri drsl kbej"
@@ -21,27 +23,21 @@ def signup():
     code = str(random.randint(100000,999999))
 
     users[email] = {
-        "password":password,
-        "code":code,
-        "verified":False
+        "password": password,
+        "code": code,
+        "verified": False
     }
 
-    message = f"Your verification code is {code}"
-
-    server = smtplib.SMTP("smtp.gmail.com",587)
-    server.starttls()
-    server.login(EMAIL,PASSWORD)
-
-    server.sendmail(
-        EMAIL,
-        email,
-        message
-    )
-
-    server.quit()
-
-    return jsonify({"message":"Verification code sent to Gmail"})
-
+    try:
+        message = f"Your verification code is {code}"
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL, PASSWORD)
+        server.sendmail(EMAIL, email, message)
+        server.quit()
+        return jsonify({"message": "Verification code sent to Gmail"})
+    except Exception as e:
+        return jsonify({"message": f"Email send failed: {str(e)}"})
 
 # ---------------- VERIFY ----------------
 

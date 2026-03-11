@@ -113,12 +113,13 @@ def start_verification(user_id):
     pending_verify[str(user_id)] = code
 
     kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton(
-            "🔘 GET CODE",
-            url=f"https://t.me/Verifyd_bot?start={user_id}"
-        )
+
+kb.add(
+    InlineKeyboardButton(
+        "🔘 GET CODE",
+        url=f"https://t.me/Verifyd_bot?start={user_id}"
     )
+)
 
     bot.send_message(
         user_id,

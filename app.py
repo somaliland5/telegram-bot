@@ -9,7 +9,7 @@ CORS(app)
 
 # Gmail App Email iyo Password
 EMAIL = "yous01888@gmail.com"
-PASSWORD = "jzip muri drsl kbej"  # Hubi App Password sax
+PASSWORD = "eerm bykd pozt hqip"  # Hubi App Password sax
 
 # Users storage (dictionary)
 users = {}

@@ -11,12 +11,12 @@ background:#0b1220;
 font-family:Arial;
 margin:0;
 color:white;
+text-align:center;
 }
 
 .page{
 display:none;
 padding:25px;
-text-align:center;
 }
 
 .active{
@@ -71,17 +71,12 @@ color:white;
 font-size:16px;
 }
 
-a{
-color:#60a5fa;
-cursor:pointer;
-}
-
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN PAGE -->
+<!-- LOGIN -->
 
 <div id="login" class="page active">
 
@@ -95,15 +90,17 @@ cursor:pointer;
 
 <br><br>
 
-<a onclick="showPage('signup')">Create Account</a>
+<a onclick="showPage('signup')" style="color:#60a5fa;cursor:pointer">
+Create account
+</a>
 
 </div>
 
-<!-- SIGNUP PAGE -->
+<!-- SIGNUP -->
 
 <div id="signup" class="page">
 
-<h2>Create Account</h2>
+<h2>Signup</h2>
 
 <input id="signup_email" placeholder="Gmail">
 
@@ -113,23 +110,25 @@ cursor:pointer;
 
 <br><br>
 
-<a onclick="showPage('login')">Back to Login</a>
+<a onclick="showPage('login')" style="color:#60a5fa;cursor:pointer">
+Back to login
+</a>
 
 </div>
 
-<!-- VERIFY PAGE -->
+<!-- VERIFY -->
 
 <div id="verify" class="page">
 
 <h2>Email Verification</h2>
 
-<input id="verify_code" placeholder="Enter Code">
+<input id="verify_code" placeholder="Enter code">
 
 <button onclick="verify()">Verify</button>
 
 </div>
 
-<!-- HOME DOWNLOADER -->
+<!-- DOWNLOADER -->
 
 <div id="home" class="page">
 
@@ -141,11 +140,11 @@ cursor:pointer;
 
 </div>
 
-<!-- DOWNLOAD PAGE -->
+<!-- VIDEO PAGE -->
 
 <div id="downloads" class="page">
 
-<h2>Your Download</h2>
+<h2>Your Video</h2>
 
 <video id="player" controls></video>
 
@@ -155,13 +154,15 @@ cursor:pointer;
 
 </div>
 
-<!-- MENU -->
+<!-- NAV -->
 
 <div class="nav">
 
 <button onclick="showPage('home')">Home</button>
 
 <button onclick="showPage('downloads')">Downloads</button>
+
+<button onclick="logout()">Logout</button>
 
 </div>
 
@@ -176,6 +177,20 @@ document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
 document.getElementById(page).classList.add("active")
 
 }
+
+function checkLogin(){
+
+let logged=localStorage.getItem("logged")
+
+if(logged=="true"){
+showPage("home")
+}else{
+showPage("login")
+}
+
+}
+
+checkLogin()
 
 async function signup(){
 
@@ -244,8 +259,20 @@ let data = await res.json()
 alert(data.message)
 
 if(data.success){
+
+localStorage.setItem("logged","true")
+
 showPage("home")
+
 }
+
+}
+
+function logout(){
+
+localStorage.removeItem("logged")
+
+showPage("login")
 
 }
 

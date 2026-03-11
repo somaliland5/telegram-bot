@@ -1411,13 +1411,9 @@ if "instagram.com" in url:
         chat_id,
         "❌ Invalid link.\n\n"
         "📥 Send a video link from:\n"
-        "• TikTok\n"
-        "• YouTube\n"
-        "• Pinterest\n"
-        "• Instagram\n"
-        "• Facebook"
+        "Send link From Tiktok, pinterest,youtube, instgram, facebook."
+        
     )
-    
     return
         
 # ================= MESSAGE USER =================

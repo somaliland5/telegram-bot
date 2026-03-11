@@ -1282,44 +1282,40 @@ def download_media(chat_id, text):
 
      # ================= INSTAGRAM =================
 if "instagram.com" in url:
-    try:
-        ydl_opts = {
-            "format": "best",
-            "outtmpl": "instagram_%(id)s.%(ext)s",
-            "quiet": True
-        }
+            try:
+                ydl_opts = {
+                    "format": "best",
+                    "outtmpl": "instagram_%(id)s.%(ext)s",
+                    "quiet": True
+                }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
 
-            # haddii ay carousel tahay
-            if "entries" in info:
-                entries = info["entries"]
-            else:
-                entries = [info]
+                    if "entries" in info:
+                        entries = info["entries"]
+                    else:
+                        entries = [info]
 
-            for entry in entries:
-                file = ydl.prepare_filename(entry)
+                    for entry in entries:
+                        file = ydl.prepare_filename(entry)
 
-                # haddii photo
-                if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
-                    with open(file,"rb") as photo:
-                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                        if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
+                            with open(file,"rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+                        else:
+                            send_video_with_music(chat_id, file, "instagram")
 
-                # haddii video
-                else:
-                    send_video_with_music(chat_id, file, "instagram")
+                        try:
+                            os.remove(file)
+                        except:
+                            pass
 
-                try:
-                    os.remove(file)
-                except:
-                    pass
+                return
 
-        return
-
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Instagram error:\n{e}")
-        return
+            except Exception:
+                bot.send_message(chat_id, "❌ Instagram download failed")
+                return
 
  # ================= PINTEREST =================
         if "pin.it" in url:

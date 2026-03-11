@@ -116,7 +116,7 @@ def start_verification(user_id):
     kb.add(
         InlineKeyboardButton(
             "🔘 GET CODE",
-            url="https://t.me/Verifyd_bot"
+            url=f"https://t.me/Verifyd_bot?start={user_id}"
         )
     )
 
@@ -203,9 +203,13 @@ def bot2_start(m):
 
     if uid in pending_verify:
         code = pending_verify[uid]
+
         bot2.send_message(
             m.chat.id,
-            f"🔐 Your Verification Code:\n\n<code>{code}</code>\n\nKu celi bot-ka weyn."
+            "🔐 Your Verification Code:\n\n"
+            f"`{code}`\n\n"
+            "👆 Taabo code-ka si aad u copy garayso kadibna ku celi bot-ka weyn.",
+            parse_mode="Markdown"
         )
     else:
         bot2.send_message(
@@ -740,7 +744,13 @@ def check_verify_code(m):
     if pending_verify.get(uid) == m.text:
         verified_users.add(uid)
         pending_verify.pop(uid, None)
-        bot.send_message(m.chat.id, "✅ Verification Successful! Continue.")
+        bot.send_message(m.chat.id, "✅ Verification Successful!")
+
+        # ===== SOO CELI DOWNLOAD =====
+        if uid in pending_downloads:
+            old_url = pending_downloads.pop(uid)
+            bot.send_message(m.chat.id, "⬇️ Downloading your previous link...")
+            download_media(m.chat.id, old_url)
     else:
         bot.send_message(m.chat.id, "❌ Incorrect code.")
 
@@ -1312,8 +1322,9 @@ def send_video_with_music(chat_id, file_path, platform=None):
 def download_media(chat_id, text):
 
     if VERIFY_MODE and str(chat_id) not in verified_users:
-        start_verification(chat_id)
-        return
+    pending_downloads[str(chat_id)] = url  # kaydi link-ga
+    start_verification(chat_id)
+    return
 
     try:
         url = extract_url(text)

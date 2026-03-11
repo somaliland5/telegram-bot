@@ -1281,7 +1281,7 @@ def download_media(chat_id, text):
                 return
 
      # ================= INSTAGRAM =================
-if "instagram.com" in url:
+        if "instagram.com" in url:
             try:
                 ydl_opts = {
                     "format": "best",
@@ -1403,14 +1403,13 @@ if "instagram.com" in url:
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception:
-    bot.send_message(
-        chat_id,
-        "❌ Invalid link.\n\n"
-        "📥 Send a video link from:\n"
-        "Send link From Tiktok, pinterest,youtube, instgram, facebook."
-        
-    )
-    return
+        bot.send_message(
+            chat_id,
+            "❌ Invalid link.\n\n"
+            "📥 Send a video link from:\n"
+            "Send link From Tiktok, pinterest, youtube, instagram, facebook."
+        )
+        return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

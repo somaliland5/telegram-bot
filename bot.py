@@ -1225,8 +1225,6 @@ def send_video_with_music(chat_id, file_path, platform=None):
         )
 
 # ================= MEDIA DOWNLOADER =================
-bot.send_chat_action(chat_id,"upload_video")
-
 def download_media(chat_id, text):
 
     bot.send_chat_action(chat_id, "typing")

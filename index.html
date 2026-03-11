@@ -83,7 +83,7 @@ text-decoration:underline;
 
 <button onclick="send()">Download</button>
 
-<video id="player" controls></video>
+<video id="player" controls style="width:100%;margin-top:20px;display:none"></video>
 
 <div class="history">
 <h3>History</h3>
@@ -155,3 +155,28 @@ loadHistory()
 
 </body>
 </html>
+
+<script>
+
+async function send(){
+
+let link=document.getElementById("link").value
+
+let res = await fetch("https://YOUR-RAILWAY-APP.up.railway.app/download",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({url:link})
+})
+
+let data = await res.json()
+
+let video = document.getElementById("player")
+
+video.src = data.video
+video.style.display="block"
+
+}
+
+</script>

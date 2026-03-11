@@ -1437,25 +1437,6 @@ def convert_music(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
-# ================== WEB =================
-@app.route("/download", methods=["POST"])
-def web_download():
-
-    data = request.json
-    link = data.get("link")
-    chat_id = data.get("chat_id")
-
-    if not link:
-        return jsonify({"status":"error","message":"no link"})
-
-    try:
-        bot.send_message(chat_id, "⏳ Downloading from website...")
-        download_media(chat_id, link)
-
-        return jsonify({"status":"ok"})
-    except Exception as e:
-        return jsonify({"status":"error","message":str(e)})
-
 # ================= RUN BOT =================
 def run_bot():
     bot.infinity_polling(skip_pending=True)

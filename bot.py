@@ -1066,9 +1066,6 @@ def confirm_join(call):
                 link = pending_links[user_id]
                 del pending_links[user_id]
 
-                # Fariin u dir user
-                msg = bot.send_message(user_id, "⏳ Downloading...")
-
 
                 # Download video
                 download_media(user_id, link)

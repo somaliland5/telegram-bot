@@ -1456,21 +1456,39 @@ def send_user_message(m, uid):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
 
-    file_path = call.data.split("|", 1)[1]
-    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+    file_path = call.data.split("|",1)[1]
+    audio_path = file_path.rsplit(".",1)[0] + ".mp3"
+
+    # typing / uploading audio
+    bot.send_chat_action(call.message.chat.id,"upload_audio")
 
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True
-        )
+
+        # hubi in video jiro
+        if not os.path.exists(file_path):
+            bot.send_message(call.message.chat.id,"❌ File not found.")
+            return
+
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-i", file_path,
+            "-vn",
+            "-acodec","libmp3lame",
+            "-ab","128k",
+            "-ar","44100",
+            audio_path
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         kb = InlineKeyboardMarkup()
-        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
+        kb.add(
+            InlineKeyboardButton(
+                "📢 BOT CHANNEL",
+                url="https://t.me/tiktokvediodownload"
+            )
+        )
 
-        with open(audio_path, "rb") as audio:
+        with open(audio_path,"rb") as audio:
             bot.send_audio(
                 call.message.chat.id,
                 audio,
@@ -1480,15 +1498,19 @@ def convert_music(call):
                 reply_markup=kb
             )
 
+        # delete audio
         if os.path.exists(audio_path):
             os.remove(audio_path)
 
-        # video tirtir ka dib conversion
+        # delete video
         if os.path.exists(file_path):
             os.remove(file_path)
 
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
+        bot.send_message(
+            call.message.chat.id,
+            f"❌ Music conversion failed:\n{e}"
+            )
 
 # ================= RUN BOT =================
 def run_bot():

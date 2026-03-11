@@ -1567,15 +1567,28 @@ def convert_music(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
-# ================= RUN BOT =================
-def run_bot():
-    bot.infinity_polling(skip_pending=True)
+# ================= RUN BOTS SAFELY =================
+def run_bot1():
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Bot1 restart: {e}")
 
 def run_bot2():
-    bot2.infinity_polling(skip_pending=True)
-
-threading.Thread(target=run_bot2).start()
+    while True:
+        try:
+            bot2.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Bot2 restart: {e}")
 
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=3000)
+    t1 = threading.Thread(target=run_bot1)
+    t2 = threading.Thread(target=run_bot2)
+
+    t1.start()
+    t2.start()
+
+    # Flask ha xanibin bots
+    app.run(host="0.0.0.0", port=3000, threaded=True)
+    

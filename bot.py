@@ -1225,16 +1225,15 @@ def send_video_with_music(chat_id, file_path, platform=None):
         )
 
 # ================= MEDIA DOWNLOADER =================
-msg = bot.send_message(chat_id,"⏳ Downloading...")
-bot.delete_message(chat_id,msg.message_id)
-
-
 def download_media(chat_id, text):
     try:
         url = extract_url(text)
         if not url:
             bot.send_message(chat_id, "❌ Invalid link")
             return
+
+        msg = bot.send_message(chat_id,"⏳ Downloading...")
+        bot.delete_message(chat_id,msg.message_id)
 
         # ================= TIKTOK (PHOTO + VIDEO) =================
         if "tiktok.com" in url:

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VIP Video Downloader</title>
 
 <style>
@@ -18,8 +19,6 @@ body.light {
   --bg-color: #f5f5f5;
   --text-color: #111827;
   --input-bg: #ffffff;
-  --button-bg: #3b82f6;
-  --button-hover: #2563eb;
   --nav-bg: #e5e7eb;
 }
 
@@ -29,17 +28,11 @@ body {
   font-family: Arial, sans-serif;
   margin: 0;
   text-align: center;
-  transition: all 0.3s;
+  transition: 0.3s;
 }
 
-.page {
-  display: none;
-  padding: 25px;
-}
-
-.active {
-  display: block;
-}
+.page { display: none; padding: 25px; }
+.active { display: block; }
 
 input {
   width: 90%;
@@ -52,7 +45,7 @@ input {
   color: var(--text-color);
 }
 
-button {
+.main-btn {
   margin-top: 15px;
   padding: 14px;
   width: 90%;
@@ -62,12 +55,8 @@ button {
   color: white;
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.2s;
 }
-
-button:hover {
-  background: var(--button-hover);
-}
+.main-btn:hover { background: var(--button-hover); }
 
 video {
   width: 90%;
@@ -75,6 +64,7 @@ video {
   border-radius: 10px;
 }
 
+/* Bottom Navigation */
 .nav {
   position: fixed;
   bottom: 0;
@@ -90,39 +80,35 @@ video {
   border: none;
   color: var(--text-color);
   font-size: 16px;
-  cursor: pointer;
 }
 
-/* ===== TOP CORNER BUTTONS ===== */
-.top-corner {
+/* Top Right Icons */
+.icon-btn {
   position: fixed;
-  top: 10px;
-  padding: 6px 12px;
-  border-radius: 20px;
+  top: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   border: none;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 14px;
-  color: white;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--button-bg);
-  transition: background 0.2s;
+  color: white;
 }
 
-.top-corner:hover {
-  background: var(--button-hover);
-}
+/* Light icon */
+#theme-icon { right: 12px; }
 
-#light-btn {
-  right: 10px;
-}
+/* WhatsApp icon */
+#wa-icon { left: 12px; }
 
-#contact-btn {
-  left: 10px;
-}
-
+/* Footer */
 .footer {
   position: fixed;
-  bottom: 50px;
+  bottom: 55px;
   width: 100%;
   text-align: center;
   color: gray;
@@ -133,85 +119,60 @@ video {
 
 <body>
 
-<!-- ===== TOP CORNER BUTTONS ===== -->
-<button id="light-btn" class="top-corner" onclick="toggleTheme()">LIGHT 💡</button>
-<button id="contact-btn" class="top-corner" onclick="openWhatsApp()">CONTACT</button>
+<!-- Top Icons -->
+<button id="theme-icon" class="icon-btn" onclick="toggleTheme()">☀️</button>
+<button id="wa-icon" class="icon-btn" onclick="openWhatsApp()">📞</button>
 
-<!-- ===== HOME PAGE ===== -->
+<!-- Home Page -->
 <div id="home" class="page active">
-  <h2>VIP Video Downloader</h2>
-  <input id="link" placeholder="Paste video link">
-  <button onclick="downloadVideo()">Download</button>
+  <h2>Download TikTok Video</h2>
+  <input id="link" placeholder="Paste the TikTok link">
+  <button class="main-btn" onclick="downloadVideo()">Download</button>
 </div>
 
-<!-- ===== DOWNLOAD PAGE ===== -->
+<!-- Downloads Page -->
 <div id="downloads" class="page">
   <h2>Your Video</h2>
   <video id="player" controls></video>
   <a id="downloadBtn" href="#" download>
-    <button>Download Video</button>
+    <button class="main-btn">Download Video</button>
   </a>
 </div>
 
-<!-- ===== NAVIGATION ===== -->
+<!-- Bottom Navigation -->
 <div class="nav">
   <button onclick="showPage('home')">Home</button>
   <button onclick="showPage('downloads')">Downloads</button>
 </div>
 
-<!-- ===== FOOTER ===== -->
+<!-- Footer -->
 <div class="footer">
   By: ＳＣＨＯＬＥＳ🥤🥇
 </div>
 
 <script>
-/* ===== PAGE NAVIGATION ===== */
 function showPage(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById(page).classList.add("active");
 }
 
-/* ===== THEME TOGGLE ===== */
 function toggleTheme() {
   document.body.classList.toggle("light");
-  const btn = document.getElementById("light-btn");
-  btn.textContent = document.body.classList.contains("light") ? "DARK 🌙" : "LIGHT 💡";
+  document.getElementById("theme-icon").textContent =
+    document.body.classList.contains("light") ? "🌙" : "☀️";
 }
 
-/* ===== OPEN WHATSAPP ===== */
 function openWhatsApp() {
-  const number = "+252907868526"; // WhatsApp number
+  const number = "252907868526";
   window.open(`https://wa.me/${number}`, "_blank");
 }
 
-/* ===== VIDEO DOWNLOAD FUNCTION ===== */
-async function downloadVideo() {
+function downloadVideo() {
   let link = document.getElementById("link").value;
-  if(!link) { alert("Please paste a video link!"); return; }
+  if(!link){ alert("Paste link first"); return; }
 
-  // Backend API URL if available
-  let API = "";
-
-  if(API) {
-    try {
-      let res = await fetch(API + "/download", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({url: link})
-      });
-      let data = await res.json();
-      document.getElementById("player").src = data.video;
-      document.getElementById("downloadBtn").href = data.video;
-    } catch(err) {
-      alert("Backend not connected. Using link directly.");
-      document.getElementById("player").src = link;
-      document.getElementById("downloadBtn").href = link;
-    }
-  } else {
-    document.getElementById("player").src = link;
-    document.getElementById("downloadBtn").href = link;
-  }
-
+  document.getElementById("player").src = link;
+  document.getElementById("downloadBtn").href = link;
   showPage("downloads");
 }
 </script>

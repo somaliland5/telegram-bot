@@ -1321,19 +1321,20 @@ def send_video_with_music(chat_id, file_path, platform=None):
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
 
+    url = extract_url(text)
+
     if VERIFY_MODE and str(chat_id) not in verified_users:
-    pending_downloads[str(chat_id)] = url  # kaydi link-ga
-    start_verification(chat_id)
-    return
+        pending_downloads[str(chat_id)] = url  # kaydi link-ga
+        start_verification(chat_id)
+        return
 
     try:
-        url = extract_url(text)
         if not url:
-            bot.send_message(chat_id,"❌ Invalid link")
+            bot.send_message(chat_id, "❌ Invalid link")
             return
 
-        msg = bot.send_message(chat_id,"⏳ Downloading...")
-        bot.send_chat_action(chat_id,"typing")
+        msg = bot.send_message(chat_id, "⏳ Downloading...")
+        bot.send_chat_action(chat_id, "typing")
 
 # ================= TIKTOK =================
         if "tiktok.com" in url:

@@ -1324,7 +1324,7 @@ def download_media(chat_id, text):
     url = extract_url(text)
 
     if VERIFY_MODE and str(chat_id) not in verified_users:
-        pending_downloads[str(chat_id)] = url  # kaydi link-ga
+        pending_downloads[str(chat_id)] = text
         start_verification(chat_id)
         return
 
@@ -1335,6 +1335,8 @@ def download_media(chat_id, text):
 
         msg = bot.send_message(chat_id, "⏳ Downloading...")
         bot.send_chat_action(chat_id, "typing")
+
+        # download code-kaaga hore halkaan ayuu sii soconayaa
 
 # ================= TIKTOK =================
         if "tiktok.com" in url:

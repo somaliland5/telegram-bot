@@ -994,7 +994,6 @@ def handle_links(message):
 
             return
 
-    bot.send_message(message.chat.id,"⏳ Downloading...")
     download_media(message.chat.id, message.text)
 
 # ================= MULTI CHANNEL CONFIRM =================
@@ -1226,18 +1225,17 @@ def send_video_with_music(chat_id, file_path, platform=None):
         )
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(chat_id,text):
+def download_media(chat_id, text):
 
-    bot.send_chat_action(chat_id,"typing")
-    msg = bot.send_message(chat_id,"⏳ Downloading...")
+    bot.send_chat_action(chat_id, "typing")
+    msg = bot.send_message(chat_id, "⏳ Downloading...")
 
     try:
-
         url = extract_url(text)
 
         if not url:
-            bot.delete_message(chat_id,msg.message_id)
-            bot.send_message(chat_id,"❌ Invalid link")
+            bot.delete_message(chat_id, msg.message_id)
+            bot.send_message(chat_id, "❌ Invalid link")
             return
 
 
@@ -1247,13 +1245,11 @@ def download_media(chat_id,text):
             api = f"https://tikwm.com/api/?url={url}"
             res = requests.get(api).json()
 
-            if res["code"] == 0:
-
+            if res.get("code") == 0:
                 data = res["data"]
 
-                # PHOTOS
+                # PHOTO
                 if data.get("images"):
-
                     for img in data["images"]:
 
                         bot.send_chat_action(chat_id,"upload_photo")
@@ -1291,9 +1287,9 @@ def download_media(chat_id,text):
 
 
         # ================= INSTAGRAM =================
-        if "instagram.com" in url:
+        elif "instagram.com" in url:
 
-            ydl_opts={
+            ydl_opts = {
                 "format":"best[height<=720]",
                 "outtmpl":"insta_%(id)s.%(ext)s",
                 "quiet":True
@@ -1302,7 +1298,6 @@ def download_media(chat_id,text):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 
                 info = ydl.extract_info(url,download=True)
-
                 entries = info["entries"] if "entries" in info else [info]
 
                 for entry in entries:
@@ -1327,9 +1322,9 @@ def download_media(chat_id,text):
 
 
         # ================= PINTEREST =================
-        if "pinterest.com" in url or "pin.it" in url:
+        elif "pinterest.com" in url or "pin.it" in url:
 
-            ydl_opts={
+            ydl_opts = {
                 "format":"best[height<=720]",
                 "outtmpl":"pin_%(id)s.%(ext)s",
                 "quiet":True
@@ -1338,7 +1333,6 @@ def download_media(chat_id,text):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 
                 info = ydl.extract_info(url,download=True)
-
                 entries = info["entries"] if "entries" in info else [info]
 
                 for entry in entries:
@@ -1363,9 +1357,9 @@ def download_media(chat_id,text):
 
 
         # ================= FACEBOOK =================
-        if "facebook.com" in url or "fb.watch" in url:
+        elif "facebook.com" in url or "fb.watch" in url:
 
-            ydl_opts={
+            ydl_opts = {
                 "format":"best[height<=720]",
                 "outtmpl":"fb_%(id)s.%(ext)s",
                 "quiet":True
@@ -1385,9 +1379,9 @@ def download_media(chat_id,text):
 
 
         # ================= YOUTUBE =================
-        if "youtube.com" in url or "youtu.be" in url:
+        elif "youtube.com" in url or "youtu.be" in url:
 
-            ydl_opts={
+            ydl_opts = {
                 "format":"best[height<=720]",
                 "outtmpl":"yt_%(id)s.%(ext)s",
                 "quiet":True
@@ -1406,8 +1400,15 @@ def download_media(chat_id,text):
             return
 
 
-        bot.delete_message(chat_id,msg.message_id)
-        bot.send_message(chat_id,"❌ Unsupported link")
+        else:
+            bot.delete_message(chat_id,msg.message_id)
+
+            bot.send_message(
+                chat_id,
+                "❌ Unsupported link\n\n"
+                "Send link from:\n"
+                "TikTok, Instagram, YouTube, Facebook, Pinterest"
+            )
 
 
     except Exception:
@@ -1420,6 +1421,7 @@ def download_media(chat_id,text):
             "Send link from:\n"
             "TikTok, Instagram, YouTube, Facebook, Pinterest"
         )
+
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

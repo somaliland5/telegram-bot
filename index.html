@@ -9,20 +9,22 @@
 body{
 background:#0b1220;
 font-family:Arial;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
+margin:0;
 color:white;
 }
 
-.container{
+.page{
+display:none;
+padding:20px;
 text-align:center;
-width:340px;
+}
+
+.active{
+display:block;
 }
 
 input{
-width:100%;
+width:90%;
 padding:14px;
 border-radius:25px;
 border:none;
@@ -33,7 +35,7 @@ outline:none;
 button{
 margin-top:15px;
 padding:14px;
-width:100%;
+width:90%;
 background:#3b82f6;
 border:none;
 border-radius:25px;
@@ -42,32 +44,27 @@ font-size:16px;
 cursor:pointer;
 }
 
-button:hover{
-background:#2563eb;
-}
-
 video{
-width:100%;
+width:90%;
 margin-top:20px;
 border-radius:10px;
-display:none;
 }
 
-.history{
-margin-top:25px;
-text-align:left;
+.nav{
+position:fixed;
+bottom:0;
+width:100%;
+background:#111827;
+display:flex;
+justify-content:space-around;
+padding:12px 0;
 }
 
-.history a{
-color:#60a5fa;
-text-decoration:none;
-display:block;
-margin-top:6px;
-font-size:14px;
-}
-
-.history a:hover{
-text-decoration:underline;
+.nav button{
+background:none;
+border:none;
+color:white;
+font-size:16px;
 }
 
 </style>
@@ -75,90 +72,54 @@ text-decoration:underline;
 
 <body>
 
-<div class="container">
+<!-- HOME PAGE -->
 
-<h2>Download Video</h2>
+<div id="home" class="page active">
+
+<h2>Video Downloader</h2>
 
 <input id="link" placeholder="Paste video link">
 
-<button onclick="send()">Download</button>
+<button onclick="download()">Download</button>
 
-<video id="player" controls style="width:100%;margin-top:20px;display:none"></video>
-
-<div class="history">
-<h3>History</h3>
-<div id="historyList"></div>
 </div>
+
+<!-- DOWNLOAD PAGE -->
+
+<div id="downloads" class="page">
+
+<h2>Your Download</h2>
+
+<video id="player" controls></video>
+
+<a id="downloadBtn" href="#" download>
+<button>Download Video</button>
+</a>
+
+</div>
+
+<!-- BOTTOM MENU -->
+
+<div class="nav">
+
+<button onclick="showPage('home')">Home</button>
+
+<button onclick="showPage('downloads')">Downloads</button>
 
 </div>
 
 <script>
 
-let botToken="BOT_TOKEN"
-let chatId="CHAT_ID"
+function showPage(page){
 
-function send(){
+document.getElementById("home").classList.remove("active")
+document.getElementById("downloads").classList.remove("active")
 
-let link=document.getElementById("link").value
-
-if(!link){
-alert("Paste video link")
-return
-}
-
-fetch(`https://api.telegram.org/bot${botToken}/sendMessage`,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-chat_id:chatId,
-text:link
-})
-})
-
-saveHistory(link)
-
-alert("Link sent to downloader bot")
+document.getElementById(page).classList.add("active")
 
 }
 
-function saveHistory(link){
-
-let history=JSON.parse(localStorage.getItem("history")||"[]")
-
-history.unshift(link)
-
-localStorage.setItem("history",JSON.stringify(history))
-
-loadHistory()
-
-}
-
-function loadHistory(){
-
-let history=JSON.parse(localStorage.getItem("history")||"[]")
-
-let div=document.getElementById("historyList")
-
-div.innerHTML=""
-
-history.forEach(link=>{
-div.innerHTML+=`<a href="${link}" target="_blank">${link}</a>`
-})
-
-}
-
-loadHistory()
-
-</script>
-
-</body>
-</html>
-
-<script>
-
-async function send(){
+async function download(){
 
 let link=document.getElementById("link").value
 
@@ -172,11 +133,17 @@ body:JSON.stringify({url:link})
 
 let data = await res.json()
 
-let video = document.getElementById("player")
+let video=document.getElementById("player")
 
-video.src = data.video
-video.style.display="block"
+video.src=data.video
+
+document.getElementById("downloadBtn").href=data.video
+
+showPage("downloads")
 
 }
 
 </script>
+
+</body>
+</html>

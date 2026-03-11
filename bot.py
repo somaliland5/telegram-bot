@@ -1067,18 +1067,7 @@ def confirm_join(call):
                 del pending_links[user_id]
 
                 # Fariin u dir user
-                def download_media(chat_id, text):
-
-    msg = bot.send_message(chat_id, "⏳ Downloading...")
-
-    try:
-        url = extract_url(text)
-
-        if not url:
-            bot.delete_message(chat_id, msg.message_id)
-            bot.send_message(chat_id, "❌ Invalid link")
-            return
-
+                msg = bot.send_message(user_id, "⏳ Downloading...")
 
 
                 # Download video
@@ -1241,9 +1230,16 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
+
+    # status user-ka
+    bot.send_chat_action(chat_id, "typing")
+
+    msg = bot.send_message(chat_id, "⏳ Downloading...")
+
     try:
         url = extract_url(text)
         if not url:
+            bot.delete_message(chat_id, msg.message_id)
             bot.send_message(chat_id, "❌ Invalid link")
             return
 

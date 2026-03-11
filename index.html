@@ -94,17 +94,31 @@ video {
   cursor: pointer;
 }
 
-.toggle-theme {
+/* ===== TOP CORNER BUTTONS ===== */
+.top-corner {
   position: fixed;
   top: 10px;
-  right: 20px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 20px;
   border: none;
   cursor: pointer;
-  background: var(--button-bg);
-  color: white;
   font-weight: bold;
+  font-size: 14px;
+  color: white;
+  background: var(--button-bg);
+  transition: background 0.2s;
+}
+
+.top-corner:hover {
+  background: var(--button-hover);
+}
+
+#light-btn {
+  right: 10px;
+}
+
+#contact-btn {
+  left: 10px;
 }
 
 .footer {
@@ -120,8 +134,9 @@ video {
 
 <body>
 
-<!-- ===== THEME TOGGLE ===== -->
-<button class="toggle-theme" onclick="toggleTheme()">Light</button>
+<!-- ===== TOP CORNER BUTTONS ===== -->
+<button id="light-btn" class="top-corner" onclick="toggleTheme()">LIGHT 💡</button>
+<button id="contact-btn" class="top-corner" onclick="openWhatsApp()">CONTACT</button>
 
 <!-- ===== HOME PAGE ===== -->
 <div id="home" class="page active">
@@ -160,8 +175,14 @@ function showPage(page) {
 /* ===== THEME TOGGLE ===== */
 function toggleTheme() {
   document.body.classList.toggle("light");
-  const btn = document.querySelector(".toggle-theme");
-  btn.textContent = document.body.classList.contains("light") ? "Dark" : "Light";
+  const btn = document.getElementById("light-btn");
+  btn.textContent = document.body.classList.contains("light") ? "DARK 🌙" : "LIGHT 💡";
+}
+
+/* ===== OPEN WHATSAPP ===== */
+function openWhatsApp() {
+  const number = "+252907868526"; // WhatsApp number
+  window.open(`https://wa.me/${number}`, "_blank");
 }
 
 /* ===== VIDEO DOWNLOAD FUNCTION ===== */
@@ -169,8 +190,7 @@ async function downloadVideo() {
   let link = document.getElementById("link").value;
   if(!link) { alert("Please paste a video link!"); return; }
 
-  // Replace with your backend API URL if you have one
-  // Example: let API = "https://YOUR_RAILWAY_URL";
+  // Replace with your backend API URL if available
   let API = "";
 
   if(API) {
@@ -184,12 +204,11 @@ async function downloadVideo() {
       document.getElementById("player").src = data.video;
       document.getElementById("downloadBtn").href = data.video;
     } catch(err) {
-      alert("Backend not connected. Video URL will be used directly.");
+      alert("Backend not connected. Using link directly.");
       document.getElementById("player").src = link;
       document.getElementById("downloadBtn").href = link;
     }
   } else {
-    // If no backend, use link directly
     document.getElementById("player").src = link;
     document.getElementById("downloadBtn").href = link;
   }

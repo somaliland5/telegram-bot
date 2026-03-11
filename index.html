@@ -1,305 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>VIP Video Downloader</title>
 
 <style>
-
-body{
-background:#0b1220;
-font-family:Arial;
-margin:0;
-color:white;
-text-align:center;
+/* ===== Colors & Theme ===== */
+:root {
+  --bg-color: #0b1220;
+  --text-color: white;
+  --input-bg: #1f2937;
+  --button-bg: #3b82f6;
+  --button-hover: #2563eb;
+  --nav-bg: #111827;
 }
 
-.page{
-display:none;
-padding:25px;
+body.light {
+  --bg-color: #f5f5f5;
+  --text-color: #111827;
+  --input-bg: #ffffff;
+  --button-bg: #3b82f6;
+  --button-hover: #2563eb;
+  --nav-bg: #e5e7eb;
 }
 
-.active{
-display:block;
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: Arial, sans-serif;
+  margin: 0;
+  text-align: center;
+  transition: all 0.3s;
 }
 
-input{
-width:90%;
-padding:14px;
-border-radius:25px;
-border:none;
-margin-top:10px;
-outline:none;
+.page {
+  display: none;
+  padding: 25px;
 }
 
-button{
-margin-top:15px;
-padding:14px;
-width:90%;
-background:#3b82f6;
-border:none;
-border-radius:25px;
-color:white;
-font-size:16px;
-cursor:pointer;
+.active {
+  display: block;
 }
 
-button:hover{
-background:#2563eb;
+input {
+  width: 90%;
+  padding: 14px;
+  border-radius: 25px;
+  border: none;
+  margin-top: 10px;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--text-color);
 }
 
-video{
-width:90%;
-margin-top:20px;
-border-radius:10px;
+button {
+  margin-top: 15px;
+  padding: 14px;
+  width: 90%;
+  background: var(--button-bg);
+  border: none;
+  border-radius: 25px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.nav{
-position:fixed;
-bottom:0;
-width:100%;
-background:#111827;
-display:flex;
-justify-content:space-around;
-padding:12px 0;
+button:hover {
+  background: var(--button-hover);
 }
 
-.nav button{
-background:none;
-border:none;
-color:white;
-font-size:16px;
+video {
+  width: 90%;
+  margin-top: 20px;
+  border-radius: 10px;
 }
 
+.nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: var(--nav-bg);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+}
+
+.nav button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.toggle-theme {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  background: var(--button-bg);
+  color: white;
+  font-weight: bold;
+}
+
+.footer {
+  position: fixed;
+  bottom: 50px;
+  width: 100%;
+  text-align: center;
+  color: gray;
+  font-size: 14px;
+}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<!-- ===== THEME TOGGLE ===== -->
+<button class="toggle-theme" onclick="toggleTheme()">Light</button>
 
-<div id="login" class="page active">
-
-<h2>Login</h2>
-
-<input id="login_email" placeholder="Gmail">
-
-<input id="login_pass" type="password" placeholder="Password">
-
-<button onclick="login()">Login</button>
-
-<br><br>
-
-<a onclick="showPage('signup')" style="color:#60a5fa;cursor:pointer">
-Create account
-</a>
-
+<!-- ===== HOME PAGE ===== -->
+<div id="home" class="page active">
+  <h2>VIP Video Downloader</h2>
+  <input id="link" placeholder="Paste video link">
+  <button onclick="downloadVideo()">Download</button>
 </div>
 
-<!-- SIGNUP -->
-
-<div id="signup" class="page">
-
-<h2>Signup</h2>
-
-<input id="signup_email" placeholder="Gmail">
-
-<input id="signup_pass" type="password" placeholder="Password">
-
-<button onclick="signup()">Signup</button>
-
-<br><br>
-
-<a onclick="showPage('login')" style="color:#60a5fa;cursor:pointer">
-Back to login
-</a>
-
-</div>
-
-<!-- VERIFY -->
-
-<div id="verify" class="page">
-
-<h2>Email Verification</h2>
-
-<input id="verify_code" placeholder="Enter code">
-
-<button onclick="verify()">Verify</button>
-
-</div>
-
-<!-- DOWNLOADER -->
-
-<div id="home" class="page">
-
-<h2>VIP Video Downloader</h2>
-
-<input id="link" placeholder="Paste video link">
-
-<button onclick="downloadVideo()">Download</button>
-
-</div>
-
-<!-- VIDEO PAGE -->
-
+<!-- ===== DOWNLOAD PAGE ===== -->
 <div id="downloads" class="page">
-
-<h2>Your Video</h2>
-
-<video id="player" controls></video>
-
-<a id="downloadBtn" href="#" download>
-<button>Download Video</button>
-</a>
-
+  <h2>Your Video</h2>
+  <video id="player" controls></video>
+  <a id="downloadBtn" href="#" download>
+    <button>Download Video</button>
+  </a>
 </div>
 
-<!-- NAV -->
-
+<!-- ===== NAVIGATION ===== -->
 <div class="nav">
+  <button onclick="showPage('home')">Home</button>
+  <button onclick="showPage('downloads')">Downloads</button>
+</div>
 
-<button onclick="showPage('home')">Home</button>
-
-<button onclick="showPage('downloads')">Downloads</button>
-
-<button onclick="logout()">Logout</button>
-
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  By: ＳＣＨＯＬＥＳ🥤🥇
 </div>
 
 <script>
-
-let API="https://telegram-bot-production-c8d3.up.railway.app"
-
-function showPage(page){
-
-document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
-
-document.getElementById(page).classList.add("active")
-
+/* ===== PAGE NAVIGATION ===== */
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById(page).classList.add("active");
 }
 
-function checkLogin(){
-
-let logged=localStorage.getItem("logged")
-
-if(logged=="true"){
-showPage("home")
-}else{
-showPage("login")
+/* ===== THEME TOGGLE ===== */
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  const btn = document.querySelector(".toggle-theme");
+  btn.textContent = document.body.classList.contains("light") ? "Dark" : "Light";
 }
 
+/* ===== VIDEO DOWNLOAD FUNCTION ===== */
+async function downloadVideo() {
+  let link = document.getElementById("link").value;
+  if(!link) { alert("Please paste a video link!"); return; }
+
+  // Replace with your backend API URL if you have one
+  // Example: let API = "https://YOUR_RAILWAY_URL";
+  let API = "";
+
+  if(API) {
+    try {
+      let res = await fetch(API + "/download", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({url: link})
+      });
+      let data = await res.json();
+      document.getElementById("player").src = data.video;
+      document.getElementById("downloadBtn").href = data.video;
+    } catch(err) {
+      alert("Backend not connected. Video URL will be used directly.");
+      document.getElementById("player").src = link;
+      document.getElementById("downloadBtn").href = link;
+    }
+  } else {
+    // If no backend, use link directly
+    document.getElementById("player").src = link;
+    document.getElementById("downloadBtn").href = link;
+  }
+
+  showPage("downloads");
 }
-
-checkLogin()
-
-async function signup(){
-
-let email=document.getElementById("signup_email").value
-let password=document.getElementById("signup_pass").value
-
-let res = await fetch(API+"/signup",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-email:email,
-password:password
-})
-})
-
-let data = await res.json()
-
-alert(data.message)
-
-showPage("verify")
-
-}
-
-async function verify(){
-
-let code=document.getElementById("verify_code").value
-
-let res = await fetch(API+"/verify",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-code:code
-})
-})
-
-let data = await res.json()
-
-alert(data.message)
-
-showPage("login")
-
-}
-
-async function login(){
-
-let email=document.getElementById("login_email").value
-let password=document.getElementById("login_pass").value
-
-let res = await fetch(API+"/login",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-email:email,
-password:password
-})
-})
-
-let data = await res.json()
-
-alert(data.message)
-
-if(data.success){
-
-localStorage.setItem("logged","true")
-
-showPage("home")
-
-}
-
-}
-
-function logout(){
-
-localStorage.removeItem("logged")
-
-showPage("login")
-
-}
-
-async function downloadVideo(){
-
-let link=document.getElementById("link").value
-
-let res = await fetch(API+"/download",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({url:link})
-})
-
-let data = await res.json()
-
-let video=document.getElementById("player")
-
-video.src=data.video
-
-document.getElementById("downloadBtn").href=data.video
-
-showPage("downloads")
-
-}
-
 </script>
 
 </body>

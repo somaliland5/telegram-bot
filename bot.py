@@ -199,10 +199,12 @@ def start_handler(message):
 # ================= BOT2 ================
 @bot2.message_handler(commands=['start'])
 def bot2_start(m):
+
     uid = str(m.from_user.id)
 
     if uid in pending_verify:
-        code = pending_verify[uid]
+
+        code = pending_verify.get(uid)
 
         bot2.send_message(
             m.chat.id,
@@ -211,10 +213,13 @@ def bot2_start(m):
             "👆 Taabo code-ka si aad u copy garayso kadibna ku celi bot-ka weyn.",
             parse_mode="Markdown"
         )
+
     else:
+
         bot2.send_message(
             m.chat.id,
-            "ℹ️ No verification pending.\nMarka hore ka bilow bot-ka weyn."
+            "ℹ️ Verification lama helin.\n"
+            "Marka hore ka bilow bot-ka weyn si aad code u hesho."
         )
 
 # ================= CHECK MEMBERSHIP =================

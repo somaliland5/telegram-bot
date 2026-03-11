@@ -59,6 +59,7 @@ videos_data = load_json(VIDEOS_FILE, {
         "tiktok": 0,
         "youtube": 0,
         "facebook": 0,
+        "instagram": 0,
         "pinterest": 0
     },
     "users": {}
@@ -790,6 +791,7 @@ def raadi_stats(m):
         f"• TikTok: {platform_stats.get('tiktok',0)}",
         f"• YouTube: {platform_stats.get('youtube',0)}",
         f"• Facebook: {platform_stats.get('facebook',0)}",
+        f"• Instagram: {platform_stats.get('instagram',0)}",
         f"• Pinterest: {platform_stats.get('pinterest',0)}\n",
         "🥇 Top 3 Users:"
     ]
@@ -1210,6 +1212,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
                 "tiktok": 0,
                 "youtube": 0,
                 "facebook": 0,
+                "instagram": 0,
                 "pinterest": 0
             }
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
@@ -1276,6 +1279,47 @@ def download_media(chat_id, text):
             except Exception as e:
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
+
+     # ================= INSTAGRAM =================
+if "instagram.com" in url:
+    try:
+        ydl_opts = {
+            "format": "best",
+            "outtmpl": "instagram_%(id)s.%(ext)s",
+            "quiet": True
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+
+            # haddii ay carousel tahay
+            if "entries" in info:
+                entries = info["entries"]
+            else:
+                entries = [info]
+
+            for entry in entries:
+                file = ydl.prepare_filename(entry)
+
+                # haddii photo
+                if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
+                    with open(file,"rb") as photo:
+                        bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+
+                # haddii video
+                else:
+                    send_video_with_music(chat_id, file, "instagram")
+
+                try:
+                    os.remove(file)
+                except:
+                    pass
+
+        return
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Instagram error:\n{e}")
+        return
 
  # ================= PINTEREST =================
         if "pin.it" in url:
@@ -1363,12 +1407,16 @@ def download_media(chat_id, text):
         bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception:
-        bot.send_message(
-            chat_id,
-            "❌ Incorrect Tik Tok link.\n\n"
-            "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
-        )
-        return
+    bot.send_message(
+        chat_id,
+        "❌ Invalid link.\n\n"
+        "📥 Send a video link from:\n"
+        "• TikTok\n"
+        "• YouTube\n"
+        "• Pinterest\n"
+        "• Instagram\n"
+        "• Facebook"
+    )
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

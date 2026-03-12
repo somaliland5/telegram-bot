@@ -1297,9 +1297,6 @@ def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-    if os.path.exists(file_path):
-    os.remove(file_path)
-
 # ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1

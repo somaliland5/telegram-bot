@@ -1774,9 +1774,9 @@ def download_media(chat_id, text):
             return
 
          # ================= YOUTUBE =================
-if "youtube.com" in url or "youtu.be" in url:
+         try:
 
-    try:
+    if "youtube.com" in url or "youtu.be" in url:
 
         if str(chat_id) in UNLOCKED_4K_USERS:
             ydl_opts = {
@@ -1785,7 +1785,6 @@ if "youtube.com" in url or "youtu.be" in url:
                 "merge_output_format": "mp4",
                 "quiet": True
             }
-
         else:
             ydl_opts = {
                 "format": "bestvideo[height<=720]+bestaudio/best",
@@ -1799,20 +1798,16 @@ if "youtube.com" in url or "youtu.be" in url:
             file = ydl.prepare_filename(info)
 
         send_video_with_music(chat_id, file, "youtube")
-
-        if os.path.exists(file):
-            os.remove(file)
-
         return
 
-    except Exception as e:
+except Exception as e:
 
-        bot.send_message(
-            chat_id,
-            "❌ YouTube download failed."
-        )
+    bot.send_message(
+        chat_id,
+        "❌ Incorrect link.\n\nSend TikTok, Facebook, Pinterest, or YouTube link."
+    )
 
-        print("YouTube error:", e)
+    print(e)
 
         return
         

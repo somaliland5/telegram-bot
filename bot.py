@@ -10,16 +10,6 @@ import re
 import shutil
 from flask import Flask, request, jsonify
 import threading
-from pymongo import MongoClient
-import os
-
-MONGO_URI = os.getenv("MONGO_URI")
-
-client = MongoClient(MONGO_URI)
-
-db = client["telegram_bot"]
-
-users_collection = db["users"]
 
 # ================= CONFIG =================
 # ================= VERIFY SYSTEM =================
@@ -157,8 +147,6 @@ def admin_menu():
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY", "❌ CLOSE VERIFY")
-    kb.add("📊 MONGO STATS", "👥 ALL USERS")
-    kb.add("🔍 FIND USER", "💾 BACKUP USERS")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
 
@@ -984,82 +972,6 @@ def broadcast_send(m):
             continue
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
-
-# ================= MONGO =================
-@bot.message_handler(func=lambda m: m.text == "📊 MONGO STATS")
-def mongo_stats(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    total = users_collection.count_documents({})
-
-    bot.send_message(
-        m.chat.id,
-        f"📊 MongoDB Stats\n\n👥 Total Users: {total}"
-    )
-
-# ================= ALL USERS =================
-@bot.message_handler(func=lambda m: m.text == "👥 ALL USERS")
-def mongo_all_users(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    users = users_collection.find().limit(20)
-
-    text = "👥 Users List\n\n"
-
-    for u in users:
-        text += f"{u['user_id']}\n"
-
-    bot.send_message(m.chat.id, text)
-
-# ================== ALL USERS =================
-@bot.message_handler(func=lambda m: m.text == "🔍 FIND USER")
-def ask_user_id(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    msg = bot.send_message(m.chat.id,"Send User ID")
-    bot.register_next_step_handler(msg, find_user)
-
-def find_user(m):
-
-    uid = m.text
-
-    user = users_collection.find_one({"user_id": uid})
-
-    if not user:
-        bot.send_message(m.chat.id,"❌ User not found")
-        return
-
-    bot.send_message(
-        m.chat.id,
-        f"👤 User Info\n\n"
-        f"ID: {user['user_id']}\n"
-        f"Balance: {user.get('balance',0)}"
-    )
-
-# ================= BACKUP USERS =================
-@bot.message_handler(func=lambda m: m.text == "💾 BACKUP USERS")
-def backup_users(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    users = list(users_collection.find())
-
-    text = ""
-
-    for u in users:
-        text += f"{u['user_id']}\n"
-
-    with open("backup.txt","w") as f:
-        f.write(text)
-
-    bot.send_document(m.chat.id, open("backup.txt","rb"))
 
 # ================= SEE USERS LIST =================
 @bot.message_handler(func=lambda m: m.text == "👥 SEE LIST")

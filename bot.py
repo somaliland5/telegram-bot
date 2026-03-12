@@ -15,9 +15,6 @@ import threading
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 
-bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
-BOT2_TOKEN = os.getenv("BOT2_TOKEN")
-
 bot = telebot.TeleBot(BOT_TOKEN)
 bot2 = telebot.TeleBot(BOT2_TOKEN)
 

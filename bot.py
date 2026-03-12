@@ -1913,25 +1913,24 @@ def watch_video(call):
     )
 
 # ================= RUN BOTS =================
+# ================= RUN BOTS =================
+
 def run_bot1():
-    while True:
-        try:
-            bot.infinity_polling(skip_pending=True)
-        except Exception as e:
-            print("Bot1 restart:", e)
+    print("BOT 1 STARTED")
+    bot.infinity_polling(skip_pending=True)
 
 def run_bot2():
-    while True:
-        try:
-            bot2.infinity_polling(skip_pending=True)
-        except Exception as e:
-            print("Bot2 restart:", e)
+    print("BOT 2 STARTED")
+    bot2.infinity_polling(skip_pending=True)
+
 
 if __name__ == "__main__":
+
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    app.run(host="0.0.0.0", port=3000)
+    t1.join()
+    t2.join()

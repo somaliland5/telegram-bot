@@ -207,6 +207,17 @@ def start_handler(message):
 
         save_users()
 
+    # SAVE USER TO MONGO
+users_collection.update_one(
+    {"user_id": str(uid)},
+    {"$set": {
+        "user_id": str(uid),
+        "balance": users[str(uid)]["balance"],
+        "referrals": users[str(uid)]["invited"]
+    }},
+    upsert=True
+)
+
     # Hubinta join
     check_membership(uid)
 

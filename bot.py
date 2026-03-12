@@ -1649,23 +1649,6 @@ def send_video_with_music(chat_id, file_path, platform=None):
             }
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
-    save_videos()
-
-    with open(file_path, "rb") as video:
-        msg = bot.send_video(
-    chat_id,
-    video,
-    caption=CAPTION_TEXT,
-    reply_markup=kb
-)
-
-file_id = msg.video.file_id
-
-user = bot.get_chat(chat_id)
-username = user.first_name
-
-save_download_history(chat_id, username, file_path, file_id)
-
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(message, text):

@@ -11,7 +11,6 @@ import shutil
 from flask import Flask, request, jsonify
 import threading
 
-================= CONFIG =================
 
 ================= VERIFY SYSTEM =================
 

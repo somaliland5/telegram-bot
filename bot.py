@@ -274,17 +274,33 @@ def post_button_click(call):
 
     index = int(call.data.split("_")[1])
 
-    for data in pending_channel_post.values():
+    data = channel_posts.get(call.message.message_id)
 
-        if index < len(data["buttons"]):
+    if not data:
+        return
 
-            content = data["buttons"][index]["content"]
+    if index >= len(data["buttons"]):
+        return
 
-            bot.answer_callback_query(call.id)
+    text = data["buttons"][index]["content"]
 
-            bot.send_message(call.message.chat.id, content)
+    kb = InlineKeyboardMarkup()
 
-            return
+    for i, btn in enumerate(data["buttons"]):
+
+        kb.add(
+            InlineKeyboardButton(
+                btn["name"],
+                callback_data=f"postbtn_{i}"
+            )
+        )
+
+    bot.edit_message_text(
+        text,
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=kb
+    )
 
 
 # ================= SEND JOIN MESSAGE =================
@@ -1391,6 +1407,95 @@ def verify_off(m):
     VERIFY_ENABLED = False
 
     bot.send_message(m.chat.id, "❌ Verify system disabled")
+
+    # =============== V ===============
+@bot.message_handler(func=lambda m: m.text == "CHANNEL POST")
+def start_channel_post(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send the main text for the channel post."
+    )
+
+    bot.register_next_step_handler(msg, post_main_text)
+
+
+def post_main_text(m):
+
+    pending_post[m.from_user.id] = {
+        "text": m.text,
+        "buttons": []
+    }
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send button like:\n\nButton Name | Text when clicked\n\nSend DONE when finished."
+    )
+
+    bot.register_next_step_handler(msg, add_buttons)
+
+def add_buttons(m):
+
+    uid = m.from_user.id
+
+    if m.text.lower() == "done":
+
+        data = pending_post[uid]
+
+        kb = InlineKeyboardMarkup()
+
+        for i, btn in enumerate(data["buttons"]):
+
+            kb.add(
+                InlineKeyboardButton(
+                    btn["name"],
+                    callback_data=f"postbtn_{i}"
+                )
+            )
+
+        for ch in MANAGED_CHANNELS:
+
+            msg = bot.send_message(
+                ch,
+                data["text"],
+                reply_markup=kb
+            )
+
+            channel_posts[msg.message_id] = data
+
+        pending_post.pop(uid)
+
+        bot.send_message(m.chat.id,"✅ Post sent")
+
+        return
+
+    try:
+
+        name, content = m.text.split("|",1)
+
+        pending_post[uid]["buttons"].append({
+            "name": name.strip(),
+            "content": content.strip()
+        })
+
+        msg = bot.send_message(
+            m.chat.id,
+            "Button added. Send another or DONE"
+        )
+
+        bot.register_next_step_handler(msg, add_buttons)
+
+    except:
+
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Format error\nButton Name | Text"
+        )
+
+        bot.register_next_step_handler(msg, add_buttons)
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")

@@ -167,6 +167,43 @@ def start_handler(message):
     # Hubinta join
     check_membership(uid)
 
+# ================= VERIFY BOT START =================
+
+@bot2.message_handler(commands=['start'])
+def verify_start(message):
+
+    args = message.text.split()
+
+    # ===== haddii code jiro =====
+    if len(args) > 1:
+
+        code = args[1]
+
+        bot2.send_message(
+            message.chat.id,
+            f"🔑 <b>Your Verification Code</b>\n\n"
+            f"<code>{code}</code>\n\n"
+            "Copy this code and send it to the downloader bot."
+        )
+
+    # ===== haddii code jirin =====
+    else:
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "GET",
+                url="https://t.me/Downloadvedioytibot"
+            )
+        )
+
+        bot2.send_message(
+            message.chat.id,
+            "❌ <b>Don't Have Code?</b>\n\nGet code from downloader bot.",
+            reply_markup=kb
+        )
+
 # ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
     try:

@@ -38,6 +38,7 @@ verify_pending = {}
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
+HISTORY_FILE = "history.json"
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
@@ -52,6 +53,10 @@ def save_json(path, data):
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
+history = load_json(HISTORY_FILE, [])
+
+def save_history():
+    save_json(HISTORY_FILE, history)
 
 def save_users():
     save_json(USERS_FILE, users)
@@ -83,6 +88,15 @@ def random_ref():
 
 def random_botid():
     return str(random.randint(10000000000, 99999999999))
+
+def save_download_history(user_id, username, link):
+    history.append({
+        "user": user_id,
+        "username": username,
+        "link": link,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    save_history()
 
 def now_month():
     return datetime.now().month
@@ -124,6 +138,7 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
+    kb.add("📜 HISTORY")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -717,6 +732,56 @@ def unblock_money_process(m):
         f"✅ Money unblocked for user {uid}"
     )
 
+# ================= HISTORY =================
+@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
+def admin_history(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    if not history:
+        bot.send_message(m.chat.id,"❌ No history yet")
+        return
+
+    users_links = {}
+
+    for h in history:
+
+        uid = str(h["user"])
+
+        if uid not in users_links:
+            users_links[uid] = {
+                "username": h["username"],
+                "links": []
+            }
+
+        users_links[uid]["links"].append(h["link"])
+
+    for uid, data in users_links.items():
+
+        username = data["username"]
+        links = data["links"]
+
+        text = f"👤 Username: {username}\n"
+        text += f"🆔 ID: {uid}\n\n"
+
+        for l in links:
+            text += f"{l}\n"
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "💬 OPEN CHAT",
+                url=f"tg://user?id={uid}"
+            )
+        )
+
+        bot.send_message(
+            m.chat.id,
+            text,
+            reply_markup=kb
+        )
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text == "🔥 UN BAN-USER")
@@ -1613,6 +1678,12 @@ def download_media(chat_id, text):
         if not url:
             bot.send_message(chat_id, "❌ Invalid link")
             return
+
+        # ===== SAVE DOWNLOAD HISTORY =====
+        user = bot.get_chat(chat_id)
+        username = user.first_name
+
+        save_download_history(chat_id, username, url)
 
         # ================= TIKTOK (PHOTO + VIDEO) =================
         if "tiktok.com" in url:

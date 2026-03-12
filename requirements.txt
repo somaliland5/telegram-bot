@@ -4,3 +4,4 @@ requests
 yt-dlp
 beautifulsoup4
 pyTelegramBotAPI
+pymongo[srv]

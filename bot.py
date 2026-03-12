@@ -123,7 +123,7 @@ def admin_menu():
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
-    kb.add("❌ CLOSE WINDOWS")
+    kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -1033,6 +1033,20 @@ def broadcast_send(m):
             continue
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
+
+    # ================= CLOSE CHANEL =================
+@bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")
+def close_channel_post(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    MANAGED_CHANNELS.clear()
+
+    bot.send_message(
+        m.chat.id,
+        "❌ All channels removed.\n\nYou can now add new channels using ADD CHANNEL."
+    )
 
 # ================= SEE USERS LIST =================
 @bot.message_handler(func=lambda m: m.text == "👥 SEE LIST")

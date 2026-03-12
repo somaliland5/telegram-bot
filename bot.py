@@ -1668,18 +1668,25 @@ save_download_history(chat_id, username, file_path, file_id)
 
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(chat_id, text):
+def download_media(message, text):
     try:
+
+        chat_id = message.chat.id
+        username = message.from_user.first_name
+
         url = extract_url(text)
+
         if not url:
             bot.send_message(chat_id, "❌ Invalid link")
             return
 
-        # ===== SAVE DOWNLOAD HISTORY =====
-        user = bot.get_chat(chat_id)
-        username = user.first_name
+        # download code...
 
-        save_download_history(chat_id, username, url)
+        msg = bot.send_video(chat_id, open(file_path, "rb"))
+
+        file_id = msg.video.file_id
+
+        save_download_history(chat_id, username, url, file_id)
 
         # ================= TIKTOK (PHOTO + VIDEO) =================
         if "tiktok.com" in url:

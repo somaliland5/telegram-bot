@@ -1774,17 +1774,15 @@ def download_media(chat_id, text):
             return
 
         # ================= YOUTUBE =================
-        if str(chat_id) in UNLOCKED_4K_USERS:
 
+if str(chat_id) in UNLOCKED_4K_USERS:
     ydl_opts = {
         "format": "bestvideo[height<=2160]+bestaudio/best",
         "outtmpl": "youtube_%(id)s.%(ext)s",
         "merge_output_format": "mp4",
         "quiet": True
     }
-
 else:
-
     ydl_opts = {
         "format": "bestvideo[height<=720]+bestaudio/best",
         "outtmpl": "youtube_%(id)s.%(ext)s",

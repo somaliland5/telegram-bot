@@ -1792,22 +1792,22 @@ else:
         "quiet": True
     }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                file = ydl.prepare_filename(info)
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    info = ydl.extract_info(url, download=True)
+    file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file, "youtube")
-            return
+send_video_with_music(chat_id, file, "youtube")
+return
 
-        bot.send_message(chat_id, "❌ Unsupported link")
+bot.send_message(chat_id, "❌ Unsupported link")
 
-    except Exception:
-        bot.send_message(
-            chat_id,
-            "❌ Incorrect Tik Tok link.\n\n"
-            "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
-        )
-        return
+except Exception:
+    bot.send_message(
+        chat_id,
+        "❌ Incorrect Tik Tok link.\n\n"
+        "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
+    )
+    return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

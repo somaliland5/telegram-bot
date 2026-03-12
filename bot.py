@@ -153,6 +153,7 @@ def start_handler(message):
             "invited": 0,
             "banned": False,
             "month": now_month()
+            "verified": False
         }
         # Referral reward
         if ref:
@@ -1027,7 +1028,7 @@ def handle_links(message):
 
     # ===== VERIFY SYSTEM =====
 
-    if VERIFY_ENABLED:
+    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
 
         code = str(random.randint(10000,99999))
 
@@ -1291,6 +1292,9 @@ def verify_code_check(m):
     data = verify_pending[uid]
 
     if m.text == data["code"]:
+
+        users[str(uid)]["verified"] = True
+        save_users()
 
         link = data["link"]
 

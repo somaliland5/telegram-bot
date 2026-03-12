@@ -1773,39 +1773,48 @@ def download_media(chat_id, text):
             send_video_with_music(chat_id, file, "facebook")
             return
 
-        # ================= YOUTUBE =================
-         try:
+         # ================= YOUTUBE =================
+if "youtube.com" in url or "youtu.be" in url:
 
-    if str(chat_id) in UNLOCKED_4K_USERS:
-        ydl_opts = {
-            "format": "bestvideo[height<=2160]+bestaudio/best",
-            "outtmpl": "youtube_%(id)s.%(ext)s",
-            "merge_output_format": "mp4",
-            "quiet": True
-        }
-    else:
-        ydl_opts = {
-            "format": "bestvideo[height<=720]+bestaudio/best",
-            "outtmpl": "youtube_%(id)s.%(ext)s",
-            "merge_output_format": "mp4",
-            "quiet": True
-        }
+    try:
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        file = ydl.prepare_filename(info)
+        if str(chat_id) in UNLOCKED_4K_USERS:
+            ydl_opts = {
+                "format": "bestvideo[height<=2160]+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-    send_video_with_music(chat_id, file, "youtube")
-    return
+        else:
+            ydl_opts = {
+                "format": "bestvideo[height<=720]+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-except Exception:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file = ydl.prepare_filename(info)
 
-    bot.send_message(
-        chat_id,
-        "❌ Incorrect Tik Tok link.\n\n"
-        "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
-    )
-    return
+        send_video_with_music(chat_id, file, "youtube")
+
+        if os.path.exists(file):
+            os.remove(file)
+
+        return
+
+    except Exception as e:
+
+        bot.send_message(
+            chat_id,
+            "❌ YouTube download failed."
+        )
+
+        print("YouTube error:", e)
+
+        return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

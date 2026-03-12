@@ -1715,16 +1715,17 @@ def download_media(chat_id, text):
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
 
-        # ================= PINTEREST =================
-if "pin.it" in url:
-    try:
-        r = requests.head(url, allow_redirects=True, timeout=10)
-        url = r.url
-    except:
-        pass
+        # ================= PINTEREST SHORT LINK =================
+    if "pin.it" in url:
+        try:
+            r = requests.head(url, allow_redirects=True, timeout=10)
+            url = r.url
+        except:
+            pass
 
-if "pinterest.com" in url:
-    try:
+
+    # ================= PINTEREST =================
+    if "pinterest.com" in url:
 
         bot.send_message(chat_id, "⬇️ Downloading Pinterest video...")
 
@@ -1747,10 +1748,6 @@ if "pinterest.com" in url:
 
         return
 
-    except Exception as e:
-        print("Pinterest error:", e)
-        bot.send_message(chat_id, "❌ Pinterest download failed")
-        return
 
         # ================= FACEBOOK =================
         if "facebook.com" in url or "fb.watch" in url:
@@ -1769,14 +1766,11 @@ if "pinterest.com" in url:
             return
 
         # ================= YOUTUBE =================
-        # ================= YOUTUBE =================
-if "youtube.com" in url or "youtu.be" in url:
-    try:
+    if "youtube.com" in url or "youtu.be" in url:
 
         bot.send_message(chat_id, "⬇️ Downloading YouTube video...")
 
-        # 4K users
-        if str(chat_id) in UNLOCKED_4K_USERS:
+     if str(chat_id) in UNLOCKED_4K_USERS:
             quality = "bestvideo+bestaudio/best"
         else:
             quality = "best[height<=720]"
@@ -1785,8 +1779,7 @@ if "youtube.com" in url or "youtu.be" in url:
             "format": quality,
             "outtmpl": "youtube_%(id)s.%(ext)s",
             "merge_output_format": "mp4",
-            "quiet": True,
-            "noplaylist": True
+            "quiet": True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -1802,10 +1795,18 @@ if "youtube.com" in url or "youtu.be" in url:
 
         return
 
-    except Exception as e:
-        print("YouTube error:", e)
-        bot.send_message(chat_id, "❌ YouTube download failed")
-        return
+
+    bot.send_message(chat_id, "❌ Unsupported link")
+
+
+except Exception as e:
+
+    print("Download error:", e)
+
+    bot.send_message(
+        chat_id,
+        "❌ Incorrect link.\n\nSend a TikTok, Facebook, Pinterest or YouTube link."
+    )
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

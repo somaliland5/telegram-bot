@@ -1654,6 +1654,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
+    is_4k = str(chat_id) in UNLOCKED_USERS_4K
     try:
         url = extract_url(text)
         if not url:
@@ -1773,13 +1774,23 @@ def download_media(chat_id, text):
             return
 
         # ================= YOUTUBE =================
-        if "youtube.com" in url or "youtu.be" in url:
-            ydl_opts = {
-                "format": "bestvideo+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
+        if str(chat_id) in UNLOCKED_4K_USERS:
+
+    ydl_opts = {
+        "format": "bestvideo[height<=2160]+bestaudio/best",
+        "outtmpl": "youtube_%(id)s.%(ext)s",
+        "merge_output_format": "mp4",
+        "quiet": True
+    }
+
+else:
+
+    ydl_opts = {
+        "format": "bestvideo[height<=720]+bestaudio/best",
+        "outtmpl": "youtube_%(id)s.%(ext)s",
+        "merge_output_format": "mp4",
+        "quiet": True
+    }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)

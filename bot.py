@@ -113,26 +113,26 @@ def banned_guard(m):
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 def generate_code():
-return str(random.randint(100000, 999999))
+    return str(random.randint(100000, 999999))
 
 def start_verification(user_id):
-code = generate_code()
-pending_verify[str(user_id)] = code
+    code = generate_code()
+    pending_verify[str(user_id)] = code
 
-kb = InlineKeyboardMarkup()  
-kb.add(  
-    InlineKeyboardButton(  
-        "🔘 GET CODE",  
-        url="https://t.me/Verifyd_bot?start={}".format(user_id)  
-    )  
-)  
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🔘 GET CODE",
+            url="https://t.me/Verifyd_bot?start={}".format(user_id)
+        )
+    )
 
-bot.send_message(  
-    user_id,  
-    "🔐 Verification Required\n\n"  
-    "Riix GET CODE si aad u hesho code-ka kadibna halkaan ku soo dir.",  
-    reply_markup=kb  
-)
+    bot.send_message(
+        user_id,
+        "🔐 Verification Required\n\n"
+        "Riix GET CODE si aad u hesho code-ka kadibna halkaan ku soo dir.",
+        reply_markup=kb
+    )
 
 # ================= MENUS =================
 

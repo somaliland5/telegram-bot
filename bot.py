@@ -1890,26 +1890,50 @@ def verify_start(m):
             f"🔑 Your verification code:\n\n{code}\n\nCopy this code and send it to the downloader bot."
         )
 
-# ================= RUN BOTS =================
+# ================= FLASK KEEP ALIVE =================
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot Running"
+
+
+# ================= RUN BOTS SAFELY =================
+
 def run_bot1():
     while True:
         try:
-            bot.infinity_polling(skip_pending=True)
+            bot.infinity_polling(
+                skip_pending=True,
+                timeout=60,
+                long_polling_timeout=60
+            )
         except Exception as e:
             print("Bot1 restart:", e)
+
 
 def run_bot2():
     while True:
         try:
-            bot2.infinity_polling(skip_pending=True)
+            bot2.infinity_polling(
+                skip_pending=True,
+                timeout=60,
+                long_polling_timeout=60
+            )
         except Exception as e:
             print("Bot2 restart:", e)
 
+
+# ================= START SYSTEM =================
+
 if __name__ == "__main__":
+
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    app.run(host="0.0.0.0", port=3000)
+    # Flask ha xanibin bots
+    app.run(host="0.0.0.0", port=3000, threaded=True)

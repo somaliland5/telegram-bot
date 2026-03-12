@@ -8,10 +8,18 @@ import subprocess
 import os
 import re
 import shutil
+import random
+import threading
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
+
+bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+BOT2_TOKEN = os.getenv("BOT2_TOKEN")
+
+bot = telebot.TeleBot(BOT_TOKEN)
+bot2 = telebot.TeleBot(BOT2_TOKEN)
 
 ADMIN_IDS = [7983838654]
 
@@ -22,8 +30,6 @@ CHANNEL_WINDOW_OPEN = False
 VERIFY_ENABLED = False
 verify_pending = {}
 
-bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
-bot2 = telebot.TeleBot(BOT2_TOKEN)
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -1526,20 +1532,25 @@ def verify_start(m):
         )
 
 # ================= RUN BOTS =================
-import threading
-
 def run_bot1():
-    bot.infinity_polling(skip_pending=True, timeout=60)
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print("Bot1 restart:", e)
 
 def run_bot2():
-    bot2.infinity_polling(skip_pending=True, timeout=60)
+    while True:
+        try:
+            bot2.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print("Bot2 restart:", e)
 
 if __name__ == "__main__":
-
-    print("🤖 Bots are running...")
-
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
+
+    app.run(host="0.0.0.0", port=3000)

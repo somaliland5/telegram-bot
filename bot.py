@@ -89,13 +89,16 @@ def random_ref():
 def random_botid():
     return str(random.randint(10000000000, 99999999999))
 
-def save_download_history(user_id, username, link):
+def save_download_history(user_id, username, link, file_id):
+
     history.append({
         "user": user_id,
         "username": username,
         "link": link,
+        "file_id": file_id,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
+
     save_history()
 
 def now_month():
@@ -740,35 +743,25 @@ def admin_history(m):
         return
 
     if not history:
-        bot.send_message(m.chat.id,"❌ No history yet")
+        bot.send_message(m.chat.id,"❌ No history")
         return
 
-    users_links = {}
+    for h in history[-20:]:
 
-    for h in history:
+        uid = h["user"]
+        username = h["username"]
+        file_id = h["file_id"]
 
-        uid = str(h["user"])
-
-        if uid not in users_links:
-            users_links[uid] = {
-                "username": h["username"],
-                "links": []
-            }
-
-        users_links[uid]["links"].append(h["link"])
-
-    for uid, data in users_links.items():
-
-        username = data["username"]
-        links = data["links"]
-
-        text = f"👤 Username: {username}\n"
-        text += f"🆔 ID: {uid}\n\n"
-
-        for l in links:
-            text += f"{l}\n"
+        text = f"👤 {username}\n🆔 {uid}"
 
         kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "🎬 WATCH VIDEO",
+                callback_data=f"watch|{file_id}"
+            )
+        )
 
         kb.add(
             InlineKeyboardButton(
@@ -777,11 +770,7 @@ def admin_history(m):
             )
         )
 
-        bot.send_message(
-            m.chat.id,
-            text,
-            reply_markup=kb
-        )
+        bot.send_message(m.chat.id,text,reply_markup=kb)
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text == "🔥 UN BAN-USER")
@@ -1663,12 +1652,19 @@ def send_video_with_music(chat_id, file_path, platform=None):
     save_videos()
 
     with open(file_path, "rb") as video:
-        bot.send_video(
-            chat_id,
-            video,
-            caption=CAPTION_TEXT,
-            reply_markup=kb
-        )
+        msg = bot.send_video(
+    chat_id,
+    video,
+    caption=CAPTION_TEXT,
+    reply_markup=kb
+)
+
+file_id = msg.video.file_id
+
+user = bot.get_chat(chat_id)
+username = user.first_name
+
+save_download_history(chat_id, username, file_path, file_id)
 
 
 # ================= MEDIA DOWNLOADER =================
@@ -1902,7 +1898,19 @@ def verify_start(m):
         bot2.send_message(
             m.chat.id,
             f"🔑 Your verification code:\n\n{code}\n\nCopy this code and send it to the downloader bot."
+        
         )
+
+# ================= BTTT ==================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
+def watch_video(call):
+
+    file_id = call.data.split("|")[1]
+
+    bot.send_video(
+        call.message.chat.id,
+        file_id
+    )
 
 # ================= RUN BOTS =================
 def run_bot1():

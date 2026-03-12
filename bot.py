@@ -16,6 +16,7 @@ import threading
 VERIFY_MODE = False
 pending_verify = {}
 verified_users = set()
+pending_downloads = {}
 
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 bot2 = telebot.TeleBot(BOT2_TOKEN)
@@ -1328,15 +1329,14 @@ def download_media(chat_id, text):
 
     url = extract_url(text)
 
+    if not url:
+        bot.send_message(chat_id, "❌ Invalid link")
+        return
+
     if VERIFY_MODE and str(chat_id) not in verified_users:
         pending_downloads[str(chat_id)] = text
         start_verification(chat_id)
         return
-
-    try:
-        if not url:
-            bot.send_message(chat_id, "❌ Invalid link")
-            return
 
         msg = bot.send_message(chat_id, "⏳ Downloading...")
         bot.send_chat_action(chat_id, "typing")

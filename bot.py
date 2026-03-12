@@ -959,7 +959,7 @@ def handle_links(message):
     # ===== FORCE JOIN CHECK =====
 
     try:
-        member = bot.get_chat_member(FORCE_CHANNEL, user_id)
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
         if member.status not in ["member", "administrator", "creator"]:
 

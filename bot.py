@@ -89,18 +89,6 @@ def random_ref():
 def random_botid():
     return str(random.randint(10000000000, 99999999999))
 
-def save_download_history(user_id, username, link, file_id):
-
-    history.append({
-        "user": user_id,
-        "username": username,
-        "link": link,
-        "file_id": file_id,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-    save_history()
-
 def now_month():
     return datetime.now().month
 
@@ -112,6 +100,18 @@ def find_user_by_botid(bid):
         if data.get("bot_id") == bid:
             return u
     return None
+
+    def save_download_history(user_id, username, link, file_id):
+
+    history.append({
+        "user": user_id,
+        "username": username,
+        "link": link,
+        "file_id": file_id,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+    save_history()
 
 def banned_guard(m):
     uid = str(m.from_user.id)
@@ -376,6 +376,17 @@ def confirm_join(call):
             "❌ Please join the channel first!",
             show_alert=True
         )
+
+# ================== WATCH =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
+def watch_video(call):
+
+    file_id = call.data.split("|")[1]
+
+    bot.send_video(
+        call.message.chat.id,
+        file_id
+    )
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
@@ -735,42 +746,6 @@ def unblock_money_process(m):
         f"✅ Money unblocked for user {uid}"
     )
 
-# ================= HISTORY =================
-@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
-def admin_history(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    if not history:
-        bot.send_message(m.chat.id,"❌ No history")
-        return
-
-    for h in history[-20:]:
-
-        uid = h["user"]
-        username = h["username"]
-        file_id = h["file_id"]
-
-        text = f"👤 {username}\n🆔 {uid}"
-
-        kb = InlineKeyboardMarkup()
-
-        kb.add(
-            InlineKeyboardButton(
-                "🎬 WATCH VIDEO",
-                callback_data=f"watch|{file_id}"
-            )
-        )
-
-        kb.add(
-            InlineKeyboardButton(
-                "💬 OPEN CHAT",
-                url=f"tg://user?id={uid}"
-            )
-        )
-
-        bot.send_message(m.chat.id,text,reply_markup=kb)
 
 # ================= UNBAN USER =================
 @bot.message_handler(func=lambda m: m.text == "🔥 UN BAN-USER")
@@ -800,6 +775,59 @@ def unban_user_process(m):
 
     bot.send_message(m.chat.id, f"✅ User {uid} unbanned")
     bot.send_message(int(uid), "✅ You have been unbanned by admin.")
+
+    # ================== HISTORY =================
+@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
+def admin_history(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    if not history:
+        bot.send_message(m.chat.id, "❌ No history yet")
+        return
+
+    users_data = {}
+
+    for h in history:
+        uid = h["user"]
+
+        if uid not in users_data:
+            users_data[uid] = {
+                "username": h["username"],
+                "links": []
+            }
+
+        users_data[uid]["links"].append(h)
+
+    for uid, data in users_data.items():
+
+        text = f"👤 Username: {data['username']}\n"
+        text += f"🆔 ID: {uid}\n\n"
+
+        kb = InlineKeyboardMarkup()
+
+        for item in data["links"]:
+
+            kb.add(
+                InlineKeyboardButton(
+                    "🎬 WATCH VIDEO",
+                    callback_data=f"watch|{item['file_id']}"
+                )
+            )
+
+        kb.add(
+            InlineKeyboardButton(
+                "💬 OPEN CHAT",
+                url=f"tg://user?id={uid}"
+            )
+        )
+
+        bot.send_message(
+            m.chat.id,
+            text,
+            reply_markup=kb
+        )
 
 # ================= WITHDRAWAL CHECK =================
 @bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
@@ -1649,27 +1677,31 @@ def send_video_with_music(chat_id, file_path, platform=None):
             }
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
+    save_videos()
+
+    with open(file_path, "rb") as video:
+
+    msg = bot.send_video(
+        chat_id,
+        video,
+        caption=CAPTION_TEXT,
+        reply_markup=kb
+    )
+
+    file_id = msg.video.file_id
+
+    username = users.get(str(chat_id), {}).get("bot_id", "User")
+
+    save_download_history(chat_id, username, file_path, file_id)
+
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(message, text):
+def download_media(chat_id, text):
     try:
-
-        chat_id = message.chat.id
-        username = message.from_user.first_name
-
         url = extract_url(text)
-
         if not url:
             bot.send_message(chat_id, "❌ Invalid link")
             return
-
-        # download code...
-
-        msg = bot.send_video(chat_id, open(file_path, "rb"))
-
-        file_id = msg.video.file_id
-
-        save_download_history(chat_id, username, url, file_id)
 
         # ================= TIKTOK (PHOTO + VIDEO) =================
         if "tiktok.com" in url:
@@ -1888,39 +1920,28 @@ def verify_start(m):
         bot2.send_message(
             m.chat.id,
             f"🔑 Your verification code:\n\n{code}\n\nCopy this code and send it to the downloader bot."
-        
         )
 
-# ================= BTTT ==================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
-def watch_video(call):
-
-    file_id = call.data.split("|")[1]
-
-    bot.send_video(
-        call.message.chat.id,
-        file_id
-    )
-
 # ================= RUN BOTS =================
-# ================= RUN BOTS =================
-
 def run_bot1():
-    print("BOT 1 STARTED")
-    bot.infinity_polling(skip_pending=True)
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print("Bot1 restart:", e)
 
 def run_bot2():
-    print("BOT 2 STARTED")
-    bot2.infinity_polling(skip_pending=True)
-
+    while True:
+        try:
+            bot2.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print("Bot2 restart:", e)
 
 if __name__ == "__main__":
-
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    t1.join()
-    t2.join()
+    app.run(host="0.0.0.0", port=3000)

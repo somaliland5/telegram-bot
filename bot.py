@@ -10,6 +10,16 @@ import re
 import shutil
 from flask import Flask, request, jsonify
 import threading
+from pymongo import MongoClient
+import os
+
+MONGO_URI = os.getenv("MONGO_URI")
+
+client = MongoClient(MONGO_URI)
+
+db = client["telegram_bot"]
+
+users_collection = db["users"]
 
 # ================= CONFIG =================
 # ================= VERIFY SYSTEM =================
@@ -761,8 +771,21 @@ def check_verify_code(m):
         # ===== SOO CELI DOWNLOAD =====
         if uid in pending_downloads:
             old_url = pending_downloads.pop(uid)
-            bot.send_message(m.chat.id, "⬇️ Downloading your previous link...")
+
+            msg = bot.send_message(
+                m.chat.id,
+                "⬇️ Downloading your previous link..."
+            )
+
             download_media(m.chat.id, old_url)
+
+            try:
+                bot.delete_message(
+                    m.chat.id,
+                    msg.message_id
+                )
+            except:
+                pass
     else:
         bot.send_message(m.chat.id, "❌ Incorrect code.")
 

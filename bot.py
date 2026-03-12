@@ -10,7 +10,6 @@ import re
 import shutil
 import random
 import threading
-from flask import flask
 
 # ================= CONFIG =================
 

@@ -308,28 +308,34 @@ def confirm_join(call):
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        if member.status in ["member","administrator","creator"]:
+        if member.status in ["member", "administrator", "creator"]:
 
-            bot.answer_callback_query(call.id,"✅ Join verified")
+            # ✅ user waa join gareeyay
+            bot.answer_callback_query(call.id, "✅ Join verified")
+
+            # delete message-ka join-ka
+            bot.delete_message(
+                call.message.chat.id,
+                call.message.message_id
+            )
 
             bot.send_message(
                 user_id,
-                "✅ Join confirmed!\nNow you can use the bot.\nSend your video link."
+                "✅ Join confirmed! Send your video link."
             )
 
         else:
-
+            # ❌ user ma join garayn
             bot.answer_callback_query(
                 call.id,
-                "❌ You must join the channel first!",
+                "❌ Please join the channel first!",
                 show_alert=True
             )
 
-    except:
-
+    except Exception as e:
         bot.answer_callback_query(
             call.id,
-            "❌ Please join the channel first!",
+            "❌ Error checking join status",
             show_alert=True
         )
 

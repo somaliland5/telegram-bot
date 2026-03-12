@@ -43,23 +43,23 @@ VIDEOS_FILE = "videos.json"
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
-if not os.path.exists(path):
-return default
-with open(path, "r") as f:
-return json.load(f)
+    if not os.path.exists(path):
+        return default
+    with open(path, "r") as f:
+        return json.load(f)
 
 def save_json(path, data):
-with open(path, "w") as f:
-json.dump(data, f, indent=4)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
 
 def save_users():
-save_json(USERS_FILE, users)
+    save_json(USERS_FILE, users)
 
 def save_withdraws():
-save_json(WITHDRAWS_FILE, withdraws)
+    save_json(WITHDRAWS_FILE, withdraws)
 
 # ================= LOAD DATA =================
 
@@ -67,46 +67,46 @@ users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
 
 videos_data = load_json(VIDEOS_FILE, {
-"total": 0,
-"platforms": {
-"tiktok": 0,
-"youtube": 0,
-"facebook": 0,
-"instagram": 0,
-"pinterest": 0
-},
-"users": {}
+    "total": 0,
+    "platforms": {
+        "tiktok": 0,
+        "youtube": 0,
+        "facebook": 0,
+        "instagram": 0,
+        "pinterest": 0
+    },
+    "users": {}
 })
 
 def save_videos():
-save_json(VIDEOS_FILE, videos_data)
+    save_json(VIDEOS_FILE, videos_data)
 
 # ================= HELPER FUNCTIONS =================
 
 def random_ref():
-return str(random.randint(1000000000, 9999999999))
+    return str(random.randint(1000000000, 9999999999))
 
 def random_botid():
-return str(random.randint(10000000000, 99999999999))
+    return str(random.randint(10000000000, 99999999999))
 
 def now_month():
-return datetime.now().month
+    return datetime.now().month
 
 def is_admin(uid):
-return int(uid) in ADMIN_IDS
+    return int(uid) in ADMIN_IDS
 
 def find_user_by_botid(bid):
-for u, data in users.items():
-if data.get("bot_id") == bid:
-return u
-return None
+    for u, data in users.items():
+        if data.get("bot_id") == bid:
+            return u
+    return None
 
 def banned_guard(m):
-uid = str(m.from_user.id)
-if uid in users and users[uid].get("banned"):
-bot.send_message(m.chat.id, "🚫 You are banned.")
-return True
-return False
+    uid = str(m.from_user.id)
+    if uid in users and users[uid].get("banned"):
+        bot.send_message(m.chat.id, "🚫 You are banned.")
+        return True
+    return False
 
 # ================= VERIFY HELPERS =================
 

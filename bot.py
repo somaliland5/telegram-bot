@@ -1338,10 +1338,14 @@ def download_media(chat_id, text):
         start_verification(chat_id)
         return
 
+    try:
         msg = bot.send_message(chat_id, "⏳ Downloading...")
         bot.send_chat_action(chat_id, "typing")
 
-        # download code-kaaga hore halkaan ayuu sii soconayaa
+        # halkan download code-kaaga hore ayuu sii socdaa
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error: {e}")
 
 # ================= TIKTOK =================
         if "tiktok.com" in url:

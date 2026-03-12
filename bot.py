@@ -293,6 +293,9 @@ def confirm_join(call):
 
             bot.answer_callback_query(call.id,"✅ Join verified")
 
+            # DELETE join message
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+
             bot.send_message(
                 user_id,
                 "✅ Join confirmed!\nNow you can use the bot.\nSend your video link."

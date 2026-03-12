@@ -1774,31 +1774,32 @@ def download_media(chat_id, text):
             return
 
         # ================= YOUTUBE =================
-if str(chat_id) in UNLOCKED_4K_USERS:
-    ydl_opts = {
-        "format": "bestvideo[height<=2160]+bestaudio/best",
-        "outtmpl": "youtube_%(id)s.%(ext)s",
-        "merge_output_format": "mp4",
-        "quiet": True
-    }
-else:
-    ydl_opts = {
-        "format": "bestvideo[height<=720]+bestaudio/best",
-        "outtmpl": "youtube_%(id)s.%(ext)s",
-        "merge_output_format": "mp4",
-        "quiet": True
-    }
+         try:
 
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    info = ydl.extract_info(url, download=True)
-    file = ydl.prepare_filename(info)
+    if str(chat_id) in UNLOCKED_4K_USERS:
+        ydl_opts = {
+            "format": "bestvideo[height<=2160]+bestaudio/best",
+            "outtmpl": "youtube_%(id)s.%(ext)s",
+            "merge_output_format": "mp4",
+            "quiet": True
+        }
+    else:
+        ydl_opts = {
+            "format": "bestvideo[height<=720]+bestaudio/best",
+            "outtmpl": "youtube_%(id)s.%(ext)s",
+            "merge_output_format": "mp4",
+            "quiet": True
+        }
 
-send_video_with_music(chat_id, file, "youtube")
-return
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        file = ydl.prepare_filename(info)
 
-bot.send_message(chat_id, "❌ Unsupported link")
+    send_video_with_music(chat_id, file, "youtube")
+    return
 
 except Exception:
+
     bot.send_message(
         chat_id,
         "❌ Incorrect Tik Tok link.\n\n"

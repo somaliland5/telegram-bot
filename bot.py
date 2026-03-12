@@ -1297,6 +1297,9 @@ def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
+    if os.path.exists(file_path):
+    os.remove(file_path)
+
 # ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1
@@ -1339,13 +1342,9 @@ def download_media(chat_id, text):
         return
 
     try:
+
         msg = bot.send_message(chat_id, "⏳ Downloading...")
         bot.send_chat_action(chat_id, "typing")
-
-        # halkan download code-kaaga hore ayuu sii socdaa
-
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Error: {e}")
 
 # ================= TIKTOK =================
         if "tiktok.com" in url:

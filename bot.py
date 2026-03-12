@@ -33,6 +33,10 @@ pending_post = {}
 VERIFY_ENABLED = False
 verify_pending = {}
 
+# ===== 4K UNLOCK SYSTEM =====
+UNLOCKED_4K_USERS = set()
+waiting_4k_user = None
+
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -124,6 +128,7 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
+    kb.add("🎬 4K UNLOCK")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -930,6 +935,47 @@ def post_channel_process(m):
     bot.send_message(
         m.chat.id,
         f"✅ Posted to {sent} channel(s)"
+    )
+
+# ================= 4K UNLOCK =================
+
+@bot.message_handler(func=lambda m: m.text == "🎬 4K UNLOCK")
+def unlock4k_start(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send Telegram ID or BOT ID to unlock 4K downloads:"
+    )
+
+    bot.register_next_step_handler(msg, unlock4k_process)
+
+
+def unlock4k_process(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    uid_input = m.text.strip()
+
+    uid = uid_input if uid_input in users else find_user_by_botid(uid_input)
+
+    if not uid:
+        bot.send_message(m.chat.id,"❌ User not found")
+        return
+
+    UNLOCKED_4K_USERS.add(uid)
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ User {uid} unlocked for 1080p / 4K downloads"
+    )
+
+    bot.send_message(
+        int(uid),
+        "🎬 4K Download unlocked!\nYou can now download videos in high quality."
     )
 
 # ================= LANGUAGE SWITCH =================

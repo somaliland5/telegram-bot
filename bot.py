@@ -10,6 +10,7 @@ import re
 import shutil
 import random
 import threading
+from flask import flask
 
 # ================= CONFIG =================
 
@@ -120,7 +121,7 @@ def admin_menu():
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
-    kb.add("CHANNEL", "📡 ADD CHANNEL")
+    kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -1116,95 +1117,6 @@ def search_user_result(m):
 
         bot.send_message(m.chat.id,"❌ User not found")
 
-# ================= POST CHANNEL =================
-pending_channel_post = {}
-
-@bot.message_handler(func=lambda m: m.text == "CHANNEL POST")
-def channel_post_start(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Send the main text for the channel post."
-    )
-
-    bot.register_next_step_handler(msg, channel_post_text)
-
-
-def channel_post_text(m):
-
-    pending_channel_post[m.from_user.id] = {
-        "text": m.text,
-        "buttons": []
-    }
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Send button format:\n\nButton Text | Content\n\nSend DONE when finished."
-    )
-
-    bot.register_next_step_handler(msg, channel_post_buttons)
-
-
-def channel_post_buttons(m):
-
-    uid = m.from_user.id
-
-    if m.text.lower() == "done":
-
-        data = pending_channel_post[uid]
-
-        kb = InlineKeyboardMarkup()
-
-        for i, btn in enumerate(data["buttons"]):
-            kb.add(
-                InlineKeyboardButton(
-                    btn["text"],
-                    callback_data=f"postbtn_{i}"
-                )
-            )
-
-        for ch in MANAGED_CHANNELS:
-
-            msg = bot.send_message(
-                ch,
-                data["text"],
-                reply_markup=kb
-            )
-
-        pending_channel_post.pop(uid)
-
-        bot.send_message(m.chat.id, "✅ Channel post sent")
-
-        return
-
-    try:
-
-        btn_text, content = m.text.split("|",1)
-
-        pending_channel_post[uid]["buttons"].append({
-            "text": btn_text.strip(),
-            "content": content.strip()
-        })
-
-        msg = bot.send_message(
-            m.chat.id,
-            "Button added.\nSend another or DONE"
-        )
-
-        bot.register_next_step_handler(msg, channel_post_buttons)
-
-    except:
-
-        msg = bot.send_message(
-            m.chat.id,
-            "❌ Format error\nButton Text | Content"
-        )
-
-        bot.register_next_step_handler(msg, channel_post_buttons)
-
 # ================= CHECKING DOWNLOAD =================
 
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
@@ -1496,6 +1408,37 @@ def add_buttons(m):
         )
 
         bot.register_next_step_handler(msg, add_buttons)
+
+        # ================= FG ===============
+@bot.callback_query_handler(func=lambda call: call.data.startswith("postbtn_"))
+def post_button_click(call):
+
+    index = int(call.data.split("_")[1])
+
+    data = channel_posts.get(call.message.message_id)
+
+    if not data:
+        return
+
+    text = data["buttons"][index]["content"]
+
+    kb = InlineKeyboardMarkup()
+
+    for i, btn in enumerate(data["buttons"]):
+
+        kb.add(
+            InlineKeyboardButton(
+                btn["name"],
+                callback_data=f"postbtn_{i}"
+            )
+        )
+
+    bot.edit_message_text(
+        text,
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=kb
+    )
 
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")

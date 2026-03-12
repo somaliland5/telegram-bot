@@ -268,6 +268,24 @@ Now you're ready to start!
     except:
         send_join_message(user_id)
 
+    # ================= FG ===============
+@bot.callback_query_handler(func=lambda call: call.data.startswith("postbtn_"))
+def post_button_click(call):
+
+    index = int(call.data.split("_")[1])
+
+    for data in pending_channel_post.values():
+
+        if index < len(data["buttons"]):
+
+            content = data["buttons"][index]["content"]
+
+            bot.answer_callback_query(call.id)
+
+            bot.send_message(call.message.chat.id, content)
+
+            return
+
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -864,22 +882,13 @@ def add_channel_process(m):
     
 # ================= CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CHANNEL")
-def post_channel_start(m):
-
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id,"❌ You are not admin")
-        return
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Send the message you want to post to channel.\n\nYou can send:\nText / Links"
-    )
-
-    bot.register_next_step_handler(msg, post_channel_process)
-
 def post_channel_process(m):
 
     text = m.text
+
+    if not MANAGED_CHANNELS:
+        bot.send_message(m.chat.id, "❌ No channels added.\nUse 📡 ADD CHANNEL first.")
+        return
 
     kb = InlineKeyboardMarkup()
     kb.add(
@@ -887,15 +896,54 @@ def post_channel_process(m):
         InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")
     )
 
-    bot.send_message(
-        CHANNEL_ID,
-        text,
-        reply_markup=kb
-    )
+    sent = 0
+
+    for ch in MANAGED_CHANNELS:
+        try:
+            bot.send_message(
+                ch,
+                text,
+                reply_markup=kb
+            )
+            sent += 1
+        except Exception as e:
+            print("Channel post error:", e)
 
     bot.send_message(
         m.chat.id,
-        "✅ Posted to channel successfully"
+        f"✅ Posted to {sent} channel(s)"
+    )
+
+# ================= LANGUAGE SWITCH =================
+
+channel_posts = {}
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("lang_"))
+def channel_language(call):
+
+    lang = call.data.split("_")[1]
+
+    if call.message.message_id not in channel_posts:
+        return
+
+    data = channel_posts[call.message.message_id]
+
+    if lang == "so":
+        text = data["so"]
+    else:
+        text = data["en"]
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton("🇸🇴 Somali", callback_data="lang_so"),
+        InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")
+    )
+
+    bot.edit_message_text(
+        text,
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=kb
     )
 
 # ================= RAADI (DOWNLOAD STATS) =================
@@ -1053,32 +1101,93 @@ def search_user_result(m):
         bot.send_message(m.chat.id,"❌ User not found")
 
 # ================= POST CHANNEL =================
-@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
-def post_channel_start(m):
+pending_channel_post = {}
+
+@bot.message_handler(func=lambda m: m.text == "CHANNEL POST")
+def channel_post_start(m):
+
     if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id,"❌ You are not admin")
         return
 
     msg = bot.send_message(
         m.chat.id,
-        "Send up to 5 channel usernames separated by space\nExample:\n@channel1 @channel2"
+        "Send the main text for the channel post."
     )
-    bot.register_next_step_handler(msg, post_channels_send)
 
-def post_channels_send(m):
-    global POST_CHANNELS, CHANNEL_WINDOW_OPEN
+    bot.register_next_step_handler(msg, channel_post_text)
 
-    if not is_admin(m.from_user.id):
+
+def channel_post_text(m):
+
+    pending_channel_post[m.from_user.id] = {
+        "text": m.text,
+        "buttons": []
+    }
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send button format:\n\nButton Text | Content\n\nSend DONE when finished."
+    )
+
+    bot.register_next_step_handler(msg, channel_post_buttons)
+
+
+def channel_post_buttons(m):
+
+    uid = m.from_user.id
+
+    if m.text.lower() == "done":
+
+        data = pending_channel_post[uid]
+
+        kb = InlineKeyboardMarkup()
+
+        for i, btn in enumerate(data["buttons"]):
+            kb.add(
+                InlineKeyboardButton(
+                    btn["text"],
+                    callback_data=f"postbtn_{i}"
+                )
+            )
+
+        for ch in MANAGED_CHANNELS:
+
+            msg = bot.send_message(
+                ch,
+                data["text"],
+                reply_markup=kb
+            )
+
+        pending_channel_post.pop(uid)
+
+        bot.send_message(m.chat.id, "✅ Channel post sent")
+
         return
 
-    channels = [c.replace("@","").strip() for c in m.text.split()][:5]
+    try:
 
-    POST_CHANNELS = channels
-    CHANNEL_WINDOW_OPEN = True
+        btn_text, content = m.text.split("|",1)
 
-    text = "✅ Channels saved:\n" + "\n".join([f"@{c}" for c in channels])
+        pending_channel_post[uid]["buttons"].append({
+            "text": btn_text.strip(),
+            "content": content.strip()
+        })
 
-    bot.send_message(m.chat.id, text)
+        msg = bot.send_message(
+            m.chat.id,
+            "Button added.\nSend another or DONE"
+        )
+
+        bot.register_next_step_handler(msg, channel_post_buttons)
+
+    except:
+
+        msg = bot.send_message(
+            m.chat.id,
+            "❌ Format error\nButton Text | Content"
+        )
+
+        bot.register_next_step_handler(msg, channel_post_buttons)
 
 # ================= CHECKING DOWNLOAD =================
 

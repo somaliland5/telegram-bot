@@ -137,36 +137,36 @@ def start_verification(user_id):
 # ================= MENUS =================
 
 def user_menu(show_admin=False):
-kb = ReplyKeyboardMarkup(resize_keyboard=True)
-kb.add("💰 BALANCE", "💸 WITHDRAWAL")
-kb.add("👥 REFERRAL", "🆔 GET ID")
-kb.add("☎️ CUSTOMER")
-if show_admin:
-kb.add("👑 ADMIN PANEL")
-return kb
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("💰 BALANCE", "💸 WITHDRAWAL")
+    kb.add("👥 REFERRAL", "🆔 GET ID")
+    kb.add("☎️ CUSTOMER")
+    if show_admin:
+        kb.add("👑 ADMIN PANEL")
+    return kb
 
 def admin_menu():
-kb = ReplyKeyboardMarkup(resize_keyboard=True)
-kb.add("📊 STATS", "📢 BROADCAST")
-kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
-kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
-kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
-kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
-kb.add("👥 SEE LIST", "🔎 SEARCH USER")
-kb.add("✅ VERIFY", "❌ CLOSE VERIFY")
-kb.add("❌ CLOSE WINDOWS")
-kb.add("🔙 BACK MAIN MENU")
-return kb
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("📊 STATS", "📢 BROADCAST")
+    kb.add("➕ ADD BALANCE", "➖ REMOVE MONEY")
+    kb.add("🚫 BAN USER MANUAL", "💳 WITHDRAWAL CHECK")
+    kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
+    kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
+    kb.add("👥 SEE LIST", "🔎 SEARCH USER")
+    kb.add("✅ VERIFY", "❌ CLOSE VERIFY")
+    kb.add("❌ CLOSE WINDOWS")
+    kb.add("🔙 BACK MAIN MENU")
+    return kb
 
 # ================= BACK TO MAIN MENU =================
 
 def back_to_main_menu(m):
-uid = str(m.from_user.id)
-bot.send_message(
-m.chat.id,
-"🔙 Returning to main menu",
-reply_markup=user_menu(is_admin(uid))
-)
+    uid = str(m.from_user.id)
+    bot.send_message(
+        m.chat.id,
+        "🔙 Returning to main menu",
+        reply_markup=user_menu(is_admin(uid))
+    )
 
 @bot.message_handler(func=lambda m: m.text == "🔙 BACK MAIN MENU")
 def back_button_handler(m):
@@ -236,8 +236,8 @@ else:
 # ================= CHECK MEMBERSHIP =================
 
 def check_membership(user_id):
-try:
-member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
 if member.status in ["member", "administrator", "creator"]:  
         bot.send_message(  
@@ -303,7 +303,7 @@ except:
 # ================= SEND JOIN MESSAGE =================
 
 def send_join_message(user_id):
-kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup()
 kb.add(
 InlineKeyboardButton("➕ JOIN CHANNEL", url="https://t.me/tiktokvediodownload")
 )
@@ -353,12 +353,10 @@ except:
     )
 
 # ================= ADMIN PANEL =================
-
-@bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
 def open_admin_panel(m):
-if not is_admin(m.from_user.id):
-bot.send_message(m.chat.id, "❌ You are not admin")
-return
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
 bot.send_message(m.chat.id, "👑 Admin Panel", reply_markup=admin_menu())
 
 # ================= BALANCE =================
@@ -1370,7 +1368,7 @@ with open(file_path, "rb") as video:
 
 def download_media(chat_id, text):
 
-url = extract_url(text)  
+    url = extract_url(text)
 
 if not url:  
     bot.send_message(chat_id, "❌ Invalid link")  
@@ -1637,25 +1635,25 @@ except Exception as e:
 # ================= RUN BOTS SAFELY =================
 
 def run_bot1():
-while True:
-try:
-bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
-except Exception as e:
-print(f"Bot1 restart: {e}")
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Bot1 restart: {e}")
 
 def run_bot2():
-while True:
-try:
-bot2.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
-except Exception as e:
-print(f"Bot2 restart: {e}")
+    while True:
+        try:
+            bot2.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Bot2 restart: {e}")
 
-if name == "main":
-t1 = threading.Thread(target=run_bot1)
-t2 = threading.Thread(target=run_bot2)
+if __name__ == "__main__":
+    t1 = threading.Thread(target=run_bot1)
+    t2 = threading.Thread(target=run_bot2)
 
-t1.start()  
-t2.start()  
+    t1.start()
+    t2.start()
 
-# Flask ha xanibin bots  
-app.run(host="0.0.0.0", port=3000, threaded=True)
+    # Flask ha xanibin bots
+    app.run(host="0.0.0.0", port=3000, threaded=True)

@@ -28,14 +28,12 @@ pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
 
+UNLOCKED_4K_USERS = set()
+
 pending_post = {}
 
 VERIFY_ENABLED = False
 verify_pending = {}
-
-# ===== 4K UNLOCK SYSTEM =====
-UNLOCKED_4K_USERS = set()
-waiting_4k_user = None
 
 
 # ================= DATABASE FILES =================
@@ -128,7 +126,7 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
-    kb.add("🎬 4K UNLOCK")
+    kb.add("OPEN 4K VIDEO", "CLOSE 4K VIDEO")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -937,47 +935,6 @@ def post_channel_process(m):
         f"✅ Posted to {sent} channel(s)"
     )
 
-# ================= 4K UNLOCK =================
-
-@bot.message_handler(func=lambda m: m.text == "🎬 4K UNLOCK")
-def unlock4k_start(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Send Telegram ID or BOT ID to unlock 4K downloads:"
-    )
-
-    bot.register_next_step_handler(msg, unlock4k_process)
-
-
-def unlock4k_process(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    uid_input = m.text.strip()
-
-    uid = uid_input if uid_input in users else find_user_by_botid(uid_input)
-
-    if not uid:
-        bot.send_message(m.chat.id,"❌ User not found")
-        return
-
-    UNLOCKED_4K_USERS.add(uid)
-
-    bot.send_message(
-        m.chat.id,
-        f"✅ User {uid} unlocked for 1080p / 4K downloads"
-    )
-
-    bot.send_message(
-        int(uid),
-        "🎬 4K Download unlocked!\nYou can now download videos in high quality."
-    )
-
 # ================= LANGUAGE SWITCH =================
 
 channel_posts = {}
@@ -1177,6 +1134,59 @@ def search_user_result(m):
     else:
 
         bot.send_message(m.chat.id,"❌ User not found")
+
+# ================= 4K OPEN =================
+@bot.message_handler(func=lambda m: m.text == "OPEN 4K VIDEO")
+def open_4k(m):
+
+    if m.from_user.id not in ADMIN_IDS:
+        return
+
+    msg = bot.send_message(m.chat.id, "Send Telegram ID to unlock 4K video")
+    bot.register_next_step_handler(msg, unlock_4k_user)
+
+
+def unlock_4k_user(m):
+    try:
+        uid = str(m.text.strip())
+
+        UNLOCKED_4K_USERS.add(uid)
+
+        bot.send_message(
+            m.chat.id,
+            f"✅ 4K Video Enabled for user:\n{uid}"
+        )
+
+    except:
+        bot.send_message(m.chat.id, "❌ Invalid ID")
+
+# ================= 4K CLOSE =================
+@bot.message_handler(func=lambda m: m.text == "CLOSE 4K VIDEO")
+def close_4k(m):
+
+    if m.from_user.id not in ADMIN_IDS:
+        return
+
+    msg = bot.send_message(m.chat.id, "Send Telegram ID to disable 4K video")
+    bot.register_next_step_handler(msg, remove_4k_user)
+
+
+def remove_4k_user(m):
+
+    uid = str(m.text.strip())
+
+    if uid in UNLOCKED_4K_USERS:
+
+        UNLOCKED_4K_USERS.remove(uid)
+
+        bot.send_message(
+            m.chat.id,
+            f"❌ 4K Video Disabled for:\n{uid}"
+        )
+
+    else:
+
+        bot.send_message(m.chat.id, "User not found in 4K list")
 
 # ================= CHECKING DOWNLOAD =================
 
@@ -1654,7 +1664,6 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
-    is_4k = str(chat_id) in UNLOCKED_4K_USERS
     try:
         url = extract_url(text)
         if not url:
@@ -1773,41 +1782,47 @@ def download_media(chat_id, text):
             send_video_with_music(chat_id, file, "facebook")
             return
 
-         # ================= YOUTUBE =================
-        if "youtube.com" in url or "youtu.be" in url:
-            try:
+        # ================= YOUTUBE =================
+        # ================= YOUTUBE =================
+if "youtube.com" in url or "youtu.be" in url:
+    try:
 
-                if str(chat_id) in UNLOCKED_4K_USERS:
-                    ydl_opts = {
-                        "format": "bestvideo[height<=2160]+bestaudio/best",
-                        "outtmpl": "youtube_%(id)s.%(ext)s",
-                        "merge_output_format": "mp4",
-                        "quiet": True
-                    }
-                else:
-                    ydl_opts = {
-                        "format": "bestvideo[height<=720]+bestaudio/best",
-                        "outtmpl": "youtube_%(id)s.%(ext)s",
-                        "merge_output_format": "mp4",
-                        "quiet": True
-                    }
+        # haddii user 4K loo furay
+        if str(chat_id) in UNLOCKED_4K_USERS:
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                    file = ydl.prepare_filename(info)
+            ydl_opts = {
+                "format": "bestvideo[height<=2160]+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-                send_video_with_music(chat_id, file, "youtube")
+        # user normal
+        else:
 
-                try:
-                    os.remove(file)
-                except:
-                    pass
+            ydl_opts = {
+                "format": "bestvideo[height<=720]+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-                return
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file = ydl.prepare_filename(info)
 
-            except Exception as e:
-                bot.send_message(chat_id, f"❌ YouTube download error:\n{e}")
-                return
+        send_video_with_music(chat_id, file, "youtube")
+
+        try:
+            os.remove(file)
+        except:
+            pass
+
+        return
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ YouTube download error:\n{e}")
+        return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))
@@ -1890,50 +1905,26 @@ def verify_start(m):
             f"🔑 Your verification code:\n\n{code}\n\nCopy this code and send it to the downloader bot."
         )
 
-# ================= FLASK KEEP ALIVE =================
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot Running"
-
-
-# ================= RUN BOTS SAFELY =================
-
+# ================= RUN BOTS =================
 def run_bot1():
     while True:
         try:
-            bot.infinity_polling(
-                skip_pending=True,
-                timeout=60,
-                long_polling_timeout=60
-            )
+            bot.infinity_polling(skip_pending=True)
         except Exception as e:
             print("Bot1 restart:", e)
-
 
 def run_bot2():
     while True:
         try:
-            bot2.infinity_polling(
-                skip_pending=True,
-                timeout=60,
-                long_polling_timeout=60
-            )
+            bot2.infinity_polling(skip_pending=True)
         except Exception as e:
             print("Bot2 restart:", e)
 
-
-# ================= START SYSTEM =================
-
 if __name__ == "__main__":
-
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    # Flask ha xanibin bots
-    app.run(host="0.0.0.0", port=3000, threaded=True)
+    app.run(host="0.0.0.0", port=3000)

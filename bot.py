@@ -1654,7 +1654,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
-    is_4k = str(chat_id) in UNLOCKED_USERS_4K
+    is_4k = str(chat_id) in UNLOCKED_4K_USERS
     try:
         url = extract_url(text)
         if not url:
@@ -1774,42 +1774,40 @@ def download_media(chat_id, text):
             return
 
          # ================= YOUTUBE =================
-         try:
+        if "youtube.com" in url or "youtu.be" in url:
+            try:
 
-    if "youtube.com" in url or "youtu.be" in url:
+                if str(chat_id) in UNLOCKED_4K_USERS:
+                    ydl_opts = {
+                        "format": "bestvideo[height<=2160]+bestaudio/best",
+                        "outtmpl": "youtube_%(id)s.%(ext)s",
+                        "merge_output_format": "mp4",
+                        "quiet": True
+                    }
+                else:
+                    ydl_opts = {
+                        "format": "bestvideo[height<=720]+bestaudio/best",
+                        "outtmpl": "youtube_%(id)s.%(ext)s",
+                        "merge_output_format": "mp4",
+                        "quiet": True
+                    }
 
-        if str(chat_id) in UNLOCKED_4K_USERS:
-            ydl_opts = {
-                "format": "bestvideo[height<=2160]+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
-        else:
-            ydl_opts = {
-                "format": "bestvideo[height<=720]+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            file = ydl.prepare_filename(info)
+                send_video_with_music(chat_id, file, "youtube")
 
-        send_video_with_music(chat_id, file, "youtube")
-        return
+                try:
+                    os.remove(file)
+                except:
+                    pass
 
-except Exception as e:
+                return
 
-    bot.send_message(
-        chat_id,
-        "❌ Incorrect link.\n\nSend TikTok, Facebook, Pinterest, or YouTube link."
-    )
-
-    print(e)
-
-        return
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ YouTube download error:\n{e}")
+                return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

@@ -28,6 +28,8 @@ pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
 
+pending_post = {}
+
 VERIFY_ENABLED = False
 verify_pending = {}
 

@@ -28,8 +28,6 @@ pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
 
-UNLOCKED_4K_USERS = set()
-
 pending_post = {}
 
 VERIFY_ENABLED = False
@@ -126,7 +124,6 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
-    kb.add("OPEN 4K VIDEO", "CLOSE 4K VIDEO")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -1135,59 +1132,6 @@ def search_user_result(m):
 
         bot.send_message(m.chat.id,"❌ User not found")
 
-# ================= 4K OPEN =================
-@bot.message_handler(func=lambda m: m.text == "OPEN 4K VIDEO")
-def open_4k(m):
-
-    if m.from_user.id not in ADMIN_IDS:
-        return
-
-    msg = bot.send_message(m.chat.id, "Send Telegram ID to unlock 4K video")
-    bot.register_next_step_handler(msg, unlock_4k_user)
-
-
-def unlock_4k_user(m):
-    try:
-        uid = str(m.text.strip())
-
-        UNLOCKED_4K_USERS.add(uid)
-
-        bot.send_message(
-            m.chat.id,
-            f"✅ 4K Video Enabled for user:\n{uid}"
-        )
-
-    except:
-        bot.send_message(m.chat.id, "❌ Invalid ID")
-
-# ================= 4K CLOSE =================
-@bot.message_handler(func=lambda m: m.text == "CLOSE 4K VIDEO")
-def close_4k(m):
-
-    if m.from_user.id not in ADMIN_IDS:
-        return
-
-    msg = bot.send_message(m.chat.id, "Send Telegram ID to disable 4K video")
-    bot.register_next_step_handler(msg, remove_4k_user)
-
-
-def remove_4k_user(m):
-
-    uid = str(m.text.strip())
-
-    if uid in UNLOCKED_4K_USERS:
-
-        UNLOCKED_4K_USERS.remove(uid)
-
-        bot.send_message(
-            m.chat.id,
-            f"❌ 4K Video Disabled for:\n{uid}"
-        )
-
-    else:
-
-        bot.send_message(m.chat.id, "User not found in 4K list")
-
 # ================= CHECKING DOWNLOAD =================
 
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
@@ -1715,39 +1659,56 @@ def download_media(chat_id, text):
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
 
-        # ================= PINTEREST SHORT LINK =================
-    if "pin.it" in url:
-        try:
-            r = requests.head(url, allow_redirects=True, timeout=10)
-            url = r.url
-        except:
-            pass
+ # ================= PINTEREST =================
+        if "pin.it" in url:
+            try:
+                r = requests.head(url, allow_redirects=True, timeout=10)
+                url = r.url
+            except Exception:
+                pass
 
+        if "pinterest.com" in url:
+            try:
+                ydl_opts = {
+                    "format": "bv*+ba/b",
+                    "outtmpl": "pinterest_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "noplaylist": False,
+                    "merge_output_format": "mp4"
+                }
 
-    # ================= PINTEREST =================
-    if "pinterest.com" in url:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
 
-        bot.send_message(chat_id, "⬇️ Downloading Pinterest video...")
+                    # ===== haddii ay tahay carousel =====
+                    if "entries" in info:
+                        entries = info["entries"]
+                    else:
+                        entries = [info]
 
-        ydl_opts = {
-            "format": "best",
-            "outtmpl": "pinterest_%(id)s.%(ext)s",
-            "quiet": True
-        }
+                    for entry in entries:
+                        file = ydl.prepare_filename(entry)
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            file = ydl.prepare_filename(info)
+                        # ===== PHOTO =====
+                        if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                            with open(file, "rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
 
-        send_video_with_music(chat_id, file, "pinterest")
+                        # ===== VIDEO =====
+                        else:
+                            send_video_with_music(chat_id, file, "pinterest")
 
-        try:
-            os.remove(file)
-        except:
-            pass
+                        # delete file
+                        try:
+                            os.remove(file)
+                        except Exception:
+                            pass
 
-        return
+                return
 
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Download error:\n{e}")
+                return
 
         # ================= FACEBOOK =================
         if "facebook.com" in url or "fb.watch" in url:
@@ -1766,47 +1727,30 @@ def download_media(chat_id, text):
             return
 
         # ================= YOUTUBE =================
-    if "youtube.com" in url or "youtu.be" in url:
+        if "youtube.com" in url or "youtu.be" in url:
+            ydl_opts = {
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": "youtube_%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
+                "quiet": True
+            }
 
-        bot.send_message(chat_id, "⬇️ Downloading YouTube video...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
 
-     if str(chat_id) in UNLOCKED_4K_USERS:
-            quality = "bestvideo+bestaudio/best"
-        else:
-            quality = "best[height<=720]"
+            send_video_with_music(chat_id, file, "youtube")
+            return
 
-        ydl_opts = {
-            "format": quality,
-            "outtmpl": "youtube_%(id)s.%(ext)s",
-            "merge_output_format": "mp4",
-            "quiet": True
-        }
+        bot.send_message(chat_id, "❌ Unsupported link")
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            file = ydl.prepare_filename(info)
-
-        send_video_with_music(chat_id, file, "youtube")
-
-        try:
-            os.remove(file)
-        except:
-            pass
-
+    except Exception:
+        bot.send_message(
+            chat_id,
+            "❌ Incorrect Tik Tok link.\n\n"
+            "To download the video, send the link in the Tiktok, Facebook, Pinterest, YouTube."
+        )
         return
-
-
-    bot.send_message(chat_id, "❌ Unsupported link")
-
-
-except Exception as e:
-
-    print("Download error:", e)
-
-    bot.send_message(
-        chat_id,
-        "❌ Incorrect link.\n\nSend a TikTok, Facebook, Pinterest or YouTube link."
-    )
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

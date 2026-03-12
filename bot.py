@@ -188,6 +188,7 @@ def start_handler(message):
     # Haddii user cusub, ku dar database
     if str(uid) not in users:
         ref = args[1] if len(args) > 1 else None
+
         users[str(uid)] = {
             "balance": 0.0,
             "blocked": 0.0,
@@ -197,26 +198,32 @@ def start_handler(message):
             "banned": False,
             "month": now_month()
         }
+
         # Referral reward
         if ref:
             ref_user = next((u for u, d in users.items() if d["ref"] == ref), None)
+
             if ref_user:
                 users[ref_user]["balance"] += 0.2
                 users[ref_user]["invited"] += 1
-                bot.send_message(int(ref_user), "🎉 You earned $0.2 from referral!")
+
+                bot.send_message(
+                    int(ref_user),
+                    "🎉 You earned $0.2 from referral!"
+                )
 
         save_users()
 
-    # SAVE USER TO MONGO
-users_collection.update_one(
-    {"user_id": str(uid)},
-    {"$set": {
-        "user_id": str(uid),
-        "balance": users[str(uid)]["balance"],
-        "referrals": users[str(uid)]["invited"]
-    }},
-    upsert=True
-)
+    # ===== SAVE USER TO MONGODB =====
+    users_collection.update_one(
+        {"user_id": str(uid)},
+        {"$set": {
+            "user_id": str(uid),
+            "balance": users[str(uid)]["balance"],
+            "referrals": users[str(uid)]["invited"]
+        }},
+        upsert=True
+    )
 
     # Hubinta join
     check_membership(uid)

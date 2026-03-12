@@ -10,7 +10,6 @@ import re
 import shutil
 import random
 import threading
-import time
 
 # ================= CONFIG =================
 
@@ -1198,9 +1197,9 @@ def handle_links(message):
 
     # ===== START DOWNLOAD =====
 
-msg_id = download_progress(message.chat.id)
+    bot.send_message(message.chat.id, "⏳ Downloading...")
 
-download_media(message.chat.id, link, msg_id)
+    download_media(message.chat.id, link)
 
 # ================= MULTI CHANNEL CONFIRM =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
@@ -1608,7 +1607,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
 
 
 # ================= MEDIA DOWNLOADER =================
-def download_media(chat_id, text, msg_id=None):
+def download_media(chat_id, text):
     try:
         url = extract_url(text)
         if not url:
@@ -1835,14 +1834,6 @@ def verify_start(m):
         )
 
 # ================= RUN BOTS =================
-from flask import Flask
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot Running"
-
 def run_bot1():
     while True:
         try:

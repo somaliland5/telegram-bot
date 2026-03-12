@@ -15,7 +15,6 @@ BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 
 ADMIN_IDS = [7983838654]
 
-CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
 POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False

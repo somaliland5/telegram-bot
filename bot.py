@@ -21,6 +21,8 @@ bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
 
 ADMIN_IDS = [7983838654]
 
+CHANNEL_ID = "@tiktokvediodownload"
+
 POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
@@ -117,6 +119,7 @@ def admin_menu():
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
+    kb.add("CHANNEL")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -810,6 +813,42 @@ def manual_ban_process(m):
 
     bot.send_message(m.chat.id, f"🚫 User {uid} banned")
     bot.send_message(int(uid), "🚫 You have been banned by admin.")
+    
+# ================= CHANEL =================
+@bot.message_handler(func=lambda m: m.text == "CHANNEL")
+def post_channel_start(m):
+
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id,"❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send the message you want to post to channel.\n\nYou can send:\nText / Links"
+    )
+
+    bot.register_next_step_handler(msg, post_channel_process)
+
+def post_channel_process(m):
+
+    text = m.text
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton("🇸🇴 Somali", callback_data="lang_so"),
+        InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")
+    )
+
+    bot.send_message(
+        CHANNEL_ID,
+        text,
+        reply_markup=kb
+    )
+
+    bot.send_message(
+        m.chat.id,
+        "✅ Posted to channel successfully"
+    )
 
 # ================= RAADI (DOWNLOAD STATS) =================
 @bot.message_handler(func=lambda m: m.text == "🔍 RAADI")

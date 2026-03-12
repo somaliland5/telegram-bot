@@ -152,8 +152,9 @@ def start_handler(message):
             "bot_id": random_botid(),
             "invited": 0,
             "banned": False,
+            "verified": False,
             "month": now_month()
-            "verified": False
+
         }
         # Referral reward
         if ref:

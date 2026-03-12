@@ -11,6 +11,7 @@ import shutil
 from flask import Flask, request, jsonify
 import threading
 
+# ================= CONFIG ================
 
 # ================= VERIFY SYSTEM =================
 
@@ -41,7 +42,6 @@ WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
 
 # ================= JSON FUNCTIONS =================
-
 def load_json(path, default):
 if not os.path.exists(path):
 return default

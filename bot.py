@@ -11,16 +11,20 @@ import shutil
 
 # ================= CONFIG =================
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = [7983838654]  # Liiska admins, waxaad ku dari kartaa ID kale haddii loo baahdo
+BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 
-BASE_DIR = os.getcwd()  # Folder-ka bot-ku ka shaqeeyo
+ADMIN_IDS = [7983838654]
 
 CHANNEL_USERNAME = "tiktokvediodownload"  # Ha lahayn @
 POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 
+VERIFY_ENABLED = False
+verify_pending = {}
+
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+bot2 = telebot.TeleBot(BOT2_TOKEN)
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -109,6 +113,7 @@ def admin_menu():
     kb.add("💰 UNBLOCK MONEY", "🔍 RAADI")
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
+    kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -944,54 +949,73 @@ def post_channels_send(m):
     bot.send_message(m.chat.id, text)
 
 # ================= CHECKING DOWNLOAD =================
+
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
 
     user_id = message.from_user.id
+    link = message.text
 
-    if POST_CHANNELS:
+    # ===== FORCE JOIN CHECK =====
 
-        kb = InlineKeyboardMarkup()
-        joined_all = True
+    try:
+        member = bot.get_chat_member(FORCE_CHANNEL, user_id)
 
-        for ch in POST_CHANNELS:
+        if member.status not in ["member", "administrator", "creator"]:
 
-            try:
-                member = bot.get_chat_member(f"@{ch}", user_id)
-
-                if member.status not in ["member","administrator","creator"]:
-                    joined_all = False
-                    kb.add(
-                        InlineKeyboardButton("📢 JOIN CHANNEL", url=f"https://t.me/{ch}")
-                    )
-
-            except:
-                joined_all = False
-                kb.add(
-                    InlineKeyboardButton("📢 JOIN CHANNEL", url=f"https://t.me/{ch}")
-                )
-
-        if not joined_all:
-
-            pending_links[user_id] = message.text
-
+            kb = InlineKeyboardMarkup()
             kb.add(
                 InlineKeyboardButton(
-                    "✅ CONFIRM JOIN",
-                    callback_data="multi_checkjoin"
+                    "📢 JOIN CHANNEL",
+                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}"
                 )
             )
 
             bot.send_message(
                 message.chat.id,
-                "⚠️ Please join the required channels first.",
+                "⚠️ You must join our channel before using the bot.",
                 reply_markup=kb
             )
 
             return
 
-    bot.send_message(message.chat.id,"⏳ Downloading...")
-    download_media(message.chat.id, message.text)
+    except Exception as e:
+        print("Join check error:", e)
+
+    # ===== VERIFY SYSTEM =====
+
+    if VERIFY_ENABLED:
+
+        code = str(random.randint(10000,99999))
+
+        verify_pending[user_id] = {
+            "code": code,
+            "link": link
+        }
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "🔑 GET CODE",
+                url=f"https://t.me/Verifyd_bot?start={code}"
+            )
+        )
+
+        bot.send_message(
+            message.chat.id,
+            "🤖 Anti-Bot Verification Required\n\n"
+            "Click GET CODE then send the code here.",
+            reply_markup=kb
+        )
+
+        return
+
+    # ===== START DOWNLOAD =====
+
+    bot.send_message(message.chat.id, "⏳ Downloading...")
+
+    download_media(message.chat.id, link)
 
 # ================= MULTI CHANNEL CONFIRM =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
@@ -1101,6 +1125,32 @@ def close_channel_windows(m):
         "✅ Channel join system disabled."
     )
 
+# ================= VERIFY ON ===============
+@bot.message_handler(func=lambda m: m.text == "✅ VERIFY ON")
+def verify_on(m):
+
+    global VERIFY_ENABLED
+
+    if m.from_user.id not in ADMIN_IDS:
+        return
+
+    VERIFY_ENABLED = True
+
+    bot.send_message(m.chat.id, "✅ Verify system enabled")
+
+# ================ VERIFY OF ================
+@bot.message_handler(func=lambda m: m.text == "❌ VERIFY OFF")
+def verify_off(m):
+
+    global VERIFY_ENABLED
+
+    if m.from_user.id not in ADMIN_IDS:
+        return
+
+    VERIFY_ENABLED = False
+
+    bot.send_message(m.chat.id, "❌ Verify system disabled")
+
 # ================= ADD BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")
 def add_balance_start(m):
@@ -1185,6 +1235,32 @@ def remove_balance_process(m):
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
+# ================= VERIFY CODE CHECK =================
+
+@bot.message_handler(func=lambda m: m.text and m.text.isdigit())
+def verify_code_check(m):
+
+    uid = m.from_user.id
+
+    if uid not in verify_pending:
+        return
+
+    data = verify_pending[uid]
+
+    if m.text == data["code"]:
+
+        link = data["link"]
+
+        del verify_pending[uid]
+
+        bot.send_message(m.chat.id,"✅ Verification successful\n⬇️ Downloading video...")
+
+        download_media(m.chat.id, link)
+
+    else:
+
+        bot.send_message(m.chat.id,"❌ Wrong verification code")
+
 
 # ================= URL EXTRACTOR =================
 def extract_url(text):
@@ -1221,6 +1297,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
             caption=CAPTION_TEXT,
             reply_markup=kb
         )
+
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
@@ -1435,7 +1512,35 @@ def convert_music(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
-# ================= RUN BOT =================
-if __name__ == "__main__":
-    print("🤖 Bot is running...")
+# ================= VERIFY BOT =================
+@bot2.message_handler(commands=['start'])
+def verify_start(m):
+
+    args = m.text.split()
+
+    if len(args) > 1:
+        code = args[1]
+
+        bot2.send_message(
+            m.chat.id,
+            f"🔑 Your verification code:\n\n{code}\n\nCopy this code and send it to the downloader bot."
+        )
+
+# ================= RUN BOTS =================
+import threading
+
+def run_bot1():
     bot.infinity_polling(skip_pending=True, timeout=60)
+
+def run_bot2():
+    bot2.infinity_polling(skip_pending=True, timeout=60)
+
+if __name__ == "__main__":
+
+    print("🤖 Bots are running...")
+
+    t1 = threading.Thread(target=run_bot1)
+    t2 = threading.Thread(target=run_bot2)
+
+    t1.start()
+    t2.start()

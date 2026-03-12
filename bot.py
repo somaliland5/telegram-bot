@@ -12,7 +12,7 @@ from flask import Flask, request, jsonify
 import threading
 
 
-================= VERIFY SYSTEM =================
+# ================= VERIFY SYSTEM =================
 
 VERIFY_MODE = False
 pending_verify = {}
@@ -34,13 +34,13 @@ CHANNEL_WINDOW_OPEN = False
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
-================= DATABASE FILES =================
+# ================= DATABASE FILES =================
 
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
 
-================= JSON FUNCTIONS =================
+# ================= JSON FUNCTIONS =================
 
 def load_json(path, default):
 if not os.path.exists(path):
@@ -61,7 +61,7 @@ save_json(USERS_FILE, users)
 def save_withdraws():
 save_json(WITHDRAWS_FILE, withdraws)
 
-================= LOAD DATA =================
+# ================= LOAD DATA =================
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
@@ -81,7 +81,7 @@ videos_data = load_json(VIDEOS_FILE, {
 def save_videos():
 save_json(VIDEOS_FILE, videos_data)
 
-================= HELPER FUNCTIONS =================
+# ================= HELPER FUNCTIONS =================
 
 def random_ref():
 return str(random.randint(1000000000, 9999999999))
@@ -108,7 +108,7 @@ bot.send_message(m.chat.id, "🚫 You are banned.")
 return True
 return False
 
-================= VERIFY HELPERS =================
+# ================= VERIFY HELPERS =================
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -134,7 +134,7 @@ bot.send_message(
     reply_markup=kb  
 )
 
-================= MENUS =================
+# ================= MENUS =================
 
 def user_menu(show_admin=False):
 kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -158,7 +158,7 @@ kb.add("❌ CLOSE WINDOWS")
 kb.add("🔙 BACK MAIN MENU")
 return kb
 
-================= BACK TO MAIN MENU =================
+# ================= BACK TO MAIN MENU =================
 
 def back_to_main_menu(m):
 uid = str(m.from_user.id)
@@ -174,7 +174,7 @@ back_to_main_menu(m)
 
 CHANNEL_USERNAME = "@tiktokvediodownload"
 
-================= START HANDLER =================
+# ================= START HANDLER =================
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -206,7 +206,7 @@ if str(uid) not in users:
 # Hubinta join  
 check_membership(uid)
 
-================= BOT2 ================
+# ================= BOT2 ================
 
 @bot2.message_handler(commands=['start'])
 def bot2_start(m):
@@ -233,7 +233,7 @@ else:
         "Marka hore ka bilow bot-ka weyn si aad code u hesho."  
     )
 
-================= CHECK MEMBERSHIP =================
+# ================= CHECK MEMBERSHIP =================
 
 def check_membership(user_id):
 try:
@@ -300,7 +300,7 @@ send_join_message(user_id)
 except:  
     send_join_message(user_id)
 
-================= SEND JOIN MESSAGE =================
+# ================= SEND JOIN MESSAGE =================
 
 def send_join_message(user_id):
 kb = InlineKeyboardMarkup()
@@ -317,7 +317,7 @@ bot.send_message(
     reply_markup=kb  
 )
 
-================= CONFIRM JOIN =================
+# ================= CONFIRM JOIN =================
 
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
@@ -352,7 +352,7 @@ except:
         show_alert=True  
     )
 
-================= ADMIN PANEL =================
+# ================= ADMIN PANEL =================
 
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
 def open_admin_panel(m):
@@ -376,7 +376,7 @@ f"💰 Available Balance: ${bal:.2f}\n"
 f"⏳ Blocked Amount: ${blocked:.2f}"
 )
 
-================= GET ID =================
+# ================= GET ID =================
 
 @bot.message_handler(func=lambda m: m.text == "🆔 GET ID")
 def get_id_handler(m):
@@ -389,7 +389,7 @@ f"🆔 BOT ID: <code>{users[uid]['bot_id']}</code>\n"
 f"👤 Telegram ID: <code>{uid}</code>"
 )
 
-================= REFERRAL =================
+# ================= REFERRAL =================
 
 @bot.message_handler(func=lambda m: m.text == "👥 REFERRAL")
 def referral_handler(m):
@@ -406,7 +406,7 @@ f"👥 Invited Users: {invited}\n"
 f"🎁 You earn $0.2 per referral!"
 )
 
-================= CUSTOMER SUPPORT =================
+# ================= CUSTOMER SUPPORT =================
 
 @bot.message_handler(func=lambda m: m.text == "☎️ CUSTOMER")
 def customer_handler(m):
@@ -417,7 +417,7 @@ m.chat.id,
 "☎️ Customer Support:\n@scholes1"
 )
 
-================= WITHDRAWAL MENU =================
+# ================= WITHDRAWAL MENU =================
 
 @bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")
 def withdraw_menu(m):
@@ -432,7 +432,7 @@ m.chat.id,
 reply_markup=kb
 )
 
-================= WITHDRAWAL METHOD =================
+# ================= WITHDRAWAL METHOD =================
 
 @bot.message_handler(func=lambda m: m.text in ["USDT-BEP20", "🔙 CANCEL"])
 def withdraw_method(m):
@@ -450,7 +450,7 @@ reply_markup=kb
 )
 bot.register_next_step_handler(msg, withdraw_address_step)
 
-================= WITHDRAWAL ADDRESS =================
+# ================= WITHDRAWAL ADDRESS =================
 
 def withdraw_address_step(m):
 uid = str(m.from_user.id)
@@ -479,7 +479,7 @@ reply_markup=kb
 )
 bot.register_next_step_handler(msg, withdraw_amount_step)
 
-================= WITHDRAWAL AMOUNT =================
+# ================= WITHDRAWAL AMOUNT =================
 
 def withdraw_amount_step(m):
 uid = str(m.from_user.id)
@@ -677,7 +677,7 @@ elif data.startswith("block_"):
         f"Contact admin to unlock."  
     )
 
-================= UNBLOCK MONEY =================
+# ================= UNBLOCK MONEY =================
 
 @bot.message_handler(func=lambda m: m.text == "💰 UNBLOCK MONEY")
 def unblock_money_start(m):
@@ -721,7 +721,7 @@ bot.send_message(
     f"✅ Money unblocked for user {uid}"  
 )
 
-================= UNBAN USER =================
+# ================= UNBAN USER =================
 
 @bot.message_handler(func=lambda m: m.text == "🔥 UN BAN-USER")
 def unban_user_start(m):
@@ -750,7 +750,7 @@ save_users()
 bot.send_message(m.chat.id, f"✅ User {uid} unbanned")  
 bot.send_message(int(uid), "✅ You have been unbanned by admin.")
 
-================= VERIFY CONTROL =================
+# ================= VERIFY CONTROL =================
 
 @bot.message_handler(func=lambda m: m.text == "✅ VERIFY")
 def enable_verify(m):
@@ -791,7 +791,7 @@ if pending_verify.get(uid) == m.text:
 else:  
     bot.send_message(m.chat.id, "❌ Incorrect code.")
 
-================= WITHDRAWAL CHECK =================
+# ================= WITHDRAWAL CHECK =================
 
 @bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
 def withdrawal_check_start(m):
@@ -838,7 +838,7 @@ msg_text = (
 
 bot.send_message(m.chat.id, msg_text)
 
-================= STATS =================
+# ================= STATS =================
 
 @bot.message_handler(func=lambda m: m.text == "📊 STATS")
 def stats_handler(m):
@@ -863,7 +863,7 @@ msg = (
 
 bot.send_message(m.chat.id, msg)
 
-================= MANUAL BAN =================
+# ================= MANUAL BAN =================
 
 @bot.message_handler(func=lambda m: m.text == "🚫 BAN USER MANUAL")
 def manual_ban_start(m):
@@ -895,7 +895,7 @@ save_users()
 bot.send_message(m.chat.id, f"🚫 User {uid} banned")  
 bot.send_message(int(uid), "🚫 You have been banned by admin.")
 
-================= RAADI (DOWNLOAD STATS) =================
+# ================= RAADI (DOWNLOAD STATS) =================
 
 @bot.message_handler(func=lambda m: m.text == "🔍 RAADI")
 def raadi_stats(m):
@@ -937,7 +937,7 @@ for i, (uid, count) in enumerate(sorted_users[:3], start=1):
 msg_text = "\n".join(msg_lines)  
 bot.send_message(m.chat.id, msg_text, parse_mode="HTML")
 
-================= BROADCAST =================
+# ================= BROADCAST =================
 
 @bot.message_handler(func=lambda m: m.text == "📢 BROADCAST")
 def broadcast_start(m):
@@ -967,7 +967,7 @@ for uid in users:
 
 bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
-================= SEE USERS LIST =================
+# ================= SEE USERS LIST =================
 
 @bot.message_handler(func=lambda m: m.text == "👥 SEE LIST")
 def see_users(m):
@@ -1005,7 +1005,7 @@ bot.send_message(
     f"📊 Total Users: {total}"  
 )
 
-================= SEARCH USER =================
+# ================= SEARCH USER =================
 
 @bot.message_handler(func=lambda m: m.text == "🔎 SEARCH USER")
 def search_user(m):
@@ -1052,7 +1052,7 @@ else:
 
     bot.send_message(m.chat.id,"❌ User not found")
 
-================= POST CHANNEL =================
+# ================= POST CHANNEL =================
 
 @bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
 def post_channel_start(m):
@@ -1081,7 +1081,7 @@ text = "✅ Channels saved:\n" + "\n".join([f"@{c}" for c in channels])
 
 bot.send_message(m.chat.id, text)
 
-================= CHECKING DOWNLOAD =================
+# ================= CHECKING DOWNLOAD =================
 
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
@@ -1131,7 +1131,7 @@ if POST_CHANNELS:
 
 download_media(message.chat.id, message.text)
 
-================= MULTI CHANNEL CONFIRM =================
+# ================= MULTI CHANNEL CONFIRM =================
 
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
 def multi_checkjoin(call):
@@ -1177,7 +1177,7 @@ else:
         show_alert=True  
     )
 
-================= CONFIRM JOIN =================
+# ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
 def confirm_join(call):
 
@@ -1225,7 +1225,7 @@ def confirm_join(call):
             show_alert=True
         )
 
-================= CLOSE WINDOWS =================
+# ================= CLOSE WINDOWS =================
 
 @bot.message_handler(func=lambda m: m.text == "❌ CLOSE WINDOWS")
 def close_channel_windows(m):
@@ -1242,7 +1242,7 @@ bot.send_message(
     "✅ Channel join system disabled."  
 )
 
-================= ADD BALANCE =================
+# ================= ADD BALANCE =================
 
 @bot.message_handler(func=lambda m: m.text == "➕ ADD BALANCE")
 def add_balance_start(m):
@@ -1281,7 +1281,7 @@ try:
 except:  
     bot.send_message(m.chat.id, "❌ Format error.\nUse:\n<BOT ID or Telegram ID> <amount>")
 
-================= REMOVE MONEY =================
+# ================= REMOVE MONEY =================
 
 @bot.message_handler(func=lambda m: m.text == "➖ REMOVE MONEY")
 def remove_balance_start(m):
@@ -1326,19 +1326,19 @@ except:
 
 CAPTION_TEXT = "Downloaded by:\n@Downloadvedioytibot"
 
-================= URL EXTRACTOR =================
+# ================= URL EXTRACTOR =================
 
 def extract_url(text):
 urls = re.findall(r'https?://[^\s]+', text)
 return urls[0] if urls else None
 
-================= CLEAN SEND VIDEO FUNCTION =================
+# ================= CLEAN SEND VIDEO FUNCTION =================
 
 def send_video_with_music(chat_id, file_path, platform=None):
 kb = InlineKeyboardMarkup()
 kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-===== COUNT VIDEO =====
+# ===== COUNT VIDEO =====
 
 uid = str(chat_id)  
 videos_data["total"] += 1  
@@ -1366,7 +1366,7 @@ with open(file_path, "rb") as video:
         reply_markup=kb  
     )
 
-================= MEDIA DOWNLOADER =================
+# ================= MEDIA DOWNLOADER =================
 
 def download_media(chat_id, text):
 
@@ -1386,7 +1386,7 @@ try:
     msg = bot.send_message(chat_id, "⏳ Downloading...")  
     bot.send_chat_action(chat_id, "typing")
 
-================= TIKTOK =================
+# ================= TIKTOK =================
 
 if "tiktok.com" in url:  
 
@@ -1429,7 +1429,7 @@ if "tiktok.com" in url:
                 bot.delete_message(chat_id,msg.message_id)  
                 return
 
-================= INSTAGRAM =================
+# ================= INSTAGRAM =================
 
 if "instagram.com" in url:  
 
@@ -1466,7 +1466,7 @@ if "instagram.com" in url:
         bot.delete_message(chat_id,msg.message_id)  
         return
 
-================= PINTEREST =================
+# ================= PINTEREST =================
 
 if "pin.it" in url:  
         try:  
@@ -1510,7 +1510,7 @@ if "pin.it" in url:
         bot.delete_message(chat_id,msg.message_id)  
         return
 
-================= FACEBOOK =================
+# ================= FACEBOOK =================
 
 if "facebook.com" in url or "fb.watch" in url:  
 
@@ -1530,7 +1530,7 @@ if "facebook.com" in url or "fb.watch" in url:
         bot.delete_message(chat_id,msg.message_id)  
         return
 
-================= YOUTUBE =================
+# ================= YOUTUBE =================
 
 if "youtube.com" in url or "youtu.be" in url:  
 
@@ -1566,7 +1566,7 @@ except Exception as e:
         "• Facebook"  
     )
 
-================= MESSAGE USER =================
+# ================= MESSAGE USER =================
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))
 def message_user(call):
@@ -1595,7 +1595,7 @@ except:
 
     bot.send_message(m.chat.id,"❌ Failed to send message")
 
-================= MUSIC CONVERSION =================
+# ================= MUSIC CONVERSION =================
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
@@ -1634,7 +1634,7 @@ try:
 except Exception as e:  
     bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
 
-================= RUN BOTS SAFELY =================
+# ================= RUN BOTS SAFELY =================
 
 def run_bot1():
 while True:

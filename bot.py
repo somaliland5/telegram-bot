@@ -12,11 +12,12 @@ import random
 import threading
 
 # ================= CONFIG =================
+
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 
-bot = telebot.TeleBot(BOT_TOKEN)
-bot2 = telebot.TeleBot(BOT2_TOKEN)
+bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
 
 ADMIN_IDS = [7983838654]
 

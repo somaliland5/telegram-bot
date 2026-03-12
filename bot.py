@@ -1580,12 +1580,6 @@ def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-    if msg_id:
-    try:
-        bot.delete_message(chat_id, msg_id)
-    except:
-        pass
-
 # ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1

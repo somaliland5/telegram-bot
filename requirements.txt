@@ -4,4 +4,4 @@ requests
 yt-dlp
 beautifulsoup4
 pyTelegramBotAPI
-pymongo[srv]
+pymongo[srv]==3.11

@@ -1784,50 +1784,47 @@ def download_media(chat_id, text):
 
         # ================= YOUTUBE =================
         # ================= YOUTUBE =================
-if "youtube.com" in url or "youtu.be" in url:
-    try:
+        if "youtube.com" in url or "youtu.be" in url:
 
-        # 4K USERS
-        if str(chat_id) in UNLOCKED_4K_USERS:
-            ydl_opts = {
-                "format": "bestvideo[height<=2160]+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
+            if str(chat_id) in UNLOCKED_4K_USERS:
+                ydl_opts = {
+                    "format": "bestvideo[height<=2160]+bestaudio/best",
+                    "outtmpl": "youtube_%(id)s.%(ext)s",
+                    "merge_output_format": "mp4",
+                    "quiet": True
+                }
 
-        # NORMAL USERS
-        else:
-            ydl_opts = {
-                "format": "bestvideo[height<=720]+bestaudio/best",
-                "outtmpl": "youtube_%(id)s.%(ext)s",
-                "merge_output_format": "mp4",
-                "quiet": True
-            }
+            else:
+                ydl_opts = {
+                    "format": "bestvideo[height<=720]+bestaudio/best",
+                    "outtmpl": "youtube_%(id)s.%(ext)s",
+                    "merge_output_format": "mp4",
+                    "quiet": True
+                }
 
-        # DOWNLOAD
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            file = ydl.prepare_filename(info)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file = ydl.prepare_filename(info)
 
-        # SEND VIDEO
-        send_video_with_music(chat_id, file, "youtube")
+            send_video_with_music(chat_id, file, "youtube")
 
-        # DELETE FILE AFTER SEND
-        try:
-            os.remove(file)
-        except:
-            pass
+            try:
+                os.remove(file)
+            except:
+                pass
 
-        return
+            return
+
+        bot.send_message(chat_id, "❌ Unsupported link")
 
     except Exception as e:
+
         bot.send_message(
             chat_id,
-            "❌ YouTube download error.\nPlease try another link."
+            "❌ Download failed.\nSend a valid TikTok, Facebook, Pinterest or YouTube link."
         )
+
         print(e)
-        return
         
 # ================= MESSAGE USER =================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))

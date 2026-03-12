@@ -26,6 +26,7 @@ CHANNEL_ID = "@tiktokvediodownload"
 POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
+MANAGED_CHANNELS = []
 
 VERIFY_ENABLED = False
 verify_pending = {}
@@ -119,7 +120,7 @@ def admin_menu():
     kb.add("🔥 UN BAN-USER", "📌 POST CHANNEL")
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
-    kb.add("CHANNEL")
+    kb.add("CHANNEL", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -813,6 +814,53 @@ def manual_ban_process(m):
 
     bot.send_message(m.chat.id, f"🚫 User {uid} banned")
     bot.send_message(int(uid), "🚫 You have been banned by admin.")
+
+    # ================= ADD CHANNEL =================
+
+@bot.message_handler(func=lambda m: m.text == "📡 ADD CHANNEL")
+def add_channel_start(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send channel username\nExample:\n@mychannel"
+    )
+
+    bot.register_next_step_handler(msg, add_channel_process)
+
+
+def add_channel_process(m):
+
+    username = m.text.strip()
+
+    try:
+
+        member = bot.get_chat_member(username, bot.get_me().id)
+
+        if member.status not in ["administrator", "creator"]:
+
+            bot.send_message(
+                m.chat.id,
+                "❌ Bot is not admin in this channel"
+            )
+            return
+
+        if username not in MANAGED_CHANNELS:
+            MANAGED_CHANNELS.append(username)
+
+        bot.send_message(
+            m.chat.id,
+            f"✅ Channel Added\n{username}"
+        )
+
+    except:
+
+        bot.send_message(
+            m.chat.id,
+            "❌ Invalid channel or bot not inside channel"
+        )
     
 # ================= CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CHANNEL")

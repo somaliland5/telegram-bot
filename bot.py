@@ -1122,31 +1122,54 @@ def see_users(m):
 
     # ================= HISTORY =================
 @bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
-def show_history(m):
+def admin_history(m):
 
     if not is_admin(m.from_user.id):
         return
 
-    if not history:
-        bot.send_message(m.chat.id,"❌ No history yet")
+    msg = bot.send_message(
+        m.chat.id,
+        "📥 Send Telegram ID of the user"
+    )
+
+    bot.register_next_step_handler(msg, show_user_history)
+
+def show_user_history(m):
+
+    if not is_admin(m.from_user.id):
         return
 
-    for item in history[-20:]:
+    uid = m.text.strip()
+
+    user_videos = [h for h in history if str(h["user"]) == uid]
+
+    if not user_videos:
+        bot.send_message(m.chat.id, "❌ No video yet")
+        return
+
+    bot.send_message(
+        m.chat.id,
+        f"📊 User {uid} downloaded {len(user_videos)} videos"
+    )
+
+    for item in user_videos:
+
+        link = item["link"]
+        file_id = item["file_id"]
+        username = item["username"]
 
         kb = InlineKeyboardMarkup()
 
         kb.add(
             InlineKeyboardButton(
-                "🎬 Watch Video",
-                callback_data=f"watch|{item['file_id']}"
+                "🎬 WATCH VIDEO",
+                callback_data=f"watch|{file_id}"
             )
         )
 
         bot.send_message(
             m.chat.id,
-            f"👤 User: {item['user']}\n"
-            f"🔗 {item['link']}\n"
-            f"⏰ {item['time']}",
+            f"👤 Username: {username}\n🔗 {link}",
             reply_markup=kb
         )
 

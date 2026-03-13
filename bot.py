@@ -27,6 +27,7 @@ POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
+MAX_CHANNELS = 10
 
 pending_post = {}
 

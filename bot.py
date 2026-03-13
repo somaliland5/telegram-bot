@@ -1294,51 +1294,57 @@ def handle_links(message):
             send_multi_join(user_id)
             return
 
+@bot.message_handler(func=lambda m: m.text and "http" in m.text)
+def handle_links(message):
+
+    user_id = message.from_user.id
+    link = message.text
+
     # ===== VERIFY SYSTEM =====
-if VERIFY_ENABLED:
+    if VERIFY_ENABLED:
 
-    if str(user_id) not in users:
-        return
+        if str(user_id) not in users:
+            return
 
-    if not users[str(user_id)].get("verified", False):
+        if not users[str(user_id)].get("verified", False):
 
-        code = str(random.randint(10000,99999))
+            code = str(random.randint(10000,99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+            verify_pending[user_id] = {
+                "code": code,
+                "link": link
+            }
 
-        kb = InlineKeyboardMarkup(row_width=1)
+            kb = InlineKeyboardMarkup(row_width=1)
 
-        kb.add(
-            InlineKeyboardButton(
-                "🤖 VERIFY VIA BOT",
-                url=f"https://t.me/Verifyd_bot?start={code}"
+            kb.add(
+                InlineKeyboardButton(
+                    "🤖 VERIFY VIA BOT",
+                    url="https://t.me/Verifyd_bot"
+                )
             )
-        )
 
-        kb.add(
-            InlineKeyboardButton(
-                "📧 VERIFY VIA GMAIL",
-                callback_data="verify_gmail"
+            kb.add(
+                InlineKeyboardButton(
+                    "📧 VERIFY VIA GMAIL",
+                    callback_data="verify_gmail"
+                )
             )
-        )
 
-        kb.add(
-            InlineKeyboardButton(
-                "📱 VERIFY VIA TELEGRAM",
-                callback_data="verify_telegram"
+            kb.add(
+                InlineKeyboardButton(
+                    "📱 VERIFY VIA TELEGRAM",
+                    callback_data="verify_telegram"
+                )
             )
-        )
 
-        bot.send_message(
-            message.chat.id,
-            "🔐 Anti Bot Verification\n\nChoose verification method:",
-            reply_markup=kb
-        )
+            bot.send_message(
+                message.chat.id,
+                "🔐 Anti Bot Verification\n\nChoose verification method:",
+                reply_markup=kb
+            )
 
-        return
+            return
 
     # ===== START DOWNLOAD =====
     bot.send_message(message.chat.id, "⏳ Downloading...")

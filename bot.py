@@ -48,6 +48,7 @@ VERIFY_ENABLED = False
 verify_pending = {}
 verify_method = {}
 video_store = {}
+video_files = {}
 
 
 # ================= DATABASE FILES =================

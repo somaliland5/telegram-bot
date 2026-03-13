@@ -1291,7 +1291,6 @@ def search_user_result(m):
         bot.send_message(m.chat.id,"❌ User not found")
 
 # ================= CHECKING DOWNLOAD =================
-
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
 
@@ -1299,7 +1298,6 @@ def handle_links(message):
     link = message.text
 
     # ===== FORCE JOIN MULTI CHANNEL =====
-
     if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
         joined_all = True
@@ -1309,59 +1307,56 @@ def handle_links(message):
             try:
                 member = bot.get_chat_member(f"@{ch}", user_id)
 
-                if member.status not in ["member", "administrator", "creator"]:
+                if member.status not in ["member","administrator","creator"]:
                     joined_all = False
                     break
 
-            except Exception as e:
-                print("Join check error:", e)
+            except:
                 joined_all = False
                 break
 
         if not joined_all:
 
             pending_links[user_id] = link
-
             send_multi_join(user_id)
 
             return
+
+
     # ===== VERIFY SYSTEM =====
-    # ===== VERIFY SYSTEM =====
+    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
 
-if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+        code = str(random.randint(10000,99999))
 
-    code = str(random.randint(10000,99999))
+        verify_pending[user_id] = {
+            "code": code,
+            "link": link
+        }
 
-    verify_pending[user_id] = {
-        "code": code,
-        "link": link
-    }
+        kb = InlineKeyboardMarkup()
 
-    kb = InlineKeyboardMarkup()
-
-    kb.add(
-        InlineKeyboardButton(
-            "📩 Verify via DM",
-            callback_data="verify_dm"
-        ),
-        InlineKeyboardButton(
-            "🤖 Verify via Bot",
-            url=f"https://t.me/Verifyd_bot?start={code}"
+        kb.add(
+            InlineKeyboardButton(
+                "📩 Verify via DM",
+                callback_data="verify_dm"
+            ),
+            InlineKeyboardButton(
+                "🤖 Verify via Bot",
+                url=f"https://t.me/Verifyd_bot?start={code}"
+            )
         )
-    )
 
-    bot.send_message(
-        message.chat.id,
-        "🔐 Anti-Bot Verification\n\nChoose verification method:",
-        reply_markup=kb
-    )
+        bot.send_message(
+            message.chat.id,
+            "🔐 Anti-Bot Verification\n\nChoose verification method:",
+            reply_markup=kb
+        )
 
-    return
+        return
+
 
     # ===== START DOWNLOAD =====
-
     bot.send_message(message.chat.id, "⏳ Downloading...")
-
     download_media(message.chat.id, link)
 
 # ================= MULTI CHANNEL CONFIRM =================

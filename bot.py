@@ -1295,7 +1295,12 @@ def handle_links(message):
             return
 
     # ===== VERIFY SYSTEM =====
-    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+    if VERIFY_ENABLED:
+
+    if str(user_id) not in users:
+        return
+
+    if not users[str(user_id)].get("verified", False):
 
         code = str(random.randint(10000,99999))
 

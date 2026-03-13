@@ -9,6 +9,7 @@ import re
 import shutil
 import threading
 import asyncio
+import uuid
 
 from telethon import TelegramClient
 import smtplib
@@ -46,6 +47,7 @@ pending_post = {}
 VERIFY_ENABLED = False
 verify_pending = {}
 verify_method = {}
+video_store = {}
 
 
 # ================= DATABASE FILES =================

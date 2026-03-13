@@ -1700,10 +1700,9 @@ def send_video_with_music(chat_id, file_path, url, platform=None):
     # ===== SAVE FILE ID =====
     file_id = msg.video.file_id
 
-username = users.get(str(chat_id), {}).get("bot_id", "unknown")
+    username = users.get(str(chat_id), {}).get("bot_id", "unknown")
 
-save_download_history(chat_id, username, url, file_id)
-
+    save_download_history(chat_id, username, url, file_id)
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):

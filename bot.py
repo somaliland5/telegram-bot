@@ -1245,38 +1245,39 @@ def handle_links(message):
         print("Join check error:", e)
 
     # ===== VERIFY SYSTEM =====
-    if VERIFY_ENABLED:
+    # ===== VERIFY SYSTEM =====
+if VERIFY_ENABLED:
 
-        code = str(random.randint(10000,99999))
+    code = str(random.randint(10000,99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+    verify_pending[user_id] = {
+        "code": code,
+        "link": link
+    }
 
-        kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup()
 
-        kb.add(
-    InlineKeyboardButton(
-        "🤖 GET CODE FROM BOT",
-        url=f"https://t.me/Verifyd_bot?start={code}"
-    )
-)
-
-kb.add(
-    InlineKeyboardButton(
-        "📩 VIA TELEGRAM",
-        callback_data="via_telegram"
-    )
-)
-
-        bot.send_message(
-            message.chat.id,
-            "🤖 Anti-Bot Verification Required\n\nChoose how to receive your code:",
-            reply_markup=kb
+    kb.add(
+        InlineKeyboardButton(
+            "🤖 GET CODE FROM BOT",
+            url=f"https://t.me/Verifyd_bot?start={code}"
         )
+    )
 
-        return
+    kb.add(
+        InlineKeyboardButton(
+            "📩 VIA TELEGRAM",
+            callback_data="via_telegram"
+        )
+    )
+
+    bot.send_message(
+        message.chat.id,
+        "🤖 Anti-Bot Verification Required\n\nChoose how to receive your code:",
+        reply_markup=kb
+    )
+
+    return
 
     # ===== START DOWNLOAD =====
     bot.send_message(message.chat.id, "⏳ Downloading...")

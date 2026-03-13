@@ -27,7 +27,6 @@ POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
-MAX_CHANNELS = 10
 
 pending_post = {}
 
@@ -321,37 +320,7 @@ def send_join_message(user_id):
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
-    
-# ================= 56 =================
-def send_multi_join(user_id):
 
-    kb = InlineKeyboardMarkup(row_width=3)
-
-    buttons = []
-
-    for ch in POST_CHANNELS:
-
-        buttons.append(
-            InlineKeyboardButton(
-                "➕️ JOIN",
-                url=f"https://t.me/{ch}"
-            )
-        )
-
-    kb.add(*buttons)
-
-    kb.add(
-        InlineKeyboardButton(
-            "✅ CONFIRM",
-            callback_data="multi_checkjoin"
-        )
-    )
-
-    bot.send_message(
-        user_id,
-        "⚠️ Join all channels to continue.",
-        reply_markup=kb
-    )
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
@@ -1065,54 +1034,6 @@ def broadcast_send(m):
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
-        # ================== POST CHANNEL =================
-@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
-def post_channel_start(m):
-
-    global CHANNEL_WINDOW_OPEN
-
-    if not is_admin(m.from_user.id):
-        return
-
-    CHANNEL_WINDOW_OPEN = True
-    POST_CHANNELS.clear()
-
-    msg = bot.send_message(
-        m.chat.id,
-        "Send channel usernames\nExample:\n@channel1\n@channel2\n\nMax 10 channels.\nSend DONE when finished."
-    )
-
-    bot.register_next_step_handler(msg, post_channel_add)
-
-def post_channel_add(m):
-
-    if m.text.lower() == "done":
-
-        bot.send_message(
-            m.chat.id,
-            f"✅ {len(POST_CHANNELS)} channels added."
-        )
-        return
-
-    if len(POST_CHANNELS) >= MAX_CHANNELS:
-
-        bot.send_message(
-            m.chat.id,
-            "⚠️ Maximum 10 channels allowed."
-        )
-        return
-
-    username = m.text.replace("@","").strip()
-
-    POST_CHANNELS.append(username)
-
-    msg = bot.send_message(
-        m.chat.id,
-        f"Channel @{username} added\nTotal: {len(POST_CHANNELS)}\nSend another or DONE"
-    )
-
-    bot.register_next_step_handler(msg, post_channel_add)
-
     # ================= CLOSE CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")
 def close_channel_post(m):
@@ -1219,33 +1140,32 @@ def handle_links(message):
     user_id = message.from_user.id
     link = message.text
 
-    # ===== FORCE JOIN MULTI CHANNEL =====
+    # ===== FORCE JOIN CHECK =====
 
-    if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        joined_all = True
+        if member.status not in ["member", "administrator", "creator"]:
 
-        for ch in POST_CHANNELS:
+            kb = InlineKeyboardMarkup()
+            kb.add(
+                InlineKeyboardButton(
+                    "📢 JOIN CHANNEL",
+                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}"
+                )
+            )
 
-            try:
-                member = bot.get_chat_member(f"@{ch}", user_id)
-
-                if member.status not in ["member", "administrator", "creator"]:
-                    joined_all = False
-                    break
-
-            except Exception as e:
-                print("Join check error:", e)
-                joined_all = False
-                break
-
-        if not joined_all:
-
-            pending_links[user_id] = link
-
-            send_multi_join(user_id)
+            bot.send_message(
+                message.chat.id,
+                "⚠️ You must join our channel before using the bot.",
+                reply_markup=kb
+            )
 
             return
+
+    except Exception as e:
+        print("Join check error:", e)
+
     # ===== VERIFY SYSTEM =====
 
     if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
@@ -1934,5 +1854,3 @@ if __name__ == "__main__":
 
     t1.start()
     t2.start()
-
-    app.run(host="0.0.0.0", port=3000)

@@ -1243,13 +1243,11 @@ def post_all_send(m):
     for ch in MANAGED_CHANNELS:
 
         try:
-
             bot.send_message(
                 ch,
                 main_text,
                 reply_markup=kb
             )
-
             sent += 1
 
         except Exception as e:

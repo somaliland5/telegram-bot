@@ -797,7 +797,7 @@ def post_all_send(m):
 
     main_text = lines[0]
 
-    kb = InlineKeyboardMarkup(row_width=2)
+    kb = InlineKeyboardMarkup(row_width=10)
 
     for line in lines[1:]:
 

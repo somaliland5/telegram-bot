@@ -1818,6 +1818,7 @@ def send_video_with_music(chat_id, file_path, platform=None):
                 "youtube": 0,
                 "facebook": 0,
                 "pinterest": 0
+                "snapchat": 0
             }
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
@@ -1884,6 +1885,33 @@ def download_media(chat_id, text):
             except Exception as e:
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
                 return
+
+        # ================= SNAPCHAT =================
+if "snapchat.com" in url or "snap.com" in url:
+
+    try:
+
+        ydl_opts = {
+            "format": "best",
+            "outtmpl": "snapchat_%(id)s.%(ext)s",
+            "quiet": True,
+            "merge_output_format": "mp4"
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file = ydl.prepare_filename(info)
+
+        send_video_with_music(chat_id, file, "snapchat")
+
+        if os.path.exists(file):
+            os.remove(file)
+
+        return
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Snapchat download error:\n{e}")
+        return
 
  # ================= PINTEREST =================
         if "pin.it" in url:

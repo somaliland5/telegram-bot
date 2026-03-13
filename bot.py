@@ -1214,37 +1214,33 @@ def handle_links(message):
     user_id = message.from_user.id
     link = message.text
 
-    # ===== FORCE JOIN CHECK =====
     # ===== FORCE JOIN MULTI CHANNEL =====
 
-if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
+    if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
-    joined_all = True
+        joined_all = True
 
-    for ch in POST_CHANNELS:
+        for ch in POST_CHANNELS:
 
-        try:
-            member = bot.get_chat_member(f"@{ch}", user_id)
+            try:
+                member = bot.get_chat_member(f"@{ch}", user_id)
 
-            if member.status not in ["member", "administrator", "creator"]:
+                if member.status not in ["member", "administrator", "creator"]:
+                    joined_all = False
+                    break
+
+            except Exception as e:
+                print("Join check error:", e)
                 joined_all = False
                 break
 
-        except:
-            joined_all = False
-            break
+        if not joined_all:
 
-    if not joined_all:
+            pending_links[user_id] = link
 
-        pending_links[user_id] = link
+            send_multi_join(user_id)
 
-        send_multi_join(user_id)
-
-        return
-
-    except Exception as e:
-        print("Join check error:", e)
-
+            return
     # ===== VERIFY SYSTEM =====
 
     if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):

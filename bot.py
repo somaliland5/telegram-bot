@@ -8,13 +8,13 @@ import subprocess
 import os
 import re
 import shutil
-import os
 import random
 import threading
 import smtplib
 from email.mime.text import MIMEText
+from telethon import TelegramClient
 
-# ================= CONFIG =================
+# ================= TOKENS =================
 
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
@@ -22,27 +22,49 @@ BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
 
+# ================= ADMIN =================
+
 ADMIN_IDS = [7983838654]
+
+# ================= CHANNEL SETTINGS =================
 
 CHANNEL_ID = "@tiktokvediodownload"
 
 POST_CHANNELS = []
-pending_links = {}
-CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
-MAX_CHANNELS = 10
 
+MAX_CHANNELS = 10
+CHANNEL_WINDOW_OPEN = False
+
+# ================= LINK STORAGE =================
+
+pending_links = {}
 pending_post = {}
 
-VERIFY_ENABLED = False
-verify_pending = {}
+# ================= VERIFY SYSTEM =================
 
+VERIFY_ENABLED = False
+
+verify_pending = {}
 verify_methods = {}
+
 gmail_codes = {}
 telegram_codes = {}
 
+# ================= GMAIL CONFIG =================
+
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+# ================= TELEGRAM ACCOUNT API =================
+
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+
+client = TelegramClient("session", API_ID, API_HASH)
 
 # ================= DATABASE FILES =================
+
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"

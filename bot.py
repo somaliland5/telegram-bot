@@ -1361,8 +1361,8 @@ def gmail_send_code(m):
 
     code = verify_pending[uid]["code"]
 
-    sender = "YOUR_GMAIL@gmail.com"
-    password = "YOUR_APP_PASSWORD"
+    sender = os.getenv("EMAIL_ADDRESS")
+password = os.getenv("EMAIL_PASSWORD")
 
     msg = MIMEText(f"Your verification code: {code}")
     msg["Subject"] = "Verification Code"

@@ -320,13 +320,13 @@ def send_join_message(user_id):
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
-
-        def send_multi_join(user_id):
+    
+# ================= 56 =================
+               def send_multi_join(user_id):
 
     kb = InlineKeyboardMarkup()
 
     for ch in POST_CHANNELS:
-
         kb.add(
             InlineKeyboardButton(
                 f"📢 JOIN @{ch}",

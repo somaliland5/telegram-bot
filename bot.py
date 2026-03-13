@@ -1804,24 +1804,27 @@ def extract_url(text):
 
 # ================= CLEAN SEND VIDEO FUNCTION =================
 def send_video_with_music(chat_id, file_path, platform=None):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-# ===== COUNT VIDEO =====
+    vid_id = str(uuid.uuid4())[:8]
+    video_files[vid_id] = file_path
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🎵 Convert to Music",
+            callback_data=f"music_{vid_id}"
+        )
+    )
+
     uid = str(chat_id)
+
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
 
-    # ===== COUNT PLATFORM =====
     if platform:
         if "platforms" not in videos_data:
-            videos_data["platforms"] = {
-                "tiktok": 0,
-                "youtube": 0,
-                "facebook": 0,
-                "pinterest": 0,
-                 "snapchat": 0
-            }
+            videos_data["platforms"] = {}
+
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
     save_videos()
@@ -2040,10 +2043,11 @@ def send_user_message(m, uid):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
 def convert_music(call):
 
-    file_path = call.data.split("|", 1)[1]
-    audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
-
     try:
+
+        file_path = call.data.split("|", 1)[1]
+        audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+
         subprocess.run(
             ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
             stdout=subprocess.DEVNULL,
@@ -2052,7 +2056,12 @@ def convert_music(call):
         )
 
         kb = InlineKeyboardMarkup()
-        kb.add(InlineKeyboardButton("📢 BOT CHANNEL", url="https://t.me/tiktokvediodownload"))
+        kb.add(
+            InlineKeyboardButton(
+                "📢 BOT CHANNEL",
+                url="https://t.me/tiktokvediodownload"
+            )
+        )
 
         with open(audio_path, "rb") as audio:
             bot.send_audio(
@@ -2067,12 +2076,16 @@ def convert_music(call):
         if os.path.exists(audio_path):
             os.remove(audio_path)
 
-        # video tirtir ka dib conversion
         if os.path.exists(file_path):
             os.remove(file_path)
 
+        bot.answer_callback_query(call.id, "🎵 Music converted")
+
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"❌ Music conversion failed:\n{e}")
+        bot.send_message(
+            call.message.chat.id,
+            f"❌ Music conversion failed:\n{e}"
+        )
 
 # ================= VERIFY BOT =================
 @bot2.message_handler(commands=['start'])

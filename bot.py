@@ -1913,8 +1913,6 @@ def run_bot2():
 if __name__ == "__main__":
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
-    t3 = threading.Thread(target=run_telegram)
 
 t1.start()
 t2.start()
-t3.start()

@@ -1156,7 +1156,6 @@ def show_user_history(m):
 
         link = item["link"]
         file_id = item["file_id"]
-        username = item["username"]
 
         kb = InlineKeyboardMarkup()
 
@@ -1169,7 +1168,7 @@ def show_user_history(m):
 
         bot.send_message(
             m.chat.id,
-            f"👤 Username: {username}\n🔗 {link}",
+            f"🔗 {link}",
             reply_markup=kb
         )
 

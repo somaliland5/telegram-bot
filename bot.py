@@ -1669,15 +1669,15 @@ def extract_url(text):
 
 # ================= CLEAN SEND VIDEO FUNCTION =================
 def send_video_with_music(chat_id, file_path, platform=None):
+
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-# ===== COUNT VIDEO =====
+    # ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
 
-    # ===== COUNT PLATFORM =====
     if platform:
         if "platforms" not in videos_data:
             videos_data["platforms"] = {
@@ -1686,18 +1686,20 @@ def send_video_with_music(chat_id, file_path, platform=None):
                 "facebook": 0,
                 "pinterest": 0
             }
+
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
     save_videos()
 
+    # ===== SEND VIDEO =====
     with open(file_path, "rb") as video:
 
-    msg = bot.send_video(
-        chat_id,
-        video,
-        caption=CAPTION_TEXT,
-        reply_markup=kb
-    )
+        msg = bot.send_video(
+            chat_id,
+            video,
+            caption=CAPTION_TEXT,
+            reply_markup=kb
+        )
 
     file_id = msg.video.file_id
 

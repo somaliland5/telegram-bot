@@ -809,14 +809,28 @@ def post_all_send(m):
         # haddii button link leeyahay
         if "|" in line:
 
-            name, link = line.split("|", 1)
+    name, link = line.split("|",1)
 
-            kb.add(
-                InlineKeyboardButton(
-                    name.strip(),
-                    url=link.strip()
-                )
+    name = name.strip()
+    link = link.strip()
+
+    if link.startswith("http") or link.startswith("tg"):
+
+        kb.add(
+            InlineKeyboardButton(
+                name,
+                url=link
             )
+        )
+
+    else:
+
+        kb.add(
+            InlineKeyboardButton(
+                name,
+                callback_data=f"postall_{link}"
+            )
+        )
 
         else:
 
@@ -2017,5 +2031,3 @@ if __name__ == "__main__":
 
     t1.start()
     t2.start()
-
-    app.run(host="0.0.0.0", port=3000)

@@ -331,7 +331,14 @@ def watch_video(call):
         call.message.chat.id,
         file_id
     )
+    
+# ================= KKKKKKK =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
+def watch_video(call):
 
+    file_id = call.data.split("|")[1]
+
+    bot.send_video(call.message.chat.id, file_id)
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):

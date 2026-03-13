@@ -364,7 +364,7 @@ async def start_telegram_listener():
                 f"🔑 Your verification code:\n\n{code}"
             )
 
-    await tg_client.run_until_disconnected()i
+    await tg_client.run_until_disconnected()
 
     
 

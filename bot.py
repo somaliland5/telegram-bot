@@ -1225,6 +1225,48 @@ def search_user_result(m):
 
         bot.send_message(m.chat.id,"❌ User not found")
 
+    # =================== HISTORY =================
+@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
+def admin_history(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    if not history:
+        bot.send_message(m.chat.id, "❌ No history yet")
+        return
+
+    for item in history:
+
+        uid = item["user"]
+        username = item["username"]
+        link = item["link"]
+        file_id = item["file_id"]
+
+        text = f"""
+👤 Username: {username}
+🆔 ID: {uid}
+🔗 Link: {link}
+"""
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "🎬 WATCH VIDEO",
+                callback_data=f"watch|{file_id}"
+            )
+        )
+
+        kb.add(
+            InlineKeyboardButton(
+                "💬 OPEN CHAT",
+                url=f"tg://user?id={uid}"
+            )
+        )
+
+        bot.send_message(m.chat.id, text, reply_markup=kb)
+
 # ================= CHECKING DOWNLOAD =================
 
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)

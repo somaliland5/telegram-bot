@@ -38,7 +38,6 @@ verify_pending = {}
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
-HISTORY_FILE = "history.json"
 
 # ================= JSON FUNCTIONS =================
 def load_json(path, default):
@@ -53,10 +52,6 @@ def save_json(path, data):
 
 users = load_json(USERS_FILE, {})
 withdraws = load_json(WITHDRAWS_FILE, [])
-history = load_json(HISTORY_FILE, [])
-
-def save_history():
-    save_json(HISTORY_FILE, history)
 
 def save_users():
     save_json(USERS_FILE, users)
@@ -108,18 +103,6 @@ def banned_guard(m):
         return True
     return False
 
-def save_download_history(user_id, username, link, file_id):
-
-    history.append({
-        "user": user_id,
-        "username": username,
-        "link": link,
-        "file_id": file_id,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-    save_history()
-
 # ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -141,7 +124,6 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
-    kb.add("📜 HISTORY")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -322,23 +304,6 @@ def post_button_click(call):
         reply_markup=kb
     )
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
-def watch_video(call):
-
-    file_id = call.data.split("|")[1]
-
-    bot.send_video(
-        call.message.chat.id,
-        file_id
-    )
-    
-# ================= KKKKKKK =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
-def watch_video(call):
-
-    file_id = call.data.split("|")[1]
-
-    bot.send_video(call.message.chat.id, file_id)
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -1120,58 +1085,6 @@ def see_users(m):
         f"📊 Total Users: {total}"
     )
 
-    # ================= HISTORY =================
-@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
-def admin_history(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    msg = bot.send_message(
-        m.chat.id,
-        "📥 Send Telegram ID of the user"
-    )
-
-    bot.register_next_step_handler(msg, show_user_history)
-
-def show_user_history(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    uid = m.text.strip()
-
-    user_videos = [h for h in history if str(h["user"]) == uid]
-
-    if not user_videos:
-        bot.send_message(m.chat.id, "❌ No video yet")
-        return
-
-    bot.send_message(
-        m.chat.id,
-        f"📊 User {uid} downloaded {len(user_videos)} videos"
-    )
-
-    for item in user_videos:
-
-        link = item["link"]
-        file_id = item["file_id"]
-
-        kb = InlineKeyboardMarkup()
-
-        kb.add(
-            InlineKeyboardButton(
-                "🎬 WATCH VIDEO",
-                callback_data=f"watch|{file_id}"
-            )
-        )
-
-        bot.send_message(
-            m.chat.id,
-            f"🔗 {link}",
-            reply_markup=kb
-        )
-
 # ================= SEARCH USER =================
 @bot.message_handler(func=lambda m: m.text == "🔎 SEARCH USER")
 def search_user(m):
@@ -1662,12 +1575,11 @@ def extract_url(text):
     return urls[0] if urls else None
 
 # ================= CLEAN SEND VIDEO FUNCTION =================
-def send_video_with_music(chat_id, file_path, url, platform=None):
-
+def send_video_with_music(chat_id, file_path, platform=None):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-    # ===== COUNT VIDEO =====
+# ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
@@ -1681,27 +1593,18 @@ def send_video_with_music(chat_id, file_path, url, platform=None):
                 "facebook": 0,
                 "pinterest": 0
             }
-
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
     save_videos()
 
-    # ===== SEND VIDEO =====
     with open(file_path, "rb") as video:
-
-        msg = bot.send_video(
+        bot.send_video(
             chat_id,
             video,
             caption=CAPTION_TEXT,
             reply_markup=kb
         )
 
-    # ===== SAVE FILE ID =====
-    file_id = msg.video.file_id
-
-    username = users.get(str(chat_id), {}).get("bot_id", "unknown")
-
-    save_download_history(chat_id, username, url, file_id)
 
 # ================= MEDIA DOWNLOADER =================
 def download_media(chat_id, text):
@@ -1750,7 +1653,7 @@ def download_media(chat_id, text):
                         with open(filename, "wb") as f:
                             f.write(video_data)
 
-                        send_video_with_music(chat_id, filename, url, "tiktok")
+                        send_video_with_music(chat_id, filename, "tiktok")
                         return
             except Exception as e:
                 bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
@@ -1793,7 +1696,7 @@ def download_media(chat_id, text):
 
                         # ===== VIDEO =====
                         else:
-                            send_video_with_music(chat_id, file, url, "pinterest")
+                            send_video_with_music(chat_id, file, "pinterest")
 
                         # delete file
                         try:
@@ -1820,7 +1723,7 @@ def download_media(chat_id, text):
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file, url, "facebook")
+            send_video_with_music(chat_id, file, "facebook")
             return
 
         # ================= YOUTUBE =================
@@ -1836,7 +1739,7 @@ def download_media(chat_id, text):
                 info = ydl.extract_info(url, download=True)
                 file = ydl.prepare_filename(info)
 
-            send_video_with_music(chat_id, file, url, "youtube")
+            send_video_with_music(chat_id, file, "youtube")
             return
 
         bot.send_message(chat_id, "❌ Unsupported link")

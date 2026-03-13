@@ -1323,63 +1323,62 @@ def handle_links(message):
     link = message.text
 
     # ===== VERIFY SYSTEM =====
-    # ===== VERIFY SYSTEM =====
-if VERIFY_ENABLED:
+    if VERIFY_ENABLED:
 
-    uid = str(user_id)
+        uid = str(user_id)
 
-    if uid not in users:
-        users[uid] = {
-            "balance":0,
-            "blocked":0,
-            "ref":random_ref(),
-            "bot_id":random_botid(),
-            "invited":0,
-            "banned":False,
-            "verified":False,
-            "month":now_month()
-        }
-        save_users()
+        if uid not in users:
+            users[uid] = {
+                "balance": 0,
+                "blocked": 0,
+                "ref": random_ref(),
+                "bot_id": random_botid(),
+                "invited": 0,
+                "banned": False,
+                "verified": False,
+                "month": now_month()
+            }
+            save_users()
 
-    if not users[uid].get("verified", False):
+        if not users[uid].get("verified", False):
 
-        code = str(random.randint(10000,99999))
+            code = str(random.randint(10000, 99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+            verify_pending[user_id] = {
+                "code": code,
+                "link": link
+            }
 
-        kb = InlineKeyboardMarkup(row_width=1)
+            kb = InlineKeyboardMarkup(row_width=1)
 
-        kb.add(
-            InlineKeyboardButton(
-                "🤖 VERIFY VIA BOT",
-                url=f"https://t.me/Verifyd_bot?start={code}"
+            kb.add(
+                InlineKeyboardButton(
+                    "🤖 VERIFY VIA BOT",
+                    url=f"https://t.me/Verifyd_bot?start={code}"
+                )
             )
-        )
 
-        kb.add(
-            InlineKeyboardButton(
-                "📧 VERIFY VIA GMAIL",
-                callback_data="verify_gmail"
+            kb.add(
+                InlineKeyboardButton(
+                    "📧 VERIFY VIA GMAIL",
+                    callback_data="verify_gmail"
+                )
             )
-        )
 
-        kb.add(
-            InlineKeyboardButton(
-                "📱 VERIFY VIA TELEGRAM",
-                callback_data="verify_telegram"
+            kb.add(
+                InlineKeyboardButton(
+                    "📱 VERIFY VIA TELEGRAM",
+                    callback_data="verify_telegram"
+                )
             )
-        )
 
-        bot.send_message(
-            message.chat.id,
-            "🔐 Anti Bot Verification\n\nChoose verification method:",
-            reply_markup=kb
-        )
+            bot.send_message(
+                message.chat.id,
+                "🔐 Anti Bot Verification\n\nChoose verification method:",
+                reply_markup=kb
+            )
 
-        return
+            return
 
     # ===== START DOWNLOAD =====
     bot.send_message(message.chat.id, "⏳ Downloading...")

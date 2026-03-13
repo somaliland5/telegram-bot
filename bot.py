@@ -11,6 +11,9 @@ import threading
 import asyncio
 
 from telethon import TelegramClient
+import smtplib
+from email.mime.text import MIMEText
+
 
 # ================= CONFIG =================
 
@@ -19,6 +22,9 @@ BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 PHONE = os.getenv("PHONE")
+
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_PASS = os.getenv("GMAIL_PASS")
 
 tg_client = TelegramClient("session", API_ID, API_HASH)
 
@@ -357,6 +363,59 @@ def verify_dm(call):
             call.message.chat.id,
             "❌ Cannot send DM.\nUser must message your Telegram account first."
         )
+
+def send_gmail_code(email, code):
+
+    subject = "Telegram Bot Verification Code"
+    body = f"Your verification code is:\n\n{code}"
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = GMAIL_USER
+    msg["To"] = email
+
+    try:
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+
+        server.login(GMAIL_USER, GMAIL_PASS)
+
+        server.sendmail(GMAIL_USER, email, msg.as_string())
+
+        server.quit()
+
+        return True
+
+    except Exception as e:
+
+        print("EMAIL ERROR:", e)
+        return False
+
+def process_email(message):
+
+    uid = message.from_user.id
+    email = message.text
+
+    code = str(random.randint(10000,99999))
+
+    verify_pending[uid]["code"] = code
+
+    success = send_gmail_code(email, code)
+
+    if success:
+
+        bot.send_message(
+            message.chat.id,
+            "📩 Code sent to your Gmail.\nSend the code here."
+        )
+
+    else:
+
+        bot.send_message(
+            message.chat.id,
+            "❌ Failed to send email."
+        )
     
 # ================= 56 =================
 def send_multi_join(user_id):
@@ -434,6 +493,16 @@ def via_telegram(call):
             call.message.chat.id,
             "⚠️ Telegram blocked sending message.\nUser must message your account first."
         )
+
+@bot.callback_query_handler(func=lambda call: call.data == "verify_email")
+def verify_email(call):
+
+    msg = bot.send_message(
+        call.message.chat.id,
+        "📧 Send your Gmail address to receive verification code."
+    )
+
+    bot.register_next_step_handler(msg, process_email)
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
@@ -1338,7 +1407,9 @@ def handle_links(message):
 
         kb.add(
             InlineKeyboardButton("📩 Verify via DM", callback_data="verify_dm"),
-            InlineKeyboardButton("🤖 Verify via Bot", url=f"https://t.me/Verifyd_bot?start={code}")
+            InlineKeyboardButton("🤖 Verify via Bot", url=f"https://t.me/Verifyd_bot?start={code}"),
+            InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
+            
         )
 
         bot.send_message(

@@ -10,6 +10,8 @@ import re
 import shutil
 import random
 import threading
+import smtplib
+from email.mime.text import MIMEText
 
 # ================= CONFIG =================
 

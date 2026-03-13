@@ -325,15 +325,20 @@ def send_join_message(user_id):
 # ================= 56 =================
 def send_multi_join(user_id):
 
-    kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup(row_width=3)
+
+    buttons = []
 
     for ch in POST_CHANNELS:
-        kb.add(
+
+        buttons.append(
             InlineKeyboardButton(
-                f"📢 JOIN @{ch}",
+                "📢 JOIN",
                 url=f"https://t.me/{ch}"
             )
         )
+
+    kb.add(*buttons)
 
     kb.add(
         InlineKeyboardButton(

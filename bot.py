@@ -1817,8 +1817,8 @@ def send_video_with_music(chat_id, file_path, platform=None):
                 "tiktok": 0,
                 "youtube": 0,
                 "facebook": 0,
-                "pinterest": 0
-                "snapchat": 0
+                "pinterest": 0,
+                 "snapchat": 0
             }
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 

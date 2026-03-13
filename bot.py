@@ -10,11 +10,8 @@ import re
 import shutil
 import random
 import threading
-import smtplib
-from email.mime.text import MIMEText
-from telethon import TelegramClient
 
-# ================= TOKENS =================
+# ================= CONFIG =================
 
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
@@ -22,49 +19,23 @@ BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
 
-# ================= ADMIN =================
-
 ADMIN_IDS = [7983838654]
-
-# ================= CHANNEL SETTINGS =================
 
 CHANNEL_ID = "@tiktokvediodownload"
 
 POST_CHANNELS = []
-MANAGED_CHANNELS = []
-
-MAX_CHANNELS = 10
-CHANNEL_WINDOW_OPEN = False
-
-# ================= LINK STORAGE =================
-
 pending_links = {}
+CHANNEL_WINDOW_OPEN = False
+MANAGED_CHANNELS = []
+MAX_CHANNELS = 10
+
 pending_post = {}
 
-# ================= VERIFY SYSTEM =================
-
 VERIFY_ENABLED = False
-
 verify_pending = {}
-verify_methods = {}
 
-gmail_codes = {}
-telegram_codes = {}
-
-# ================= GMAIL CONFIG =================
-
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-
-# ================= TELEGRAM ACCOUNT API =================
-
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-
-client = TelegramClient("session", API_ID, API_HASH)
 
 # ================= DATABASE FILES =================
-
 USERS_FILE = "users.json"
 WITHDRAWS_FILE = "withdraws.json"
 VIDEOS_FILE = "videos.json"
@@ -154,7 +125,6 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
-    kb.add("📣 POST ALL")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -206,18 +176,6 @@ def start_handler(message):
     # Hubinta join
     check_membership(uid)
 
-    # ================ 00 =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("postall_"))
-def postall_button(call):
-
-    text = call.data.replace("postall_","")
-
-    bot.answer_callback_query(
-        call.id,
-        text,
-        show_alert=True
-    )
-
 # ================= VERIFY BOT START =================
 
 @bot2.message_handler(commands=['start'])
@@ -257,35 +215,56 @@ def verify_start(message):
 
 # ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
-
     try:
-
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        if member.status in ["member","administrator","creator"]:
-
-            kb = InlineKeyboardMarkup()
-
-            kb.add(
-                InlineKeyboardButton(
-                    "➕ JOIN CHANNEL",
-                    url="https://t.me/tiktokvediodownload"
-                )
-            )
-
-            kb.add(
-                InlineKeyboardButton(
-                    "➕ ADD TO GROUP",
-                    url=f"https://t.me/{bot.get_me().username}?startgroup=true"
-                )
-            )
-
+        if member.status in ["member", "administrator", "creator"]:
             bot.send_message(
                 user_id,
-                "🎬 Welcome to Video Downloader Bot!\n\nSend any video link to download.",
-                reply_markup=kb
-            )
+                """🎬 Welcome to Video Downloader Bot!
 
+This bot helps you easily download videos and music from many popular platforms directly to Telegram.
+
+With this bot you can download content from platforms like:
+• TikTok
+• Instagram
+• Facebook
+• Pinterest
+• YouTube
+• And many other video links available on the internet.
+
+📥 How to use the bot:
+
+1. Copy the video link from any supported platform.
+2. Send the link here in the bot.
+3. The bot will automatically download the video for you.
+4. You will receive the video file directly in this chat.
+
+⚡ Fast & Easy Downloads
+Our system processes your request quickly and sends the highest available quality whenever possible.
+
+💰 Earn Money With Referrals
+You can also earn rewards by inviting your friends to use the bot.
+
+Here is how it works:
+• Share your personal referral link with others.
+• When someone joins the bot using your link, you receive a reward.
+• The more people you invite, the more rewards you earn.
+
+🚀 Why use this bot?
+• Fast downloading system
+• Supports multiple platforms
+• Simple and easy to use
+• Earn rewards through referrals
+
+📌 Important:
+Please make sure you follow the required channel(s) to continue using the bot and to keep the service running.
+
+Now you're ready to start!
+
+👇 Send any video link to begin downloading.""",
+                reply_markup=user_menu(is_admin(user_id))
+            )
         else:
             send_join_message(user_id)
 
@@ -354,7 +333,7 @@ def send_multi_join(user_id):
 
         buttons.append(
             InlineKeyboardButton(
-                "📢 JOIN",
+                "➕️ JOIN",
                 url=f"https://t.me/{ch}"
             )
         )
@@ -799,20 +778,6 @@ def unban_user_process(m):
     bot.send_message(m.chat.id, f"✅ User {uid} unbanned")
     bot.send_message(int(uid), "✅ You have been unbanned by admin.")
 
-# ================= POST ALL =================
-
-# ================= SAVE GROUPS =================
-
-@bot.my_chat_member_handler()
-def save_groups(update):
-
-    chat = update.chat
-
-    if chat.type in ["group","supergroup","channel"]:
-
-        if chat.id not in MANAGED_CHANNELS:
-            MANAGED_CHANNELS.append(chat.id)
-
 # ================= WITHDRAWAL CHECK =================
 @bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
 def withdrawal_check_start(m):
@@ -1101,90 +1066,52 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
         # ================== POST CHANNEL =================
-@bot.message_handler(func=lambda m: m.text == "📣 POST ALL")
-def post_all_start(m):
+@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
+def post_channel_start(m):
+
+    global CHANNEL_WINDOW_OPEN
 
     if not is_admin(m.from_user.id):
         return
+
+    CHANNEL_WINDOW_OPEN = True
+    POST_CHANNELS.clear()
 
     msg = bot.send_message(
         m.chat.id,
-        "Send post like this:\n\n"
-        "Hello Users\n\n"
-        "Download Bot | https://t.me/bot\n"
-        "Help"
+        "Send channel usernames\nExample:\n@channel1\n@channel2\n\nMax 10 channels.\nSend DONE when finished."
     )
 
-    bot.register_next_step_handler(msg, post_all_send)
+    bot.register_next_step_handler(msg, post_channel_add)
 
+def post_channel_add(m):
 
-def post_all_send(m):
+    if m.text.lower() == "done":
 
-    if not is_admin(m.from_user.id):
+        bot.send_message(
+            m.chat.id,
+            f"✅ {len(POST_CHANNELS)} channels added."
+        )
         return
 
-    lines = m.text.split("\n")
+    if len(POST_CHANNELS) >= MAX_CHANNELS:
 
-    text_lines = []
-    button_lines = []
+        bot.send_message(
+            m.chat.id,
+            "⚠️ Maximum 10 channels allowed."
+        )
+        return
 
-    for line in lines:
+    username = m.text.replace("@","").strip()
 
-        line = line.strip()
+    POST_CHANNELS.append(username)
 
-        if "|" in line:
-            button_lines.append(line)
-        else:
-            text_lines.append(line)
-
-    main_text = "\n".join(text_lines)
-
-    kb = InlineKeyboardMarkup(row_width=3)
-
-    for line in button_lines:
-
-        name, link = line.split("|", 1)
-
-        name = name.strip()
-        link = link.strip()
-
-        if link.startswith("http") or link.startswith("tg"):
-
-            kb.add(
-                InlineKeyboardButton(
-                    name,
-                    url=link
-                )
-            )
-
-        else:
-
-            kb.add(
-                InlineKeyboardButton(
-                    name,
-                    callback_data=f"postall_{link}"
-                )
-            )
-
-    sent = 0
-
-    for ch in MANAGED_CHANNELS:
-
-        try:
-            bot.send_message(
-                ch,
-                main_text,
-                reply_markup=kb
-            )
-            sent += 1
-
-        except Exception as e:
-            print("POST ERROR:", e)
-
-    bot.send_message(
+    msg = bot.send_message(
         m.chat.id,
-        f"✅ Post sent to {sent} chats"
+        f"Channel @{username} added\nTotal: {len(POST_CHANNELS)}\nSend another or DONE"
     )
+
+    bot.register_next_step_handler(msg, post_channel_add)
 
     # ================= CLOSE CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")
@@ -1285,6 +1212,7 @@ def search_user_result(m):
         bot.send_message(m.chat.id,"❌ User not found")
 
 # ================= CHECKING DOWNLOAD =================
+
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
 
@@ -1292,6 +1220,7 @@ def handle_links(message):
     link = message.text
 
     # ===== FORCE JOIN MULTI CHANNEL =====
+
     if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
         joined_all = True
@@ -1313,143 +1242,44 @@ def handle_links(message):
         if not joined_all:
 
             pending_links[user_id] = link
+
             send_multi_join(user_id)
+
             return
-
-@bot.message_handler(func=lambda m: m.text and "http" in m.text)
-def handle_links(message):
-
-    user_id = message.from_user.id
-    link = message.text
-
     # ===== VERIFY SYSTEM =====
-    if VERIFY_ENABLED:
 
-        if str(user_id) not in users:
-            return
+    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
 
-        if not users[str(user_id)].get("verified", False):
+        code = str(random.randint(10000,99999))
 
-            code = str(random.randint(10000,99999))
+        verify_pending[user_id] = {
+            "code": code,
+            "link": link
+        }
 
-            verify_pending[user_id] = {
-                "code": code,
-                "link": link
-            }
+        kb = InlineKeyboardMarkup()
 
-            kb = InlineKeyboardMarkup(row_width=1)
-
-            kb.add(
-                InlineKeyboardButton(
-                    "🤖 VERIFY VIA BOT",
-                    url="https://t.me/Verifyd_bot"
-                )
+        kb.add(
+            InlineKeyboardButton(
+                "🔑 GET CODE",
+                url=f"https://t.me/Verifyd_bot?start={code}"
             )
+        )
 
-            kb.add(
-                InlineKeyboardButton(
-                    "📧 VERIFY VIA GMAIL",
-                    callback_data="verify_gmail"
-                )
-            )
+        bot.send_message(
+            message.chat.id,
+            "🤖 Anti-Bot Verification Required\n\n"
+            "Click GET CODE then send the code here.",
+            reply_markup=kb
+        )
 
-            kb.add(
-                InlineKeyboardButton(
-                    "📱 VERIFY VIA TELEGRAM",
-                    callback_data="verify_telegram"
-                )
-            )
-
-            bot.send_message(
-                message.chat.id,
-                "🔐 Anti Bot Verification\n\nChoose verification method:",
-                reply_markup=kb
-            )
-
-            return
+        return
 
     # ===== START DOWNLOAD =====
+
     bot.send_message(message.chat.id, "⏳ Downloading...")
+
     download_media(message.chat.id, link)
-
-    # ================= HB =================
-@bot.callback_query_handler(func=lambda call: call.data=="verify_gmail")
-def gmail_verify(call):
-
-    msg = bot.send_message(
-        call.message.chat.id,
-        "📧 Send your Gmail address:"
-    )
-
-    bot.register_next_step_handler(msg, gmail_send_code)
-
- # ================= YY =================
-def gmail_send_code(m):
-
-    email = m.text.strip()
-    uid = m.from_user.id
-
-    if uid not in verify_pending:
-        return
-
-    code = verify_pending[uid]["code"]
-
-    sender = os.getenv("EMAIL_ADDRESS")
-    password = os.getenv("EMAIL_PASSWORD")
-
-    msg = MIMEText(f"Your verification code: {code}")
-    msg["Subject"] = "Verification Code"
-    msg["From"] = sender
-    msg["To"] = email
-
-    try:
-
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        server.login(sender, password)
-        server.sendmail(sender, email, msg.as_string())
-        server.quit()
-
-        bot.send_message(
-            m.chat.id,
-            "📧 Code sent to your Gmail.\n\nSend the code here."
-        )
-
-    except Exception as e:
-
-        print("Gmail error:", e)
-
-        bot.send_message(
-            m.chat.id,
-            "❌ Failed to send Gmail code."
-        )
-
-# ================= HHL =================
-@bot.callback_query_handler(func=lambda call: call.data=="verify_telegram")
-def telegram_verify(call):
-
-    uid = call.from_user.id
-
-    if uid not in verify_pending:
-        return
-
-    code = verify_pending[uid]["code"]
-
-    try:
-
-        bot.send_message(
-            uid,
-            f"🔐 Your verification code:\n\n{code}"
-        )
-
-        bot.answer_callback_query(call.id,"Code sent to Telegram")
-
-    except:
-
-        bot.answer_callback_query(
-            call.id,
-            "❌ Start bot first",
-            show_alert=True
-        )
 
 # ================= MULTI CHANNEL CONFIRM =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")
@@ -2104,3 +1934,5 @@ if __name__ == "__main__":
 
     t1.start()
     t2.start()
+
+    app.run(host="0.0.0.0", port=3000)

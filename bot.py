@@ -1173,52 +1173,92 @@ def broadcast_send(m):
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
         # ================== POST CHANNEL =================
-@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
-def post_channel_start(m):
-
-    global CHANNEL_WINDOW_OPEN
+@bot.message_handler(func=lambda m: m.text == "📣 POST ALL")
+def post_all_start(m):
 
     if not is_admin(m.from_user.id):
         return
 
-    CHANNEL_WINDOW_OPEN = True
-    POST_CHANNELS.clear()
-
     msg = bot.send_message(
         m.chat.id,
-        "Send channel usernames\nExample:\n@channel1\n@channel2\n\nMax 10 channels.\nSend DONE when finished."
+        "Send post like this:\n\n"
+        "Hello Users\n\n"
+        "Download Bot | https://t.me/bot\n"
+        "Help"
     )
 
-    bot.register_next_step_handler(msg, post_channel_add)
+    bot.register_next_step_handler(msg, post_all_send)
 
-def post_channel_add(m):
 
-    if m.text.lower() == "done":
+def post_all_send(m):
 
-        bot.send_message(
-            m.chat.id,
-            f"✅ {len(POST_CHANNELS)} channels added."
-        )
+    if not is_admin(m.from_user.id):
         return
 
-    if len(POST_CHANNELS) >= MAX_CHANNELS:
+    lines = m.text.split("\n")
 
-        bot.send_message(
-            m.chat.id,
-            "⚠️ Maximum 10 channels allowed."
-        )
-        return
+    text_lines = []
+    button_lines = []
 
-    username = m.text.replace("@","").strip()
+    for line in lines:
 
-    POST_CHANNELS.append(username)
+        line = line.strip()
 
-    msg = bot.send_message(
+        if "|" in line:
+            button_lines.append(line)
+        else:
+            text_lines.append(line)
+
+    main_text = "\n".join(text_lines)
+
+    kb = InlineKeyboardMarkup(row_width=3)
+
+    for line in button_lines:
+
+        name, link = line.split("|", 1)
+
+        name = name.strip()
+        link = link.strip()
+
+        if link.startswith("http") or link.startswith("tg"):
+
+            kb.add(
+                InlineKeyboardButton(
+                    name,
+                    url=link
+                )
+            )
+
+        else:
+
+            kb.add(
+                InlineKeyboardButton(
+                    name,
+                    callback_data=f"postall_{link}"
+                )
+            )
+
+    sent = 0
+
+    for ch in MANAGED_CHANNELS:
+
+        try:
+
+            bot.send_message(
+                ch,
+                main_text,
+                reply_markup=kb
+            )
+
+            sent += 1
+
+        except Exception as e:
+            print("POST ERROR:", e)
+
+    bot.send_message(
         m.chat.id,
-        f"Channel @{username} added\nTotal: {len(POST_CHANNELS)}\nSend another or DONE"
+        f"✅ Post sent to {sent} chats"
     )
-
-    bot.register_next_step_handler(msg, post_channel_add)
 
     # ================= CLOSE CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")

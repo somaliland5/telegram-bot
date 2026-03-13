@@ -366,13 +366,10 @@ async def start_telegram_listener():
 
     await tg_client.run_until_disconnected()
 
-    
 
-    async def send_telegram_code(user_id, code):
+async def send_telegram_code(user_id, code):
 
     try:
-
-        await tg_client.start(PHONE)
 
         await tg_client.send_message(
             user_id,

@@ -1333,35 +1333,35 @@ def handle_links(message):
 
 
     # ===== VERIFY SYSTEM =====
-    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+if VERIFY_ENABLED and not users.get(str(user_id), {}).get("verified", False):
 
-        code = str(random.randint(10000,99999))
+    code = str(random.randint(10000,99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+    verify_pending[user_id] = {
+        "code": code,
+        "link": link
+    }
 
-        kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup()
 
-        kb.add(
-            InlineKeyboardButton(
-                "📩 Verify via DM",
-                callback_data="verify_dm"
-            ),
-            InlineKeyboardButton(
-                "🤖 Verify via Bot",
-                url=f"https://t.me/Verifyd_bot?start={code}"
-            )
+    kb.add(
+        InlineKeyboardButton(
+            "📩 Verify via DM",
+            callback_data="verify_dm"
+        ),
+        InlineKeyboardButton(
+            "🤖 Verify via Bot",
+            url=f"https://t.me/Verifyd_bot?start={code}"
         )
+    )
 
-        bot.send_message(
-            message.chat.id,
-            "🔐 Anti-Bot Verification\n\nChoose verification method:",
-            reply_markup=kb
-        )
+    bot.send_message(
+        message.chat.id,
+        "🔐 Anti-Bot Verification\n\nChoose verification method:",
+        reply_markup=kb
+    )
 
-        return
+    return
 
 
     # ===== START DOWNLOAD =====

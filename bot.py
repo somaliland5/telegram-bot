@@ -125,6 +125,7 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
+    kb.add("📣 POST ALL")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -215,56 +216,35 @@ def verify_start(message):
 
 # ================= CHECK MEMBERSHIP =================
 def check_membership(user_id):
+
     try:
+
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
 
-        if member.status in ["member", "administrator", "creator"]:
+        if member.status in ["member","administrator","creator"]:
+
+            kb = InlineKeyboardMarkup()
+
+            kb.add(
+                InlineKeyboardButton(
+                    "➕ JOIN CHANNEL",
+                    url="https://t.me/tiktokvediodownload"
+                )
+            )
+
+            kb.add(
+                InlineKeyboardButton(
+                    "➕ ADD TO GROUP",
+                    url=f"https://t.me/{bot.get_me().username}?startgroup=true"
+                )
+            )
+
             bot.send_message(
                 user_id,
-                """🎬 Welcome to Video Downloader Bot!
-
-This bot helps you easily download videos and music from many popular platforms directly to Telegram.
-
-With this bot you can download content from platforms like:
-• TikTok
-• Instagram
-• Facebook
-• Pinterest
-• YouTube
-• And many other video links available on the internet.
-
-📥 How to use the bot:
-
-1. Copy the video link from any supported platform.
-2. Send the link here in the bot.
-3. The bot will automatically download the video for you.
-4. You will receive the video file directly in this chat.
-
-⚡ Fast & Easy Downloads
-Our system processes your request quickly and sends the highest available quality whenever possible.
-
-💰 Earn Money With Referrals
-You can also earn rewards by inviting your friends to use the bot.
-
-Here is how it works:
-• Share your personal referral link with others.
-• When someone joins the bot using your link, you receive a reward.
-• The more people you invite, the more rewards you earn.
-
-🚀 Why use this bot?
-• Fast downloading system
-• Supports multiple platforms
-• Simple and easy to use
-• Earn rewards through referrals
-
-📌 Important:
-Please make sure you follow the required channel(s) to continue using the bot and to keep the service running.
-
-Now you're ready to start!
-
-👇 Send any video link to begin downloading.""",
-                reply_markup=user_menu(is_admin(user_id))
+                "🎬 Welcome to Video Downloader Bot!\n\nSend any video link to download.",
+                reply_markup=kb
             )
+
         else:
             send_join_message(user_id)
 
@@ -777,6 +757,56 @@ def unban_user_process(m):
 
     bot.send_message(m.chat.id, f"✅ User {uid} unbanned")
     bot.send_message(int(uid), "✅ You have been unbanned by admin.")
+
+# ================= POST ALL =================
+
+@bot.message_handler(func=lambda m: m.text == "📣 POST ALL")
+def post_all_start(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send the message or advertisement you want to post to ALL channels and groups."
+    )
+
+    bot.register_next_step_handler(msg, post_all_send)
+
+
+def post_all_send(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    text = m.text
+
+    sent = 0
+
+    for ch in MANAGED_CHANNELS:
+
+        try:
+            bot.send_message(ch, text)
+            sent += 1
+        except Exception as e:
+            print("Channel error:", e)
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Post sent to {sent} channels/groups"
+    )
+
+# ================= SAVE GROUPS =================
+
+@bot.my_chat_member_handler()
+def save_groups(update):
+
+    chat = update.chat
+
+    if chat.type in ["group","supergroup","channel"]:
+
+        if chat.id not in MANAGED_CHANNELS:
+            MANAGED_CHANNELS.append(chat.id)
 
 # ================= WITHDRAWAL CHECK =================
 @bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")

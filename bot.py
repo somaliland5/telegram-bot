@@ -339,11 +339,24 @@ def verify_dm(call):
 
     code = verify_pending[uid]["code"]
 
-    try:
+    loop = asyncio.get_event_loop()
+
+    success = loop.run_until_complete(send_code_telegram(uid, code))
+
+    if success:
+
+        bot.answer_callback_query(call.id, "Code sent")
 
         bot.send_message(
-            uid,
-            f"🔑 Your verification code:\n\n{code}"
+            call.message.chat.id,
+            "📩 Code sent to your Telegram messages.\nSend the code here."
+        )
+
+    else:
+
+        bot.send_message(
+            call.message.chat.id,
+            "❌ Cannot send DM.\nUser must message your Telegram account first."
         )
 
         bot.answer_callback_query(call.id,"Code sent to your DM")

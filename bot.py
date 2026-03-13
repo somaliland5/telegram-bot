@@ -1930,9 +1930,7 @@ def run_bot2():
             print("Bot2 restart:", e)
 
 if __name__ == "__main__":
-
     tg_client.start(PHONE)
-
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 

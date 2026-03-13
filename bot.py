@@ -376,7 +376,7 @@ def send_gmail_code(email, code):
 
     try:
 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 465)
         server.starttls()
 
         server.login(GMAIL_USER, GMAIL_PASS)

@@ -101,6 +101,12 @@ def find_user_by_botid(bid):
             return u
     return None
 
+def banned_guard(m):
+    uid = str(m.from_user.id)
+    if uid in users and users[uid].get("banned"):
+        bot.send_message(m.chat.id, "🚫 You are banned.")
+        return True
+    return False
 
 def save_download_history(user_id, username, link, file_id):
 
@@ -113,23 +119,6 @@ def save_download_history(user_id, username, link, file_id):
     })
 
     save_history()
-
-    history.append({
-        "user": user_id,
-        "username": username,
-        "link": link,
-        "file_id": file_id,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-    save_history()
-
-def banned_guard(m):
-    uid = str(m.from_user.id)
-    if uid in users and users[uid].get("banned"):
-        bot.send_message(m.chat.id, "🚫 You are banned.")
-        return True
-    return False
 
 # ================= MENUS =================
 def user_menu(show_admin=False):
@@ -333,6 +322,16 @@ def post_button_click(call):
         reply_markup=kb
     )
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
+def watch_video(call):
+
+    file_id = call.data.split("|")[1]
+
+    bot.send_video(
+        call.message.chat.id,
+        file_id
+    )
+
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -387,17 +386,6 @@ def confirm_join(call):
             "❌ Please join the channel first!",
             show_alert=True
         )
-
-# ================== WATCH =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("watch|"))
-def watch_video(call):
-
-    file_id = call.data.split("|")[1]
-
-    bot.send_video(
-        call.message.chat.id,
-        file_id
-    )
 
 # ================= ADMIN PANEL =================
 @bot.message_handler(func=lambda m: m.text == "👑 ADMIN PANEL")
@@ -787,59 +775,6 @@ def unban_user_process(m):
     bot.send_message(m.chat.id, f"✅ User {uid} unbanned")
     bot.send_message(int(uid), "✅ You have been unbanned by admin.")
 
-    # ================== HISTORY =================
-@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
-def admin_history(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    if not history:
-        bot.send_message(m.chat.id, "❌ No history yet")
-        return
-
-    users_data = {}
-
-    for h in history:
-        uid = h["user"]
-
-        if uid not in users_data:
-            users_data[uid] = {
-                "username": h["username"],
-                "links": []
-            }
-
-        users_data[uid]["links"].append(h)
-
-    for uid, data in users_data.items():
-
-        text = f"👤 Username: {data['username']}\n"
-        text += f"🆔 ID: {uid}\n\n"
-
-        kb = InlineKeyboardMarkup()
-
-        for item in data["links"]:
-
-            kb.add(
-                InlineKeyboardButton(
-                    "🎬 WATCH VIDEO",
-                    callback_data=f"watch|{item['file_id']}"
-                )
-            )
-
-        kb.add(
-            InlineKeyboardButton(
-                "💬 OPEN CHAT",
-                url=f"tg://user?id={uid}"
-            )
-        )
-
-        bot.send_message(
-            m.chat.id,
-            text,
-            reply_markup=kb
-        )
-
 # ================= WITHDRAWAL CHECK =================
 @bot.message_handler(func=lambda m: m.text == "💳 WITHDRAWAL CHECK")
 def withdrawal_check_start(m):
@@ -1178,6 +1113,36 @@ def see_users(m):
         f"📊 Total Users: {total}"
     )
 
+    # ================= HISTORY =================
+@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
+def show_history(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    if not history:
+        bot.send_message(m.chat.id,"❌ No history yet")
+        return
+
+    for item in history[-20:]:
+
+        kb = InlineKeyboardMarkup()
+
+        kb.add(
+            InlineKeyboardButton(
+                "🎬 Watch Video",
+                callback_data=f"watch|{item['file_id']}"
+            )
+        )
+
+        bot.send_message(
+            m.chat.id,
+            f"👤 User: {item['user']}\n"
+            f"🔗 {item['link']}\n"
+            f"⏰ {item['time']}",
+            reply_markup=kb
+        )
+
 # ================= SEARCH USER =================
 @bot.message_handler(func=lambda m: m.text == "🔎 SEARCH USER")
 def search_user(m):
@@ -1224,48 +1189,6 @@ def search_user_result(m):
     else:
 
         bot.send_message(m.chat.id,"❌ User not found")
-
-    # =================== HISTORY =================
-@bot.message_handler(func=lambda m: m.text == "📜 HISTORY")
-def admin_history(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    if not history:
-        bot.send_message(m.chat.id, "❌ No history yet")
-        return
-
-    for item in history:
-
-        uid = item["user"]
-        username = item["username"]
-        link = item["link"]
-        file_id = item["file_id"]
-
-        text = f"""
-👤 Username: {username}
-🆔 ID: {uid}
-🔗 Link: {link}
-"""
-
-        kb = InlineKeyboardMarkup()
-
-        kb.add(
-            InlineKeyboardButton(
-                "🎬 WATCH VIDEO",
-                callback_data=f"watch|{file_id}"
-            )
-        )
-
-        kb.add(
-            InlineKeyboardButton(
-                "💬 OPEN CHAT",
-                url=f"tg://user?id={uid}"
-            )
-        )
-
-        bot.send_message(m.chat.id, text, reply_markup=kb)
 
 # ================= CHECKING DOWNLOAD =================
 
@@ -1711,15 +1634,15 @@ def extract_url(text):
 
 # ================= CLEAN SEND VIDEO FUNCTION =================
 def send_video_with_music(chat_id, file_path, platform=None):
-
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🎵 Convert to Music", callback_data=f"music|{file_path}"))
 
-    # ===== COUNT VIDEO =====
+# ===== COUNT VIDEO =====
     uid = str(chat_id)
     videos_data["total"] += 1
     videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
 
+    # ===== COUNT PLATFORM =====
     if platform:
         if "platforms" not in videos_data:
             videos_data["platforms"] = {
@@ -1728,26 +1651,24 @@ def send_video_with_music(chat_id, file_path, platform=None):
                 "facebook": 0,
                 "pinterest": 0
             }
-
         videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
 
     save_videos()
 
-    # ===== SEND VIDEO =====
     with open(file_path, "rb") as video:
 
-        msg = bot.send_video(
-            chat_id,
-            video,
-            caption=CAPTION_TEXT,
-            reply_markup=kb
-        )
+    msg = bot.send_video(
+        chat_id,
+        video,
+        caption=CAPTION_TEXT,
+        reply_markup=kb
+    )
 
-    file_id = msg.video.file_id
+file_id = msg.video.file_id
 
-    username = users.get(str(chat_id), {}).get("bot_id", "User")
+username = users.get(str(chat_id), {}).get("bot_id", "unknown")
 
-    save_download_history(chat_id, username, file_path, file_id)
+save_download_history(chat_id, username, file_path, file_id)
 
 
 # ================= MEDIA DOWNLOADER =================

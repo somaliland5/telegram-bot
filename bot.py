@@ -10,20 +10,11 @@ import re
 import shutil
 import random
 import threading
-from telethon import TelegramClient
-import asyncio
-from telethon import events
-
 
 # ================= CONFIG =================
 
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-PHONE = os.getenv("PHONE")
-
-tg_client = TelegramClient("verify_session", API_ID, API_HASH)
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
@@ -36,6 +27,7 @@ POST_CHANNELS = []
 pending_links = {}
 CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
+MAX_CHANNELS = 10
 
 pending_post = {}
 
@@ -313,76 +305,6 @@ def post_button_click(call):
         reply_markup=kb
     )
 
-    # ================= VIA TELEGRAM =================
-@bot.callback_query_handler(func=lambda call: call.data == "via_telegram")
-def via_telegram_code(call):
-
-    user_id = call.from_user.id
-
-    if user_id not in verify_pending:
-        bot.answer_callback_query(call.id, "⚠️ Code expired")
-        return
-
-    code = verify_pending[user_id]["code"]
-
-    success = asyncio.run(send_telegram_code(user_id, code))
-
-    if success:
-
-        bot.answer_callback_query(call.id, "✅ Code sent to your Telegram")
-
-        bot.send_message(
-            call.message.chat.id,
-            "📩 Code sent to your Telegram messages.\nSend it here."
-        )
-
-    else:
-
-        bot.answer_callback_query(
-            call.id,
-            "❌ Unable to send message.\nPlease start chat with my account.",
-            show_alert=True
-        )
-
-async def start_telegram_listener():
-
-    await tg_client.start(PHONE)
-
-    print("Telegram account listening...")
-
-    @tg_client.on(events.NewMessage)
-    async def handler(event):
-
-        user_id = event.sender_id
-
-        if user_id in verify_pending:
-
-            code = verify_pending[user_id]["code"]
-
-            await tg_client.send_message(
-                user_id,
-                f"🔑 Your verification code:\n\n{code}"
-            )
-
-    await tg_client.run_until_disconnected()
-
-
-async def send_telegram_code(user_id, code):
-
-    try:
-
-        await tg_client.send_message(
-            user_id,
-            f"🔑 Your verification code:\n\n{code}"
-        )
-
-        return True
-
-    except Exception as e:
-
-        print("Telegram send error:", e)
-
-        return False
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -399,7 +321,37 @@ def send_join_message(user_id):
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
+    
+# ================= 56 =================
+def send_multi_join(user_id):
 
+    kb = InlineKeyboardMarkup(row_width=3)
+
+    buttons = []
+
+    for ch in POST_CHANNELS:
+
+        buttons.append(
+            InlineKeyboardButton(
+                "➕️ JOIN",
+                url=f"https://t.me/{ch}"
+            )
+        )
+
+    kb.add(*buttons)
+
+    kb.add(
+        InlineKeyboardButton(
+            "✅ CONFIRM",
+            callback_data="multi_checkjoin"
+        )
+    )
+
+    bot.send_message(
+        user_id,
+        "⚠️ Join all channels to continue.",
+        reply_markup=kb
+    )
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
@@ -1113,6 +1065,54 @@ def broadcast_send(m):
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
 
+        # ================== POST CHANNEL =================
+@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
+def post_channel_start(m):
+
+    global CHANNEL_WINDOW_OPEN
+
+    if not is_admin(m.from_user.id):
+        return
+
+    CHANNEL_WINDOW_OPEN = True
+    POST_CHANNELS.clear()
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send channel usernames\nExample:\n@channel1\n@channel2\n\nMax 10 channels.\nSend DONE when finished."
+    )
+
+    bot.register_next_step_handler(msg, post_channel_add)
+
+def post_channel_add(m):
+
+    if m.text.lower() == "done":
+
+        bot.send_message(
+            m.chat.id,
+            f"✅ {len(POST_CHANNELS)} channels added."
+        )
+        return
+
+    if len(POST_CHANNELS) >= MAX_CHANNELS:
+
+        bot.send_message(
+            m.chat.id,
+            "⚠️ Maximum 10 channels allowed."
+        )
+        return
+
+    username = m.text.replace("@","").strip()
+
+    POST_CHANNELS.append(username)
+
+    msg = bot.send_message(
+        m.chat.id,
+        f"Channel @{username} added\nTotal: {len(POST_CHANNELS)}\nSend another or DONE"
+    )
+
+    bot.register_next_step_handler(msg, post_channel_add)
+
     # ================= CLOSE CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")
 def close_channel_post(m):
@@ -1212,7 +1212,6 @@ def search_user_result(m):
         bot.send_message(m.chat.id,"❌ User not found")
 
 # ================= CHECKING DOWNLOAD =================
-# ================= CHECKING DOWNLOAD =================
 
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
@@ -1220,35 +1219,38 @@ def handle_links(message):
     user_id = message.from_user.id
     link = message.text
 
-    # ===== FORCE JOIN CHECK =====
-    try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+    # ===== FORCE JOIN MULTI CHANNEL =====
 
-        if member.status not in ["member", "administrator", "creator"]:
+    if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
-            kb = InlineKeyboardMarkup()
-            kb.add(
-                InlineKeyboardButton(
-                    "📢 JOIN CHANNEL",
-                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}"
-                )
-            )
+        joined_all = True
 
-            bot.send_message(
-                message.chat.id,
-                "⚠️ You must join our channel before using the bot.",
-                reply_markup=kb
-            )
+        for ch in POST_CHANNELS:
+
+            try:
+                member = bot.get_chat_member(f"@{ch}", user_id)
+
+                if member.status not in ["member", "administrator", "creator"]:
+                    joined_all = False
+                    break
+
+            except Exception as e:
+                print("Join check error:", e)
+                joined_all = False
+                break
+
+        if not joined_all:
+
+            pending_links[user_id] = link
+
+            send_multi_join(user_id)
+
             return
-
-    except Exception as e:
-        print("Join check error:", e)
-
     # ===== VERIFY SYSTEM =====
-    # ===== VERIFY SYSTEM =====
-if VERIFY_ENABLED:
 
-        code = str(random.randint(10000, 99999))
+    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+
+        code = str(random.randint(10000,99999))
 
         verify_pending[user_id] = {
             "code": code,
@@ -1259,29 +1261,24 @@ if VERIFY_ENABLED:
 
         kb.add(
             InlineKeyboardButton(
-                "🤖 GET CODE FROM BOT",
+                "🔑 GET CODE",
                 url=f"https://t.me/Verifyd_bot?start={code}"
-            )
-        )
-
-        kb.add(
-            InlineKeyboardButton(
-                "📩 VIA TELEGRAM",
-                callback_data="via_telegram"
             )
         )
 
         bot.send_message(
             message.chat.id,
-            "🤖 Anti-Bot Verification Required\n\nChoose how to receive your code:",
+            "🤖 Anti-Bot Verification Required\n\n"
+            "Click GET CODE then send the code here.",
             reply_markup=kb
         )
 
         return
 
-
     # ===== START DOWNLOAD =====
+
     bot.send_message(message.chat.id, "⏳ Downloading...")
+
     download_media(message.chat.id, link)
 
 # ================= MULTI CHANNEL CONFIRM =================
@@ -1583,6 +1580,7 @@ def remove_balance_start(m):
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id, "❌ You are not admin")
         return
+
     msg = bot.send_message(
         m.chat.id,
         "Send BOT ID or Telegram ID and amount separated by space:\n"
@@ -1930,16 +1928,11 @@ def run_bot2():
         except Exception as e:
             print("Bot2 restart:", e)
 
-
 if __name__ == "__main__":
-
-    tg_client.start(PHONE)
-
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    t1.join()
-    t2.join()
+    app.run(host="0.0.0.0", port=3000)

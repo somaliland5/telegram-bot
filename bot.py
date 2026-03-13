@@ -1295,7 +1295,7 @@ def handle_links(message):
             return
 
     # ===== VERIFY SYSTEM =====
-    if VERIFY_ENABLED:
+if VERIFY_ENABLED:
 
     if str(user_id) not in users:
         return

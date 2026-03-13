@@ -12,6 +12,7 @@ import random
 import threading
 from telethon import TelegramClient
 import asyncio
+from telethon import events
 
 
 # ================= CONFIG =================
@@ -343,21 +344,27 @@ def via_telegram_code(call):
             show_alert=True
         )
 
-async def send_telegram_code(user_id, code):
+async def start_telegram_listener():
 
-    try:
-        await tg_client.start(PHONE)
+    await tg_client.start(PHONE)
 
-        await tg_client.send_message(
-            user_id,
-            f"🔑 Your verification code:\n\n{code}"
-        )
+    print("Telegram account listening...")
 
-        return True
+    @tg_client.on(events.NewMessage)
+    async def handler(event):
 
-    except Exception as e:
-        print("Telegram send error:", e)
-        return False
+        user_id = event.sender_id
+
+        if user_id in verify_pending:
+
+            code = verify_pending[user_id]["code"]
+
+            await tg_client.send_message(
+                user_id,
+                f"🔑 Your verification code:\n\n{code}"
+            )
+
+    await tg_client.run_until_disconnected()
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -1239,10 +1246,10 @@ def handle_links(message):
         )
 
         kb.add(
-            InlineKeyboardButton(
-                "📩 VIA TELEGRAM",
-                callback_data="via_telegram"
-            )
+    InlineKeyboardButton(
+        "📩 VIA TELEGRAM",
+        url="https://t.me/Verifytonjava"
+    )
         )
 
         bot.send_message(
@@ -1556,7 +1563,6 @@ def remove_balance_start(m):
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id, "❌ You are not admin")
         return
-
     msg = bot.send_message(
         m.chat.id,
         "Send BOT ID or Telegram ID and amount separated by space:\n"
@@ -1907,6 +1913,8 @@ def run_bot2():
 if __name__ == "__main__":
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
+    t3 = threading.Thread(target=run_telegram)
 
-    t1.start()
-    t2.start()
+t1.start()
+t2.start()
+t3.start()

@@ -1215,27 +1215,32 @@ def handle_links(message):
     link = message.text
 
     # ===== FORCE JOIN CHECK =====
+    # ===== FORCE JOIN MULTI CHANNEL =====
 
-    try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+if CHANNEL_WINDOW_OPEN and POST_CHANNELS:
 
-        if member.status not in ["member", "administrator", "creator"]:
+    joined_all = True
 
-            kb = InlineKeyboardMarkup()
-            kb.add(
-                InlineKeyboardButton(
-                    "📢 JOIN CHANNEL",
-                    url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}"
-                )
-            )
+    for ch in POST_CHANNELS:
 
-            bot.send_message(
-                message.chat.id,
-                "⚠️ You must join our channel before using the bot.",
-                reply_markup=kb
-            )
+        try:
+            member = bot.get_chat_member(f"@{ch}", user_id)
 
-            return
+            if member.status not in ["member", "administrator", "creator"]:
+                joined_all = False
+                break
+
+        except:
+            joined_all = False
+            break
+
+    if not joined_all:
+
+        pending_links[user_id] = link
+
+        send_multi_join(user_id)
+
+        return
 
     except Exception as e:
         print("Join check error:", e)

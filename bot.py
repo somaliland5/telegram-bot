@@ -39,6 +39,7 @@ pending_post = {}
 
 VERIFY_ENABLED = False
 verify_pending = {}
+verify_method = {}
 
 
 # ================= DATABASE FILES =================
@@ -327,6 +328,37 @@ def send_join_message(user_id):
         "⚠️ You must join our channel to use this bot.",
         reply_markup=kb
     )
+
+@bot.callback_query_handler(func=lambda call: call.data == "verify_dm")
+def verify_dm(call):
+
+    uid = call.from_user.id
+
+    if uid not in verify_pending:
+        return
+
+    code = verify_pending[uid]["code"]
+
+    try:
+
+        bot.send_message(
+            uid,
+            f"🔑 Your verification code:\n\n{code}"
+        )
+
+        bot.answer_callback_query(call.id,"Code sent to your DM")
+
+        bot.send_message(
+            call.message.chat.id,
+            "📩 Code sent to your Telegram messages.\n\nSend the code here."
+        )
+
+    except:
+
+        bot.send_message(
+            call.message.chat.id,
+            "❌ Cannot send DM.\nPlease start the bot first."
+        )
     
 # ================= 56 =================
 def send_multi_join(user_id):
@@ -1294,33 +1326,37 @@ def handle_links(message):
 
             return
     # ===== VERIFY SYSTEM =====
+    # ===== VERIFY SYSTEM =====
 
-    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
 
-        code = str(random.randint(10000,99999))
+    code = str(random.randint(10000,99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+    verify_pending[user_id] = {
+        "code": code,
+        "link": link
+    }
 
-        kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup()
 
-        kb.add(
-            InlineKeyboardButton(
-                "🔑 GET CODE",
-                url=f"https://t.me/Verifyd_bot?start={code}"
-            )
+    kb.add(
+        InlineKeyboardButton(
+            "📩 Verify via DM",
+            callback_data="verify_dm"
+        ),
+        InlineKeyboardButton(
+            "🤖 Verify via Bot",
+            url=f"https://t.me/Verifyd_bot?start={code}"
         )
+    )
 
-        bot.send_message(
-            message.chat.id,
-            "🤖 Anti-Bot Verification Required\n\n"
-            "Click GET CODE then send the code here.",
-            reply_markup=kb
-        )
+    bot.send_message(
+        message.chat.id,
+        "🔐 Anti-Bot Verification\n\nChoose verification method:",
+        reply_markup=kb
+    )
 
-        return
+    return
 
     # ===== START DOWNLOAD =====
 

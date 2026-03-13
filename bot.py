@@ -771,7 +771,6 @@ def unban_user_process(m):
     bot.send_message(int(uid), "✅ You have been unbanned by admin.")
 
 # ================= POST ALL =================
-
 @bot.message_handler(func=lambda m: m.text == "📣 POST ALL")
 def post_all_start(m):
 
@@ -780,7 +779,10 @@ def post_all_start(m):
 
     msg = bot.send_message(
         m.chat.id,
-        "Send the message or advertisement you want to post to ALL channels and groups."
+        "Send post like this:\n\n"
+        "Hello Users\n\n"
+        "Download Bot | https://t.me/bot\n"
+        "Help"
     )
 
     bot.register_next_step_handler(msg, post_all_send)
@@ -791,23 +793,28 @@ def post_all_send(m):
     if not is_admin(m.from_user.id):
         return
 
-    text = m.text
-
-    kb = InlineKeyboardMarkup(row_width=2)
-
-    buttons = []
-    lines = text.split("\n")
+    lines = m.text.split("\n")
 
     main_text = lines[0]
 
+    kb = InlineKeyboardMarkup(row_width=2)
+
     for line in lines[1:]:
 
-        if line.startswith("http"):
+        line = line.strip()
+
+        if not line:
+            continue
+
+        # haddii button link leeyahay
+        if "|" in line:
+
+            name, link = line.split("|", 1)
 
             kb.add(
                 InlineKeyboardButton(
-                    "OPEN LINK",
-                    url=line
+                    name.strip(),
+                    url=link.strip()
                 )
             )
 
@@ -841,8 +848,6 @@ def post_all_send(m):
         m.chat.id,
         f"✅ Post sent to {sent} chats"
     )
-
-
 
 # ================= SAVE GROUPS =================
 

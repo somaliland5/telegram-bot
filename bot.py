@@ -5,11 +5,12 @@ import os, json, random
 from datetime import datetime
 import yt_dlp
 import subprocess
-import os
 import re
 import shutil
-import random
 import threading
+import asyncio
+
+from telethon import TelegramClient
 
 # ================= CONFIG =================
 

@@ -1257,16 +1257,18 @@ def handle_links(message):
         kb = InlineKeyboardMarkup()
 
         kb.add(
-            InlineKeyboardButton(
-                "🤖 GET CODE FROM BOT",
-                url=f"https://t.me/Verifyd_bot?start={code}"
-            )
-        )
-
     InlineKeyboardButton(
-    "📩 VIA TELEGRAM",
-    callback_data="via_telegram"
+        "🤖 GET CODE FROM BOT",
+        url=f"https://t.me/Verifyd_bot?start={code}"
     )
+)
+
+kb.add(
+    InlineKeyboardButton(
+        "📩 VIA TELEGRAM",
+        callback_data="via_telegram"
+    )
+)
 
         bot.send_message(
             message.chat.id,

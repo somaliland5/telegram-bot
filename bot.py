@@ -793,9 +793,19 @@ def post_all_send(m):
     if not is_admin(m.from_user.id):
         return
 
-    lines = m.text.split("\n")
+      lines = m.text.split("\n")
 
-    main_text = lines[0]
+text_lines = []
+button_lines = []
+
+for line in lines:
+
+    if "|" in line:
+        button_lines.append(line)
+    else:
+        text_lines.append(line)
+
+main_text = "\n".join(text_lines)
 
     kb = InlineKeyboardMarkup(row_width=3)
 

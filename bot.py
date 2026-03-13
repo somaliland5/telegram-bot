@@ -34,6 +34,10 @@ pending_post = {}
 VERIFY_ENABLED = False
 verify_pending = {}
 
+verify_methods = {}
+gmail_codes = {}
+telegram_codes = {}
+
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -1291,39 +1295,130 @@ def handle_links(message):
 
             return
     # ===== VERIFY SYSTEM =====
+    # ===== VERIFY SYSTEM =====
 
-    if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
+if VERIFY_ENABLED and not users[str(user_id)].get("verified", False):
 
-        code = str(random.randint(10000,99999))
+    code = str(random.randint(10000,99999))
 
-        verify_pending[user_id] = {
-            "code": code,
-            "link": link
-        }
+    verify_pending[user_id] = {
+        "code": code,
+        "link": link
+    }
 
-        kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup(row_width=1)
 
-        kb.add(
-            InlineKeyboardButton(
-                "🔑 GET CODE",
-                url=f"https://t.me/Verifyd_bot?start={code}"
-            )
+    kb.add(
+        InlineKeyboardButton(
+            "🤖 VERIFY VIA BOT",
+            url=f"https://t.me/Verifyd_bot?start={code}"
         )
+    )
 
-        bot.send_message(
-            message.chat.id,
-            "🤖 Anti-Bot Verification Required\n\n"
-            "Click GET CODE then send the code here.",
-            reply_markup=kb
+    kb.add(
+        InlineKeyboardButton(
+            "📧 VERIFY VIA GMAIL",
+            callback_data="verify_gmail"
         )
+    )
 
-        return
+    kb.add(
+        InlineKeyboardButton(
+            "📱 VERIFY VIA TELEGRAM",
+            callback_data="verify_telegram"
+        )
+    )
+
+    bot.send_message(
+        message.chat.id,
+        "🔐 Anti Bot Verification\n\nChoose verification method:",
+        reply_markup=kb
+    )
+
+    return
 
     # ===== START DOWNLOAD =====
 
     bot.send_message(message.chat.id, "⏳ Downloading...")
 
     download_media(message.chat.id, link)
+
+    # ================= HB =================
+@bot.callback_query_handler(func=lambda call: call.data=="verify_gmail")
+def gmail_verify(call):
+
+    msg = bot.send_message(
+        call.message.chat.id,
+        "📧 Send your Gmail address:"
+    )
+
+    bot.register_next_step_handler(msg, gmail_send_code)
+
+ # ================= YY =================
+def gmail_send_code(m):
+
+    email = m.text.strip()
+    uid = m.from_user.id
+
+    if uid not in verify_pending:
+        return
+
+    code = verify_pending[uid]["code"]
+
+    sender = "YOUR_GMAIL@gmail.com"
+    password = "YOUR_APP_PASSWORD"
+
+    msg = MIMEText(f"Your verification code: {code}")
+    msg["Subject"] = "Verification Code"
+    msg["From"] = sender
+    msg["To"] = email
+
+    try:
+
+        server = smtplib.SMTP_SSL("smtp.gmail.com",465)
+        server.login(sender,password)
+        server.sendmail(sender,email,msg.as_string())
+        server.quit()
+
+        bot.send_message(
+            m.chat.id,
+            "📧 Code sent to your Gmail.\n\nSend the code here."
+        )
+
+    except:
+
+        bot.send_message(
+            m.chat.id,
+            "❌ Failed to send Gmail code."
+        )
+
+# ================= HHL =================
+@bot.callback_query_handler(func=lambda call: call.data=="verify_telegram")
+def telegram_verify(call):
+
+    uid = call.from_user.id
+
+    if uid not in verify_pending:
+        return
+
+    code = verify_pending[uid]["code"]
+
+    try:
+
+        bot.send_message(
+            uid,
+            f"🔐 Your verification code:\n\n{code}"
+        )
+
+        bot.answer_callback_query(call.id,"Code sent to Telegram")
+
+    except:
+
+        bot.answer_callback_query(
+            call.id,
+            "❌ Start bot first",
+            show_alert=True
+        )
 
 # ================= MULTI CHANNEL CONFIRM =================
 @bot.callback_query_handler(func=lambda call: call.data == "multi_checkjoin")

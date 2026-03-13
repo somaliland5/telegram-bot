@@ -177,6 +177,18 @@ def start_handler(message):
     # Hubinta join
     check_membership(uid)
 
+    # ================ 00 =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("postall_"))
+def postall_button(call):
+
+    text = call.data.replace("postall_","")
+
+    bot.answer_callback_query(
+        call.id,
+        text,
+        show_alert=True
+    )
+
 # ================= VERIFY BOT START =================
 
 @bot2.message_handler(commands=['start'])
@@ -781,20 +793,56 @@ def post_all_send(m):
 
     text = m.text
 
+    kb = InlineKeyboardMarkup(row_width=2)
+
+    buttons = []
+    lines = text.split("\n")
+
+    main_text = lines[0]
+
+    for line in lines[1:]:
+
+        if line.startswith("http"):
+
+            kb.add(
+                InlineKeyboardButton(
+                    "OPEN LINK",
+                    url=line
+                )
+            )
+
+        else:
+
+            kb.add(
+                InlineKeyboardButton(
+                    line,
+                    callback_data=f"postall_{line}"
+                )
+            )
+
     sent = 0
 
     for ch in MANAGED_CHANNELS:
 
         try:
-            bot.send_message(ch, text)
+
+            bot.send_message(
+                ch,
+                main_text,
+                reply_markup=kb
+            )
+
             sent += 1
-        except Exception as e:
-            print("Channel error:", e)
+
+        except:
+            pass
 
     bot.send_message(
         m.chat.id,
-        f"✅ Post sent to {sent} channels/groups"
+        f"✅ Post sent to {sent} chats"
     )
+
+
 
 # ================= SAVE GROUPS =================
 

@@ -321,6 +321,31 @@ def send_join_message(user_id):
         reply_markup=kb
     )
 
+        def send_multi_join(user_id):
+
+    kb = InlineKeyboardMarkup()
+
+    for ch in POST_CHANNELS:
+
+        kb.add(
+            InlineKeyboardButton(
+                f"📢 JOIN @{ch}",
+                url=f"https://t.me/{ch}"
+            )
+        )
+
+    kb.add(
+        InlineKeyboardButton(
+            "✅ CONFIRM",
+            callback_data="multi_checkjoin"
+        )
+    )
+
+    bot.send_message(
+        user_id,
+        "⚠️ Join all channels to continue.",
+        reply_markup=kb
+    )
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
@@ -1033,6 +1058,54 @@ def broadcast_send(m):
             continue
 
     bot.send_message(m.chat.id, f"✅ Broadcast sent to {count} users")
+
+        # ================== POST CHANNEL =================
+@bot.message_handler(func=lambda m: m.text == "📌 POST CHANNEL")
+def post_channel_start(m):
+
+    global CHANNEL_WINDOW_OPEN
+
+    if not is_admin(m.from_user.id):
+        return
+
+    CHANNEL_WINDOW_OPEN = True
+    POST_CHANNELS.clear()
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send channel usernames\nExample:\n@channel1\n@channel2\n\nMax 10 channels.\nSend DONE when finished."
+    )
+
+    bot.register_next_step_handler(msg, post_channel_add)
+
+def post_channel_add(m):
+
+    if m.text.lower() == "done":
+
+        bot.send_message(
+            m.chat.id,
+            f"✅ {len(POST_CHANNELS)} channels added."
+        )
+        return
+
+    if len(POST_CHANNELS) >= MAX_CHANNELS:
+
+        bot.send_message(
+            m.chat.id,
+            "⚠️ Maximum 10 channels allowed."
+        )
+        return
+
+    username = m.text.replace("@","").strip()
+
+    POST_CHANNELS.append(username)
+
+    msg = bot.send_message(
+        m.chat.id,
+        f"Channel @{username} added\nTotal: {len(POST_CHANNELS)}\nSend another or DONE"
+    )
+
+    bot.register_next_step_handler(msg, post_channel_add)
 
     # ================= CLOSE CHANEL =================
 @bot.message_handler(func=lambda m: m.text == "CLOSE CHANNEL POST")

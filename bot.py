@@ -2039,21 +2039,327 @@ def send_user_message(m, uid):
 
         bot.send_message(m.chat.id,"❌ Failed to send message")
 
-# ================= MUSIC CONVERSION =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("music|"))
-def convert_music(call):
+# ================= CLEAN SEND VIDEO FUNCTION =================
+def send_video_with_music(chat_id, file_path, platform=None):
+
+    vid_id = str(uuid.uuid4())[:8]
+    video_files[vid_id] = file_path
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🎵 Convert to Music",
+            callback_data=f"music_{vid_id}"
+        )
+    )
+
+    uid = str(chat_id)
+
+    videos_data["total"] += 1
+    videos_data["users"][uid] = videos_data["users"].get(uid, 0) + 1
+
+    if platform:
+        if "platforms" not in videos_data:
+            videos_data["platforms"] = {}
+
+        videos_data["platforms"][platform] = videos_data["platforms"].get(platform, 0) + 1
+
+    save_videos()
+
+    with open(file_path, "rb") as video:
+        bot.send_video(
+            chat_id,
+            video,
+            caption=CAPTION_TEXT,
+            reply_markup=kb
+        )
+
+
+# ================= MEDIA DOWNLOADER =================
+def download_media(chat_id, text):
+    try:
+        url = extract_url(text)
+
+        if not url:
+            bot.send_message(chat_id, "❌ Invalid link")
+            return
+
+
+        # ================= TIKTOK =================
+        if "tiktok.com" in url:
+
+            try:
+
+                api = f"https://tikwm.com/api/?url={url}"
+                res = requests.get(api, timeout=30).json()
+
+                if res.get("code") == 0:
+
+                    data = res["data"]
+
+                    # ===== PHOTOS =====
+                    if data.get("images"):
+
+                        for i, img in enumerate(data["images"], start=1):
+
+                            img_data = requests.get(img, timeout=30).content
+                            filename = f"tiktok_{i}.jpg"
+
+                            with open(filename, "wb") as f:
+                                f.write(img_data)
+
+                            with open(filename, "rb") as photo:
+                                bot.send_photo(
+                                    chat_id,
+                                    photo,
+                                    caption=f"📸 Photo {i}\n{CAPTION_TEXT}"
+                                )
+
+                            os.remove(filename)
+
+                        return
+
+
+                    # ===== VIDEO =====
+                    if data.get("play"):
+
+                        video_data = requests.get(data["play"], timeout=60).content
+                        filename = "tiktok_video.mp4"
+
+                        with open(filename, "wb") as f:
+                            f.write(video_data)
+
+                        send_video_with_music(chat_id, filename, "tiktok")
+                        return
+
+            except Exception as e:
+
+                bot.send_message(chat_id, f"❌ TikTok error:\n{e}")
+                return
+
+
+        # ================= SNAPCHAT =================
+        if "snapchat.com" in url or "snap.com" in url:
+
+            try:
+
+                ydl_opts = {
+                    "format": "best",
+                    "outtmpl": "snapchat_%(id)s.%(ext)s",
+                    "quiet": True
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file, "snapchat")
+
+                return
+
+            except Exception as e:
+
+                bot.send_message(chat_id, f"❌ Snapchat download error:\n{e}")
+                return
+
+
+        # ================= PINTEREST =================
+        if "pin.it" in url:
+
+            try:
+                r = requests.head(url, allow_redirects=True, timeout=10)
+                url = r.url
+            except:
+                pass
+
+
+        if "pinterest.com" in url:
+
+            try:
+
+                ydl_opts = {
+                    "format": "bv*+ba/b",
+                    "outtmpl": "pinterest_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "merge_output_format": "mp4"
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                    info = ydl.extract_info(url, download=True)
+
+                    if "entries" in info:
+                        entries = info["entries"]
+                    else:
+                        entries = [info]
+
+                    for entry in entries:
+
+                        file = ydl.prepare_filename(entry)
+
+                        if file.lower().endswith((".jpg",".jpeg",".png",".webp")):
+
+                            with open(file,"rb") as photo:
+                                bot.send_photo(chat_id, photo, caption=CAPTION_TEXT)
+
+                        else:
+
+                            send_video_with_music(chat_id, file, "pinterest")
+
+                return
+
+            except Exception as e:
+
+                bot.send_message(chat_id, f"❌ Download error:\n{e}")
+                return
+
+# ================= FACEBOOK =================
+        if "facebook.com" in url or "fb.watch" in url:
+
+            try:
+
+                ydl_opts = {
+                    "format": "bestvideo+bestaudio/best",
+                    "outtmpl": "facebook_%(id)s.%(ext)s",
+                    "merge_output_format": "mp4",
+                    "quiet": True
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file, "facebook")
+
+                return
+
+            except Exception as e:
+
+                bot.send_message(chat_id, f"❌ Facebook download error:\n{e}")
+                return
+
+
+        # ================= YOUTUBE =================
+        if "youtube.com" in url or "youtu.be" in url:
+
+            try:
+
+                ydl_opts = {
+                    "format": "bestvideo+bestaudio/best",
+                    "outtmpl": "youtube_%(id)s.%(ext)s",
+                    "merge_output_format": "mp4",
+                    "quiet": True
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                    info = ydl.extract_info(url, download=True)
+                    file = ydl.prepare_filename(info)
+
+                send_video_with_music(chat_id, file, "youtube")
+
+                return
+
+            except Exception as e:
+
+                bot.send_message(chat_id, f"❌ YouTube download error:\n{e}")
+                return
+
+
+        bot.send_message(chat_id, "❌ Unsupported link")
+
+
+    except Exception:
+
+        bot.send_message(
+            chat_id,
+            "❌ Incorrect link.\n\n"
+            "Send a valid link from TikTok, Snapchat, Pinterest, Facebook, or YouTube."
+        )
+
+
+
+# ================= MESSAGE USER =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("msguser|"))
+def message_user(call):
+
+    if not is_admin(call.from_user.id):
+        return
+
+    uid = call.data.split("|")[1]
+
+    msg = bot.send_message(
+        call.message.chat.id,
+        "Send message for user"
+    )
+
+    bot.register_next_step_handler(msg, send_user_message, uid)
+
+
+
+def send_user_message(m, uid):
+
+    if not is_admin(m.from_user.id):
+        return
 
     try:
 
-        file_path = call.data.split("|", 1)[1]
-        audio_path = file_path.rsplit(".", 1)[0] + ".mp3"
+        bot.send_message(int(uid), m.text)
+
+        bot.send_message(
+            m.chat.id,
+            "✅ Message sent"
+        )
+
+    except:
+
+        bot.send_message(
+            m.chat.id,
+            "❌ Failed to send message"
+        )
+
+
+
+# ================= MUSIC CONVERSION =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("music_"))
+def convert_music(call):
+
+    vid_id = call.data.split("_")[1]
+
+    if vid_id not in video_files:
+
+        bot.answer_callback_query(
+            call.id,
+            "File expired"
+        )
+        return
+
+
+    file_path = video_files[vid_id]
+    audio_path = file_path.rsplit(".",1)[0] + ".mp3"
+
+
+    try:
 
         subprocess.run(
-            ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "mp3", "-ab", "128k", "-ar", "44100", audio_path],
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                file_path,
+                "-vn",
+                "-acodec","mp3",
+                "-ab","128k",
+                "-ar","44100",
+                audio_path
+            ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True
         )
+
 
         kb = InlineKeyboardMarkup()
         kb.add(
@@ -2063,7 +2369,9 @@ def convert_music(call):
             )
         )
 
-        with open(audio_path, "rb") as audio:
+
+        with open(audio_path,"rb") as audio:
+
             bot.send_audio(
                 call.message.chat.id,
                 audio,
@@ -2073,15 +2381,22 @@ def convert_music(call):
                 reply_markup=kb
             )
 
+
         if os.path.exists(audio_path):
             os.remove(audio_path)
 
         if os.path.exists(file_path):
             os.remove(file_path)
 
-        bot.answer_callback_query(call.id, "🎵 Music converted")
+
+        bot.answer_callback_query(
+            call.id,
+            "🎵 Music converted"
+        )
+
 
     except Exception as e:
+
         bot.send_message(
             call.message.chat.id,
             f"❌ Music conversion failed:\n{e}"

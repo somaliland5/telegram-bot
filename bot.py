@@ -399,7 +399,9 @@ def process_email(message):
 
     code = str(random.randint(10000,99999))
 
-    verify_pending[uid]["code"] = code
+    verify_pending[uid] = {
+        "code": code
+    }
 
     success = send_gmail_code(email, code)
 

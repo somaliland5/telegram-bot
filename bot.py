@@ -332,41 +332,30 @@ def send_join_message(user_id):
 @bot.callback_query_handler(func=lambda call: call.data == "verify_dm")
 def verify_dm(call):
 
-    try:
+    uid = call.from_user.id
 
-        uid = call.from_user.id
+    if uid not in verify_pending:
+        return
 
-        if uid not in verify_pending:
-            return
+    code = verify_pending[uid]["code"]
 
-        code = verify_pending[uid]["code"]
+    loop = asyncio.get_event_loop()
+    success = loop.run_until_complete(send_code_telegram(uid, code))
 
-        loop = asyncio.get_event_loop()
-        success = loop.run_until_complete(send_code_telegram(uid, code))
+    if success:
 
-        if success:
-
-            bot.answer_callback_query(call.id, "Code sent to your DM")
-
-            bot.send_message(
-                call.message.chat.id,
-                "📩 Code sent to your Telegram messages.\n\nSend the code here."
-            )
-
-        else:
-
-            bot.send_message(
-                call.message.chat.id,
-                "❌ Cannot send DM.\nUser must message your Telegram account first."
-            )
-
-    except Exception as e:
-
-        print("Verify DM error:", e)
+        bot.answer_callback_query(call.id, "Code sent")
 
         bot.send_message(
             call.message.chat.id,
-            "❌ Cannot send DM.\nPlease start the bot first."
+            "📩 Code sent to your Telegram DM.\n\nSend the code here."
+        )
+
+    else:
+
+        bot.send_message(
+            call.message.chat.id,
+            "❌ Cannot send DM.\nUser must message your Telegram account first."
         )
     
 # ================= 56 =================
@@ -401,16 +390,21 @@ def send_multi_join(user_id):
     )
 
 async def send_code_telegram(user_id, code):
-
     try:
+
+        entity = await tg_client.get_entity(user_id)
+
         await tg_client.send_message(
-            user_id,
+            entity,
             f"🔐 Your verification code:\n\n{code}"
         )
+
         return True
 
     except Exception as e:
-        print("Telegram DM error:", e)
+
+        print("DM ERROR:", e)
+
         return False
 
 @bot.callback_query_handler(func=lambda call: call.data == "via_telegram")

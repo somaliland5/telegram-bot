@@ -101,7 +101,18 @@ def find_user_by_botid(bid):
             return u
     return None
 
-    def save_download_history(user_id, username, link, file_id):
+
+def save_download_history(user_id, username, link, file_id):
+
+    history.append({
+        "user": user_id,
+        "username": username,
+        "link": link,
+        "file_id": file_id,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+    save_history()
 
     history.append({
         "user": user_id,

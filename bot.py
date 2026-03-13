@@ -364,7 +364,28 @@ async def start_telegram_listener():
                 f"🔑 Your verification code:\n\n{code}"
             )
 
-    await tg_client.run_until_disconnected()
+    await tg_client.run_until_disconnected()i
+
+    
+
+    async def send_telegram_code(user_id, code):
+
+    try:
+
+        await tg_client.start(PHONE)
+
+        await tg_client.send_message(
+            user_id,
+            f"🔑 Your verification code:\n\n{code}"
+        )
+
+        return True
+
+    except Exception as e:
+
+        print("Telegram send error:", e)
+
+        return False
 
 # ================= SEND JOIN MESSAGE =================
 def send_join_message(user_id):
@@ -1245,12 +1266,10 @@ def handle_links(message):
             )
         )
 
-        kb.add(
     InlineKeyboardButton(
-        "📩 VIA TELEGRAM",
-        url="https://t.me/Verifytonjava"
+    "📩 VIA TELEGRAM",
+    callback_data="via_telegram"
     )
-        )
 
         bot.send_message(
             message.chat.id,
@@ -1911,6 +1930,9 @@ def run_bot2():
             print("Bot2 restart:", e)
 
 if __name__ == "__main__":
+
+    tg_client.start(PHONE)
+
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 

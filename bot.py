@@ -15,6 +15,11 @@ import threading
 
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+PHONE = os.getenv("PHONE")
+
+tg_client = TelegramClient("verify_session", API_ID, API_HASH)
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
@@ -352,6 +357,47 @@ def send_multi_join(user_id):
         "⚠️ Join all channels to continue.",
         reply_markup=kb
     )
+
+async def send_code_telegram(user_id, code):
+
+    try:
+        await tg_client.send_message(
+            user_id,
+            f"🔐 Your verification code:\n\n{code}"
+        )
+        return True
+
+    except Exception as e:
+        print("Telegram DM error:", e)
+        return False
+
+@bot.callback_query_handler(func=lambda call: call.data == "via_telegram")
+def via_telegram(call):
+
+    uid = call.from_user.id
+
+    if uid not in verify_pending:
+        bot.answer_callback_query(call.id, "Verification expired")
+        return
+
+    code = verify_pending[uid]["code"]
+
+    loop = asyncio.get_event_loop()
+    success = loop.run_until_complete(send_code_telegram(uid, code))
+
+    if success:
+
+        bot.send_message(
+            call.message.chat.id,
+            "✅ Code sent to your Telegram messages.\nSend the code here."
+        )
+
+    else:
+
+        bot.send_message(
+            call.message.chat.id,
+            "⚠️ Telegram blocked sending message.\nUser must message your account first."
+        )
 
 # ================= CONFIRM JOIN =================
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_join")
@@ -1929,10 +1975,14 @@ def run_bot2():
             print("Bot2 restart:", e)
 
 if __name__ == "__main__":
+
+    tg_client.start(PHONE)
+
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
 
     t1.start()
     t2.start()
 
-    app.run(host="0.0.0.0", port=3000)
+    t1.join()
+    t2.join()

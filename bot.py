@@ -20,7 +20,7 @@ API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 PHONE = os.getenv("PHONE")
 
-tg_client = TelegramClient("verify_session", API_ID, API_HASH)
+tg_client = TelegramClient("session", API_ID, API_HASH)
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")
@@ -2008,7 +2008,7 @@ def run_bot2():
 
 if __name__ == "__main__":
 
-    tg_client.start(PHONE)
+    tg_client.start()
 
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)

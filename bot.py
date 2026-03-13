@@ -332,41 +332,37 @@ def send_join_message(user_id):
 @bot.callback_query_handler(func=lambda call: call.data == "verify_dm")
 def verify_dm(call):
 
-    uid = call.from_user.id
+    try:
 
-    if uid not in verify_pending:
-        return
+        uid = call.from_user.id
 
-    code = verify_pending[uid]["code"]
+        if uid not in verify_pending:
+            return
 
-    loop = asyncio.get_event_loop()
+        code = verify_pending[uid]["code"]
 
-    success = loop.run_until_complete(send_code_telegram(uid, code))
+        loop = asyncio.get_event_loop()
+        success = loop.run_until_complete(send_code_telegram(uid, code))
 
-    if success:
+        if success:
 
-        bot.answer_callback_query(call.id, "Code sent")
+            bot.answer_callback_query(call.id, "Code sent to your DM")
 
-        bot.send_message(
-            call.message.chat.id,
-            "📩 Code sent to your Telegram messages.\nSend the code here."
-        )
+            bot.send_message(
+                call.message.chat.id,
+                "📩 Code sent to your Telegram messages.\n\nSend the code here."
+            )
 
-    else:
+        else:
 
-        bot.send_message(
-            call.message.chat.id,
-            "❌ Cannot send DM.\nUser must message your Telegram account first."
-        )
+            bot.send_message(
+                call.message.chat.id,
+                "❌ Cannot send DM.\nUser must message your Telegram account first."
+            )
 
-        bot.answer_callback_query(call.id,"Code sent to your DM")
+    except Exception as e:
 
-        bot.send_message(
-            call.message.chat.id,
-            "📩 Code sent to your Telegram messages.\n\nSend the code here."
-        )
-
-    except:
+        print("Verify DM error:", e)
 
         bot.send_message(
             call.message.chat.id,

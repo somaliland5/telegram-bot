@@ -1362,7 +1362,7 @@ def gmail_send_code(m):
     code = verify_pending[uid]["code"]
 
     sender = os.getenv("EMAIL_ADDRESS")
-password = os.getenv("EMAIL_PASSWORD")
+    password = os.getenv("EMAIL_PASSWORD")
 
     msg = MIMEText(f"Your verification code: {code}")
     msg["Subject"] = "Verification Code"
@@ -1371,9 +1371,9 @@ password = os.getenv("EMAIL_PASSWORD")
 
     try:
 
-        server = smtplib.SMTP_SSL("smtp.gmail.com",465)
-        server.login(sender,password)
-        server.sendmail(sender,email,msg.as_string())
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(sender, password)
+        server.sendmail(sender, email, msg.as_string())
         server.quit()
 
         bot.send_message(
@@ -1381,7 +1381,9 @@ password = os.getenv("EMAIL_PASSWORD")
             "📧 Code sent to your Gmail.\n\nSend the code here."
         )
 
-    except:
+    except Exception as e:
+
+        print("Gmail error:", e)
 
         bot.send_message(
             m.chat.id,

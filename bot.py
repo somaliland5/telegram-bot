@@ -1887,31 +1887,31 @@ def download_media(chat_id, text):
                 return
 
         # ================= SNAPCHAT =================
+        # ================= SNAPCHAT =================
 if "snapchat.com" in url or "snap.com" in url:
 
     try:
 
         ydl_opts = {
             "format": "best",
-            "outtmpl": "snapchat_%(id)s.%(ext)s",
-            "quiet": True,
-            "merge_output_format": "mp4"
+            "outtmpl": "snap_%(id)s.%(ext)s",
+            "quiet": True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            file = ydl.prepare_filename(info)
+            file_path = ydl.prepare_filename(info)
 
-        send_video_with_music(chat_id, file, "snapchat")
+        send_video_with_music(chat_id, file_path, "snapchat")
 
-        if os.path.exists(file):
-            os.remove(file)
-
-        return
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     except Exception as e:
-        bot.send_message(chat_id, f"❌ Snapchat download error:\n{e}")
-        return
+
+        bot.send_message(chat_id, f"❌ Snapchat download error\n{e}")
+
+    return
 
  # ================= PINTEREST =================
         if "pin.it" in url:

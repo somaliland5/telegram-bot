@@ -1419,10 +1419,11 @@ kb.add(
     InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
 )
 
+        if result:
+
         bot.send_message(
-            message.chat.id,
-            "🔐 Anti-Bot Verification\n\nChoose verification method:",
-            reply_markup=kb
+            call.message.chat.id,
+            "✅ Code sent to your Telegram messages."
         )
 
         return

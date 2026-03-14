@@ -6,3 +6,4 @@ beautifulsoup4
 pyTelegramBotAPI
 pymongo[srv]==3.11
 telethon
+gunicorn

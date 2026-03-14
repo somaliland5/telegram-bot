@@ -453,10 +453,13 @@ def send_multi_join(user_id):
     )
 
 async def send_code_telegram(user_id, code):
+
     try:
 
+        user = await tg_client.get_entity(user_id)
+
         await tg_client.send_message(
-            user_id,
+            user,
             f"🔐 Your verification code:\n\n{code}"
         )
 
@@ -465,7 +468,6 @@ async def send_code_telegram(user_id, code):
     except Exception as e:
 
         print("DM ERROR:", e)
-
         return False
 
 @bot.callback_query_handler(func=lambda call: call.data == "via_telegram")

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Video Downloader</title>
+
+<style>
+:root {
+  --bg-color: #0b1220;
+  --text-color: white;
+  --input-bg: #1f2937;
+  --button-bg: #3b82f6;
+  --button-hover: #2563eb;
+  --nav-bg: #111827;
+}
+
+body.light {
+  --bg-color: #f5f5f5;
+  --text-color: #111827;
+  --input-bg: #ffffff;
+  --nav-bg: #e5e7eb;
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: Arial, sans-serif;
+  margin: 0;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.page { display: none; padding: 25px; }
+.active { display: block; }
+
+input {
+  width: 90%;
+  padding: 14px;
+  border-radius: 25px;
+  border: none;
+  margin-top: 10px;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--text-color);
+}
+
+.main-btn {
+  margin-top: 15px;
+  padding: 14px;
+  width: 90%;
+  background: var(--button-bg);
+  border: none;
+  border-radius: 25px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+.main-btn:hover { background: var(--button-hover); }
+
+video {
+  width: 90%;
+  margin-top: 20px;
+  border-radius: 10px;
+}
+
+/* Bottom Navigation */
+.nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: var(--nav-bg);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+}
+
+.nav button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 16px;
+}
+
+/* Top Right Icons */
+.icon-btn {
+  position: fixed;
+  top: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--button-bg);
+  color: white;
+}
+
+/* Light icon */
+#theme-icon { right: 12px; }
+
+/* WhatsApp icon */
+#wa-icon { left: 12px; }
+
+/* Footer */
+.footer {
+  position: fixed;
+  bottom: 55px;
+  width: 100%;
+  text-align: center;
+  color: gray;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Top Icons -->
+<button id="theme-icon" class="icon-btn" onclick="toggleTheme()">☀️</button>
+<button id="wa-icon" class="icon-btn" onclick="openWhatsApp()">📞</button>
+
+<!-- Home Page -->
+<div id="home" class="page active">
+  <h2>Download TikTok Video</h2>
+  <input id="link" placeholder="Paste the TikTok link">
+  <button class="main-btn" onclick="downloadVideo()">Download</button>
+</div>
+
+<!-- Downloads Page -->
+<div id="downloads" class="page">
+  <h2>Your Video</h2>
+  <video id="player" controls></video>
+  <a id="downloadBtn" href="#" download>
+    <button class="main-btn">Download Video</button>
+  </a>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="nav">
+  <button onclick="showPage('home')">Home</button>
+  <button onclick="showPage('downloads')">Downloads</button>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  By: ＳＣＨＯＬＥＳ🥤🥇
+</div>
+
+<script>
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById(page).classList.add("active");
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  document.getElementById("theme-icon").textContent =
+    document.body.classList.contains("light") ? "🌙" : "☀️";
+}
+
+function openWhatsApp() {
+  const number = "252907868526";
+  window.open(`https://wa.me/${number}`, "_blank");
+}
+
+function downloadVideo() {
+  let link = document.getElementById("link").value;
+  if(!link){ alert("Paste link first"); return; }
+
+  document.getElementById("player").src = link;
+  document.getElementById("downloadBtn").href = link;
+  showPage("downloads");
+}
+</script>
+
+</body>
+</html>

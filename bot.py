@@ -379,8 +379,7 @@ def send_gmail_code(email, code):
 
     try:
 
-        server = smtplib.SMTP("smtp.gmail.com", 465)
-        server.starttls()
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
 
         server.login(GMAIL_USER, GMAIL_PASS)
 
@@ -456,10 +455,8 @@ def send_multi_join(user_id):
 async def send_code_telegram(user_id, code):
     try:
 
-        entity = await tg_client.get_entity(user_id)
-
         await tg_client.send_message(
-            entity,
+            user_id,
             f"🔐 Your verification code:\n\n{code}"
         )
 
@@ -1410,12 +1407,17 @@ def handle_links(message):
 
         kb = InlineKeyboardMarkup()
 
-        kb.add(
-            InlineKeyboardButton("📩 Verify via DM", callback_data="verify_dm"),
-            InlineKeyboardButton("🤖 Verify via Bot", url=f"https://t.me/Verifyd_bot?start={code}"),
-            InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
-            
-        )
+kb.add(
+    InlineKeyboardButton("📩 Verify via DM", callback_data="via_telegram")
+)
+
+kb.add(
+    InlineKeyboardButton("🤖 Verify via Bot", url=f"https://t.me/Verifyd_bot?start={code}")
+)
+
+kb.add(
+    InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
+)
 
         bot.send_message(
             message.chat.id,

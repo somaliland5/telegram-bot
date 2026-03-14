@@ -1421,12 +1421,17 @@ kb.add(
 
         if result:
 
-        bot.send_message(
-            call.message.chat.id,
-            "✅ Code sent to your Telegram messages."
-        )
+    bot.send_message(
+        call.message.chat.id,
+        "✅ Code sent to your Telegram messages."
+    )
 
-        return
+else:
+
+    bot.send_message(
+        call.message.chat.id,
+        "⚠️ Error !!!!!!."
+    )
 
 
     # ===== START DOWNLOAD =====

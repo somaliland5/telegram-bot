@@ -1396,6 +1396,7 @@ def handle_links(message):
 
 
     # ===== VERIFY SYSTEM =====
+    # ===== VERIFY SYSTEM =====
     if VERIFY_ENABLED and not users.get(str(user_id), {}).get("verified", False):
 
         code = str(random.randint(10000,99999))
@@ -1407,31 +1408,28 @@ def handle_links(message):
 
         kb = InlineKeyboardMarkup()
 
-kb.add(
-    InlineKeyboardButton("📩 Verify via DM", callback_data="via_telegram")
-)
+        kb.add(
+            InlineKeyboardButton("📩 Verify via DM", callback_data="via_telegram")
+        )
 
-kb.add(
-    InlineKeyboardButton("🤖 Verify via Bot", url=f"https://t.me/Verifyd_bot?start={code}")
-)
+        kb.add(
+            InlineKeyboardButton(
+                "🤖 Verify via Bot",
+                url=f"https://t.me/Verifyd_bot?start={code}"
+            )
+        )
 
-kb.add(
-    InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
-)
+        kb.add(
+            InlineKeyboardButton("📧 Verify via Gmail", callback_data="verify_email")
+        )
 
-        if result:
+        bot.send_message(
+            message.chat.id,
+            "🔐 Verification Required\n\nChoose verification method:",
+            reply_markup=kb
+        )
 
-    bot.send_message(
-        call.message.chat.id,
-        "✅ Code sent to your Telegram messages."
-    )
-
-else:
-
-    bot.send_message(
-        call.message.chat.id,
-        "⚠️ Error !!!!!!."
-    )
+        return
 
 
     # ===== START DOWNLOAD =====

@@ -20,8 +20,10 @@ from email.mime.text import MIMEText
 
 TOKEN = os.getenv("BOT_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
-API_ID = int(os.getenv("API_ID"))
+
+API_ID = int(os.getenv("API_ID", "0"))
 API_HASH = os.getenv("API_HASH")
+
 PHONE = os.getenv("PHONE")
 
 GMAIL_USER = os.getenv("GMAIL_USER")

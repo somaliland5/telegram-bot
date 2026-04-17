@@ -52,13 +52,6 @@ verify_method = {}
 video_store = {}
 video_files = {}
 
-# ===== VIDEO QUALITY MODE =====
-VIDEO_MODE = "normal"   # default
-
-USDT_ADDRESS = "0x6AC864773259fa5175251829cb0E93ffb4cE6feC"
-
-pending_4k_requests = {}
-
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -150,7 +143,6 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
-    kb.add("🎥 4K MODE", "📉 NORMAL MODE")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -1014,146 +1006,6 @@ def stats_handler(m):
     )
 
     bot.send_message(m.chat.id, msg)
-
-# ================= 4K MODE ON =================
-@bot.message_handler(func=lambda m: m.text == "🎥 4K MODE")
-def enable_4k(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    global VIDEO_MODE
-    VIDEO_MODE = "4k"
-
-    bot.send_message(m.chat.id, "✅ 4K Mode Enabled")
-
-    # Notify all users
-    for uid in users:
-        try:
-            kb = InlineKeyboardMarkup()
-            kb.add(InlineKeyboardButton("💎 BUY 4K", callback_data="buy_4k"))
-
-            bot.send_message(
-                int(uid),
-                "🚀 4K Download Activated!\n\nClick below to buy access:",
-                reply_markup=kb
-            )
-        except:
-            pass
-
-# ================= NORMAL MODE =================
-@bot.message_handler(func=lambda m: m.text == "📉 NORMAL MODE")
-def disable_4k(m):
-
-    if not is_admin(m.from_user.id):
-        return
-
-    global VIDEO_MODE
-    VIDEO_MODE = "normal"
-
-    bot.send_message(m.chat.id, "✅ Normal Mode Enabled")
-
-    # Notify users
-    for uid in users:
-        try:
-            kb = InlineKeyboardMarkup()
-            kb.add(InlineKeyboardButton("💎 BUY", callback_data="buy_4k"))
-
-            bot.send_message(
-                int(uid),
-                "BUY 4K DOWNLOADER VIDEO",
-                reply_markup=kb
-            )
-        except:
-            pass
-
-# ================= BUY 4K =================
-@bot.callback_query_handler(func=lambda call: call.data == "buy_4k")
-def buy_4k(call):
-
-    uid = str(call.from_user.id)
-    balance = users.get(uid, {}).get("balance", 0)
-
-    if balance >= 2:
-
-        users[uid]["balance"] -= 2
-        users[uid]["is_4k"] = True
-        save_users()
-
-        bot.answer_callback_query(call.id, "✅ 4K Activated")
-        bot.send_message(call.message.chat.id, "🎉 You now have 4K access!")
-
-    else:
-
-        kb = InlineKeyboardMarkup()
-
-        kb.add(
-            InlineKeyboardButton("📋 COPY ADDRESS", callback_data="copy_usdt")
-        )
-
-        kb.add(
-            InlineKeyboardButton("✅ CONFIRM", callback_data="confirm_payment")
-        )
-
-        bot.send_message(
-            call.message.chat.id,
-            f"You need $2 for Referal\n\nor Send USDT:\n<code>{USDT_ADDRESS}</code>",
-            reply_markup=kb
-        )
-
-# ================= COPY ADDRESS =================
-@bot.callback_query_handler(func=lambda call: call.data == "copy_usdt")
-def copy_address(call):
-
-    bot.answer_callback_query(
-        call.id,
-        "Address copied:\n" + USDT_ADDRESS,
-        show_alert=True
-    )
-
-# ================= CONFIRM PAYMENT =================
-@bot.callback_query_handler(func=lambda call: call.data == "confirm_payment")
-def confirm_payment(call):
-
-    uid = str(call.from_user.id)
-
-    pending_4k_requests[uid] = True
-
-    kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton("✅ CONFIRM", callback_data=f"admin_ok_{uid}"),
-        InlineKeyboardButton("❌ REJECT", callback_data=f"admin_no_{uid}")
-    )
-
-    for admin in ADMIN_IDS:
-        bot.send_message(
-            admin,
-            f"💳 4K PAYMENT REQUEST\n\nUser: {uid}",
-            reply_markup=kb
-        )
-
-    bot.answer_callback_query(call.id, "Request sent to admin")
-
-# ================= ADMIN APPROVE =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("admin_ok_"))
-def approve_4k(call):
-
-    uid = call.data.split("_")[2]
-
-    users[uid]["is_4k"] = True
-    save_users()
-
-    bot.send_message(int(uid), "✅ Your 4K has been activated!")
-    bot.answer_callback_query(call.id, "Approved")
-
-# ================= ADMIN REJECT =================
-@bot.callback_query_handler(func=lambda call: call.data.startswith("admin_no_"))
-def reject_4k(call):
-
-    uid = call.data.split("_")[2]
-
-    bot.send_message(int(uid), "❌ Payment rejected")
-    bot.answer_callback_query(call.id, "Rejected")
 
 # ================= MANUAL BAN =================
 @bot.message_handler(func=lambda m: m.text == "🚫 BAN USER MANUAL")

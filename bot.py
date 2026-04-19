@@ -1183,12 +1183,16 @@ def raadi_stats(m):
         "🥇 Top 3 Users:"
     ]
 
-    # Top 3 users
-    sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
-    for i, (uid, count) in enumerate(sorted_users[:3], start=1):
-        bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
-        msg_lines.append(f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}")
+    # Top 30 users
+sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
 
+for i, (uid, count) in enumerate(sorted_users[:30], start=1):
+    bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
+
+    msg_lines.append(
+        f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}"
+    )
+    
     msg_text = "\n".join(msg_lines)
     bot.send_message(m.chat.id, msg_text, parse_mode="HTML")
 

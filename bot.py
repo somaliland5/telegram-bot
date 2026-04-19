@@ -1180,19 +1180,15 @@ def raadi_stats(m):
         f"• YouTube: {platform_stats.get('youtube',0)}",
         f"• Facebook: {platform_stats.get('facebook',0)}",
         f"• Pinterest: {platform_stats.get('pinterest',0)}\n",
-        "🥇 Top 3 Users:"
+        "🥇 Top 40 Users:"
     ]
 
-    # Top 30 users
-sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
+    # Top 3 users
+    sorted_users = sorted(users_stats.items(), key=lambda x: x[1], reverse=True)
+    for i, (uid, count) in enumerate(sorted_users[:40], start=1):
+        bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
+        msg_lines.append(f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}")
 
-for i, (uid, count) in enumerate(sorted_users[:30], start=1):
-    bot_id = users.get(str(uid), {}).get("bot_id", "N/A")
-
-    msg_lines.append(
-        f"{i}. 👤 <a href='tg://user?id={uid}'>{uid}</a> - 🎬 {count} videos | 🤖 BOT ID: {bot_id}"
-    )
-    
     msg_text = "\n".join(msg_lines)
     bot.send_message(m.chat.id, msg_text, parse_mode="HTML")
 

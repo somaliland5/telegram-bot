@@ -227,6 +227,27 @@ def refer_cmd(m):
         "Earn money by inviting friends!"
                     )
 
+
+@bot.message_handler(commands=['ping'])
+def ping_cmd(m):
+    start = time.time()
+
+    msg = bot.send_message(m.chat.id, "🏓 Pinging...")
+
+    end = time.time()
+    speed = round((end - start) * 1000)
+
+    status = "🟢 Online" if speed < 1000 else "🟡 Slow"
+
+    bot.edit_message_text(
+        f"🏓 <b>PONG!</b>\n\n"
+        f"⚡ Speed: {speed} ms\n"
+        f"📡 Status: {status}",
+        m.chat.id,
+        msg.message_id,
+        parse_mode="HTML"
+    )
+
 # ================= VERIFY BOT START =================
 
 @bot2.message_handler(commands=['start'])

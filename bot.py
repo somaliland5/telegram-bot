@@ -52,6 +52,9 @@ verify_method = {}
 video_store = {}
 video_files = {}
 
+AD_TEXT = ""
+AD_BOT = ""
+
 
 # ================= DATABASE FILES =================
 USERS_FILE = "users.json"
@@ -142,6 +145,7 @@ def admin_menu():
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
+    kb.add("📢 ADVERTISEMENT", "❌ DELETE AD")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
     kb.add("🔙 BACK MAIN MENU")
     return kb
@@ -1006,6 +1010,50 @@ def stats_handler(m):
     )
 
     bot.send_message(m.chat.id, msg)
+    
+#=================5555=================
+@bot.message_handler(func=lambda m: m.text == "📢 ADVERTISEMENT")
+def add_advertisement_start(m):
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send advertisement like this:\n\nText | BotUsername\n\nExample:\nJoin my bot | @mybot"
+    )
+    bot.register_next_step_handler(msg, save_advertisement)
+
+def save_advertisement(m):
+    global AD_TEXT, AD_BOT
+
+    try:
+        text, botname = m.text.split("|", 1)
+
+        AD_TEXT = text.strip()
+        AD_BOT = botname.strip()
+
+        bot.send_message(
+            m.chat.id,
+            f"✅ Advertisement Saved\n\nText: {AD_TEXT}\nBot: {AD_BOT}"
+        )
+
+    except:
+        bot.send_message(
+            m.chat.id,
+            "❌ Format error\nUse:\nText | @botusername"
+        )
+
+@bot.message_handler(func=lambda m: m.text == "❌ DELETE AD")
+def delete_advertisement(m):
+    global AD_TEXT, AD_BOT
+
+    if not is_admin(m.from_user.id):
+        return
+
+    AD_TEXT = ""
+    AD_BOT = ""
+
+    bot.send_message(m.chat.id, "❌ Advertisement deleted")
 
 # ================= MANUAL BAN =================
 @bot.message_handler(func=lambda m: m.text == "🚫 BAN USER MANUAL")
@@ -1847,6 +1895,23 @@ def send_video_with_music(chat_id, file_path, platform=None):
             caption=CAPTION_TEXT,
             reply_markup=kb
         )
+
+# ===== SEND ADVERTISEMENT =====
+if AD_TEXT and AD_BOT:
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton(
+            "🤖 OPEN BOT",
+            url=f"https://t.me/{AD_BOT.replace('@','')}"
+        )
+    )
+
+    bot.send_message(
+        chat_id,
+        AD_TEXT,
+        reply_markup=kb
+    )
 
 
 # ================= MEDIA DOWNLOADER =================

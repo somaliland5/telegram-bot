@@ -4,44 +4,27 @@ import { exec } from "child_process";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("API is running...");
-});
-
-/*
-  🔥 TikTok / Video downloader endpoint
-*/
 app.get("/download", (req, res) => {
-  const url = req.query.url;
 
-  if (!url) {
-    return res.json({ error: "No URL provided" });
-  }
+    const url = req.query.url;
 
-  // yt-dlp command (Railway supports it if installed)
-  const cmd = `yt-dlp -f mp4 -g "${url}"`;
-
-  exec(cmd, (err, stdout, stderr) => {
-    if (err) {
-      return res.json({ error: "Failed to fetch video" });
+    if (!url) {
+        return res.json({ error: "No URL" });
     }
 
-    const videoUrl = stdout.trim();
+    const cmd = `yt-dlp -f mp4 -g "${url}"`;
 
-    if (!videoUrl) {
-      return res.json({ error: "No video found" });
-    }
+    exec(cmd, (err, stdout) => {
 
-    res.json({
-      success: true,
-      video: videoUrl
+        if (err) {
+            return res.json({ error: err.message });
+        }
+
+        res.json({
+            video: stdout.trim()
+        });
     });
-  });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(3000, () => console.log("Server running"));

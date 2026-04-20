@@ -194,6 +194,20 @@ def start_handler(message):
     # Hubinta join
     check_membership(uid)
 
+@bot.message_handler(commands=['view'])
+def view_cmd(message):
+    bot.send_message(
+        message.chat.id,
+        "🤖 BOT INFO\n\n"
+        "📌 Name: Video Downloader Bot\n"
+        "⚡ Features:\n"
+        "• TikTok download\n"
+        "• YouTube download\n"
+        "• Facebook download\n"
+        "• Referral system\n"
+        "• Withdrawal system"
+    )
+
 # ================= VERIFY BOT START =================
 
 @bot2.message_handler(commands=['start'])
@@ -288,21 +302,6 @@ Now you're ready to start!
 
     except:
         send_join_message(user_id)
-
-
-@bot.message_handler(commands=['view'])
-def view_cmd(message):
-    bot.send_message(
-        message.chat.id,
-        "🤖 BOT INFO\n\n"
-        "📌 Name: Video Downloader Bot\n"
-        "⚡ Features:\n"
-        "• TikTok download\n"
-        "• YouTube download\n"
-        "• Facebook download\n"
-        "• Referral system\n"
-        "• Withdrawal system"
-    )
 
     # ================= FG ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith("postbtn_"))

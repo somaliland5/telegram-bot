@@ -208,6 +208,25 @@ def view_cmd(message):
         "• Withdrawal system"
     )
 
+@bot.message_handler(commands=['balance'])
+def balance_cmd(m):
+    uid = str(m.from_user.id)
+    bal = users.get(uid, {}).get("balance", 0)
+    bot.send_message(m.chat.id, f"💰 Your balance: ${bal:.2f}")
+
+@bot.message_handler(commands=['refer'])
+def refer_cmd(m):
+    uid = str(m.from_user.id)
+    bot_username = bot.get_me().username
+    ref = users[uid]['ref']
+
+    link = f"https://t.me/{bot_username}?start={ref}"
+
+    bot.send_message(m.chat.id,
+        f"🔗 Your referral link:\n{link}\n\n"
+        "Earn money by inviting friends!"
+                    )
+
 # ================= VERIFY BOT START =================
 
 @bot2.message_handler(commands=['start'])

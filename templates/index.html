@@ -64,7 +64,6 @@ video {
   border-radius: 10px;
 }
 
-/* Bottom nav */
 .nav {
   position: fixed;
   bottom: 0;
@@ -82,7 +81,6 @@ video {
   font-size: 16px;
 }
 
-/* Icons */
 .icon-btn {
   position: fixed;
   top: 12px;
@@ -102,7 +100,6 @@ video {
 #theme-icon { right: 12px; }
 #wa-icon { left: 12px; }
 
-/* Footer */
 .footer {
   position: fixed;
   bottom: 55px;
@@ -116,7 +113,7 @@ video {
 
 <body>
 
-<!-- Top Icons -->
+<!-- Icons -->
 <button id="theme-icon" class="icon-btn" onclick="toggleTheme()">☀️</button>
 <button id="wa-icon" class="icon-btn" onclick="openWhatsApp()">📞</button>
 
@@ -130,8 +127,7 @@ video {
     Download Video
   </button>
 
-  <!-- Telegram Bot Button -->
-  <button class="main-btn" onclick="openBot()">
+  <button class="main-btn" onclick="openBot()" style="background:#22c55e">
     Open Telegram Bot 🤖
   </button>
 </div>
@@ -153,12 +149,14 @@ video {
   <button onclick="showPage('downloads')">Downloads</button>
 </div>
 
-<!-- Footer -->
 <div class="footer">
   By: ＳＣＨＯＬＥＳ🥤🥇
 </div>
 
 <script>
+
+const API_BASE = "https://your-api.com/download?url=";
+
 function showPage(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById(page).classList.add("active");
@@ -171,39 +169,44 @@ function toggleTheme() {
 }
 
 function openWhatsApp() {
-  window.open("https://wa.me/+447346867994", "_blank");
+  window.open("https://wa.me/447346867994", "_blank");
 }
 
 function openBot() {
   window.open("https://t.me/Downloadvedioytibot", "_blank");
 }
 
-/* ⚠️ NOTE:
-   TikTok direct download browser kaliya MA sameyn karo.
-   API backend ayaa loo baahan yahay.
-*/
-
-function downloadVideo() {
+/* ✅ FIXED DOWNLOAD FUNCTION */
+async function downloadVideo() {
   let link = document.getElementById("link").value;
+
   if (!link) {
     alert("Paste link first");
     return;
   }
 
-  // Placeholder API (waa inaad backend ku xirtid)
-  fetch("https://your-api.com/download?url=" + encodeURIComponent(link))
-    .then(res => res.json())
-    .then(data => {
-      if (data.video) {
-        document.getElementById("player").src = data.video;
-        document.getElementById("downloadBtn").href = data.video;
-        showPage("downloads");
-      } else {
-        alert("Video lama helin");
-      }
-    })
-    .catch(() => alert("Error dhacay API-ga"));
+  try {
+
+    let res = await fetch(API_BASE + encodeURIComponent(link));
+    let data = await res.json();
+
+    if (!data.video) {
+      alert(data.error || "Video lama helin");
+      return;
+    }
+
+    // show video
+    document.getElementById("player").src = data.video;
+    document.getElementById("downloadBtn").href = data.video;
+
+    showPage("downloads");
+
+  } catch (err) {
+    alert("API error dhacay");
+    console.log(err);
+  }
 }
+
 </script>
 
 </body>

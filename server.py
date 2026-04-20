@@ -1,11 +1,17 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, render_template, jsonify
 import yt_dlp
 import os
+import uuid
 
 app = Flask(__name__)
 
-# create folder safely
+# create downloads folder
 os.makedirs("downloads", exist_ok=True)
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
 
 @app.route("/download", methods=["POST"])
 def download():
@@ -16,18 +22,19 @@ def download():
     if not url:
         return jsonify({"error": "No URL provided"})
 
+    filename = f"downloads/{uuid.uuid4()}.mp4"
+
     ydl_opts = {
-        "outtmpl": "downloads/%(id)s.%(ext)s",
-        "format": "best[ext=mp4]/best",
+        "outtmpl": filename,
+        "format": "bestvideo+bestaudio/best",
+        "merge_output_format": "mp4",
         "noplaylist": True,
-        "quiet": True,
-        "merge_output_format": "mp4"
+        "quiet": True
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+            ydl.download([url])
 
         return send_file(filename, as_attachment=True)
 
@@ -36,4 +43,5 @@ def download():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

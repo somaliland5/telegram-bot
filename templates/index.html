@@ -64,7 +64,7 @@ video {
   border-radius: 10px;
 }
 
-/* Bottom Navigation */
+/* Bottom nav */
 .nav {
   position: fixed;
   bottom: 0;
@@ -82,7 +82,7 @@ video {
   font-size: 16px;
 }
 
-/* Top Icons */
+/* Icons */
 .icon-btn {
   position: fixed;
   top: 12px;
@@ -102,12 +102,6 @@ video {
 #theme-icon { right: 12px; }
 #wa-icon { left: 12px; }
 
-/* NEW BOT BUTTON */
-#bot-icon {
-  right: 60px;
-  background: #22c55e;
-}
-
 /* Footer */
 .footer {
   position: fixed;
@@ -126,26 +120,26 @@ video {
 <button id="theme-icon" class="icon-btn" onclick="toggleTheme()">☀️</button>
 <button id="wa-icon" class="icon-btn" onclick="openWhatsApp()">📞</button>
 
-<!-- NEW BOT BUTTON -->
-<button id="bot-icon" class="icon-btn" onclick="openBot()">🤖</button>
-
-<!-- Home Page -->
+<!-- Home -->
 <div id="home" class="page active">
   <h2>Download TikTok Video</h2>
 
-  <input id="link" placeholder="Paste the TikTok link">
+  <input id="link" placeholder="Paste TikTok link">
 
-  <button class="main-btn" onclick="downloadVideo()">Download</button>
+  <button class="main-btn" onclick="downloadVideo()">
+    Download Video
+  </button>
 
-  <!-- NEW BUTTON INSIDE PAGE -->
-  <button class="main-btn" style="background:#22c55e" onclick="openBot()">
-    Open Telegram Bot
+  <!-- Telegram Bot Button -->
+  <button class="main-btn" onclick="openBot()">
+    Open Telegram Bot 🤖
   </button>
 </div>
 
-<!-- Downloads Page -->
+<!-- Downloads -->
 <div id="downloads" class="page">
   <h2>Your Video</h2>
+
   <video id="player" controls></video>
 
   <a id="downloadBtn" href="#" download>
@@ -153,7 +147,7 @@ video {
   </a>
 </div>
 
-<!-- Bottom Navigation -->
+<!-- Bottom Nav -->
 <div class="nav">
   <button onclick="showPage('home')">Home</button>
   <button onclick="showPage('downloads')">Downloads</button>
@@ -165,10 +159,6 @@ video {
 </div>
 
 <script>
-
-const API_URL = "https://YOUR-RAILWAY-APP.up.railway.app/download?url=";
-const BOT_LINK = "https://t.me/Downloadvedioytibot";
-
 function showPage(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById(page).classList.add("active");
@@ -181,46 +171,39 @@ function toggleTheme() {
 }
 
 function openWhatsApp() {
-  const number = "252907868526";
-  window.open(`https://wa.me/${number}`, "_blank");
+  window.open("https://wa.me/+447346867994", "_blank");
 }
 
-/* NEW BOT FUNCTION */
 function openBot() {
-  window.open(BOT_LINK, "_blank");
+  window.open("https://t.me/Downloadvedioytibot", "_blank");
 }
 
-/* FIXED DOWNLOAD SYSTEM (RAILWAY API) */
-async function downloadVideo() {
-  let link = document.getElementById("link").value;
+/* ⚠️ NOTE:
+   TikTok direct download browser kaliya MA sameyn karo.
+   API backend ayaa loo baahan yahay.
+*/
 
+function downloadVideo() {
+  let link = document.getElementById("link").value;
   if (!link) {
     alert("Paste link first");
     return;
   }
 
-  try {
-    showPage("downloads");
-
-    document.getElementById("player").src = "";
-
-    let res = await fetch(API_URL + encodeURIComponent(link));
-    let data = await res.json();
-
-    if (!data.url) {
-      alert("Video download failed!");
-      return;
-    }
-
-    document.getElementById("player").src = data.url;
-    document.getElementById("downloadBtn").href = data.url;
-
-  } catch (err) {
-    alert("Server error!");
-    console.log(err);
-  }
+  // Placeholder API (waa inaad backend ku xirtid)
+  fetch("https://your-api.com/download?url=" + encodeURIComponent(link))
+    .then(res => res.json())
+    .then(data => {
+      if (data.video) {
+        document.getElementById("player").src = data.video;
+        document.getElementById("downloadBtn").href = data.video;
+        showPage("downloads");
+      } else {
+        alert("Video lama helin");
+      }
+    })
+    .catch(() => alert("Error dhacay API-ga"));
 }
-
 </script>
 
 </body>

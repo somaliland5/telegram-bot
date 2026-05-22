@@ -34,7 +34,7 @@ tg_client = TelegramClient(
     "session",
     API_ID,
     API_HASH
-).start(bot_token=BOT_TOKEN)
+).start(bot_token=TOKEN)
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")

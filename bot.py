@@ -148,6 +148,7 @@ def admin_menu():
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
+    kb.add("📥 IMPORT USERS")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -1380,6 +1381,61 @@ def see_users(m):
         f"📊 Total Users: {total}"
     )
 
+# ================= IMPORT USERS =================
+@bot.message_handler(func=lambda m: m.text == "📥 IMPORT USERS")
+def import_users_start(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send Telegram IDs separated by spaces or new lines.\n\nExample:\n12345\n67890\n112233"
+    )
+
+    bot.register_next_step_handler(msg, import_users_process)
+
+
+def import_users_process(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    text = m.text.strip()
+
+    ids = text.replace("\n", " ").split()
+
+    added = 0
+
+    for uid in ids:
+
+        uid = uid.strip()
+
+        if not uid.isdigit():
+            continue
+
+        if uid not in users:
+
+            users[uid] = {
+                "balance": 0.0,
+                "blocked": 0.0,
+                "ref": random_ref(),
+                "bot_id": random_botid(),
+                "invited": 0,
+                "banned": False,
+                "verified": False,
+                "month": now_month()
+            }
+
+            added += 1
+
+    save_users()
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Imported {added} users successfully."
+    )
+
 # ================= SEARCH USER =================
 @bot.message_handler(func=lambda m: m.text == "🔎 SEARCH USER")
 def search_user(m):
@@ -2036,6 +2092,67 @@ def download_media(chat_id, text):
 
             except Exception as e:
                 bot.send_message(chat_id, f"❌ Download error:\n{e}")
+                return
+
+        # ================= INSTAGRAM =================
+        if "instagram.com" in url:
+
+            try:
+
+                ydl_opts = {
+                    "format": "best",
+                    "outtmpl": "instagram_%(id)s.%(ext)s",
+                    "quiet": True,
+                    "merge_output_format": "mp4"
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
+                    info = ydl.extract_info(url, download=True)
+
+                    if "entries" in info:
+                        entries = info["entries"]
+                    else:
+                        entries = [info]
+
+                    for entry in entries:
+
+                        file = ydl.prepare_filename(entry)
+
+                        # PHOTO
+                        if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+
+                            with open(file, "rb") as photo:
+
+                                bot.send_photo(
+                                    chat_id,
+                                    photo,
+                                    caption=CAPTION_TEXT
+                                )
+
+                        # VIDEO
+                        else:
+
+                            send_video_with_music(
+                                chat_id,
+                                file,
+                                "instagram"
+                            )
+
+                        try:
+                            os.remove(file)
+                        except:
+                            pass
+
+                return
+
+            except Exception as e:
+
+                bot.send_message(
+                    chat_id,
+                    f"❌ Instagram download error:\n{e}"
+                )
+
                 return
 
         # ================= FACEBOOK =================

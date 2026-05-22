@@ -30,7 +30,11 @@ PHONE = os.getenv("PHONE")
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASS = os.getenv("GMAIL_PASS")
 
-tg_client = TelegramClient("session", API_ID, API_HASH)
+tg_client = TelegramClient(
+    "session",
+    API_ID,
+    API_HASH
+).start(bot_token=BOT_TOKEN)
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 bot2 = telebot.TeleBot(BOT2_TOKEN, parse_mode="HTML")

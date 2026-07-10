@@ -49,6 +49,9 @@ CHANNEL_WINDOW_OPEN = False
 MANAGED_CHANNELS = []
 MAX_CHANNELS = 10
 
+BOT_LOCKED = False
+LOCK_MESSAGE = "🔒 Bot is temporarily locked by admin."
+
 pending_post = {}
 
 VERIFY_ENABLED = False
@@ -127,6 +130,14 @@ def banned_guard(m):
         return True
     return False
 
+def bot_locked_guard(message):
+    global BOT_LOCKED, LOCK_MESSAGE
+
+    if BOT_LOCKED and not is_admin(message.from_user.id):
+        bot.send_message(message.chat.id, LOCK_MESSAGE)
+        return True
+    return False
+
 # ================= MENUS =================
 def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -147,6 +158,7 @@ def admin_menu():
     kb.add("👥 SEE LIST", "🔎 SEARCH USER")
     kb.add("✅ VERIFY ON", "❌ VERIFY OFF")
     kb.add("CHANNEL POST", "📡 ADD CHANNEL")
+    kb.add("🔒 LOCK BOT", "🔓 UNLOCK BOT")  
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
     kb.add("📥 IMPORT USERS")
     kb.add("🔙 BACK MAIN MENU")
@@ -170,8 +182,12 @@ CHANNEL_USERNAME = "@tiktokvediodownload"
 # ================= START HANDLER =================
 @bot.message_handler(commands=['start'])
 def start_handler(message):
+    if bot_locked_guard(message):
+        return
+
     uid = message.from_user.id
     args = message.text.split()
+    ...
 
     # Haddii user cusub, ku dar database
     if str(uid) not in users:
@@ -618,8 +634,11 @@ def open_admin_panel(m):
     # ================= BALANCE =================
 @bot.message_handler(func=lambda m: m.text == "💰 BALANCE")
 def balance_handler(m):
+    if bot_locked_guard(m):
+        return
     if banned_guard(m):
         return
+    ...
     uid = str(m.from_user.id)
     bal = users[uid].get("balance", 0.0)
     blocked = users[uid].get("blocked", 0.0)
@@ -632,8 +651,11 @@ def balance_handler(m):
 # ================= GET ID =================
 @bot.message_handler(func=lambda m: m.text == "🆔 GET ID")
 def get_id_handler(m):
+    if bot_locked_guard(m):
+        return
     if banned_guard(m):
         return
+    ...
     uid = str(m.from_user.id)
     bot.send_message(
         m.chat.id,
@@ -644,8 +666,11 @@ def get_id_handler(m):
 # ================= REFERRAL =================
 @bot.message_handler(func=lambda m: m.text == "👥 REFERRAL")
 def referral_handler(m):
+    if bot_locked_guard(m):
+        return
     if banned_guard(m):
         return
+    ...
     uid = str(m.from_user.id)
     bot_username = bot.get_me().username
     link = f"https://t.me/{bot_username}?start={users[uid]['ref']}"
@@ -660,8 +685,11 @@ def referral_handler(m):
 # ================= CUSTOMER SUPPORT =================
 @bot.message_handler(func=lambda m: m.text == "☎️ CUSTOMER")
 def customer_handler(m):
+    if bot_locked_guard(m):
+        return
     if banned_guard(m):
         return
+    ...
     bot.send_message(
         m.chat.id,
         "☎️ Customer Support:\n@scholes1"
@@ -1381,6 +1409,54 @@ def see_users(m):
         f"📊 Total Users: {total}"
     )
 
+@bot.message_handler(func=lambda m: m.text == "🔒 LOCK BOT")
+def lock_bot_start(m):
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "✍️ Send the lock message users should receive.\n\nExample:\nBotka waa la xanibay, fadlan sug."
+    )
+    bot.register_next_step_handler(msg, lock_bot_process)
+
+
+def lock_bot_process(m):
+    global BOT_LOCKED, LOCK_MESSAGE
+
+    if not is_admin(m.from_user.id):
+        return
+
+    text = (m.text or "").strip()
+
+    if not text:
+        bot.send_message(m.chat.id, "❌ Lock message cannot be empty")
+        return
+
+    LOCK_MESSAGE = text
+    BOT_LOCKED = True
+
+    bot.send_message(
+        m.chat.id,
+        f"🔒 Bot locked successfully.\n\nLock message:\n{text}"
+    )
+
+@bot.message_handler(func=lambda m: m.text == "🔓 UNLOCK BOT")
+def unlock_bot(m):
+    global BOT_LOCKED
+
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    BOT_LOCKED = False
+
+    bot.send_message(
+        m.chat.id,
+        "🔓 Bot unlocked successfully."
+    )
+
 # ================= IMPORT USERS =================
 @bot.message_handler(func=lambda m: m.text == "📥 IMPORT USERS")
 def import_users_start(m):
@@ -1486,9 +1562,12 @@ def search_user_result(m):
 # ================= CHECKING DOWNLOAD =================
 @bot.message_handler(func=lambda m: m.text and "http" in m.text)
 def handle_links(message):
+    if bot_locked_guard(message):
+        return
 
     user_id = message.from_user.id
     link = message.text
+    ...
 
     # ===== FORCE JOIN MULTI CHANNEL =====
     if CHANNEL_WINDOW_OPEN and POST_CHANNELS:

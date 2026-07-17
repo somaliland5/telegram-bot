@@ -1,6 +1,8 @@
 import os
 import json
 import telebot
+import subprocess
+import threading
 from openai import OpenAI
 
 BOT_TOKEN = os.getenv("SUPPORT_BOT_TOKEN")
@@ -263,17 +265,28 @@ Question:
             str(e)
         )
 
-# ========= START BOT =========
+# ================= RUN SUPPORT BOT =================
+
+def run_support_bot():
+    while True:
+        try:
+            print("🤖 Support Bot Started...")
+            bot.infinity_polling(
+                skip_pending=True,
+                timeout=60,
+                long_polling_timeout=60
+            )
+
+        except Exception as e:
+            print("Support Bot Restart:", e)
+            time.sleep(5)
+
 
 if __name__ == "__main__":
-    print("🤖 AI Support Bot is running...")
 
-    try:
-        bot.infinity_polling(
-            skip_pending=True,
-            timeout=60,
-            long_polling_timeout=60
-        )
+    t = threading.Thread(
+        target=run_support_bot
+    )
 
-    except Exception as e:
-        print("Bot stopped:", e)
+    t.start()
+    t.join()

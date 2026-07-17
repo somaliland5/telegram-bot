@@ -3,19 +3,22 @@ import json
 import time
 import threading
 import telebot
-from openai import OpenAI
+from groq import Groq
 
 
 # ================= ENV =================
 
 BOT_TOKEN = os.getenv("SUPPORT_BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 
 if not BOT_TOKEN:
     raise Exception("❌ SUPPORT_BOT_TOKEN missing")
 
-if not OPENAI_API_KEY:
-    raise Exception("❌ OPENAI_API_KEY missing")
+
+if not GROQ_API_KEY:
+    raise Exception("❌ GROQ_API_KEY missing")
+
 
 
 bot = telebot.TeleBot(
@@ -23,9 +26,11 @@ bot = telebot.TeleBot(
     parse_mode="HTML"
 )
 
-client = OpenAI(
-    api_key=OPENAI_API_KEY
+
+client = Groq(
+    api_key=GROQ_API_KEY
 )
+
 
 
 # ================= ADMIN =================
@@ -33,6 +38,7 @@ client = OpenAI(
 ADMIN_IDS = [
     7983838654
 ]
+
 
 
 # ================= DATABASE =================
@@ -71,10 +77,12 @@ users = load_json(
     {}
 )
 
+
 withdraws = load_json(
     WITHDRAWS_FILE,
     []
 )
+
 
 videos = load_json(
     VIDEOS_FILE,
@@ -102,6 +110,8 @@ Help users with:
 
 Never invent user balance.
 Use database information only.
+
+Be friendly and professional.
 """
 
 
@@ -140,6 +150,7 @@ def notify_admin(text):
     for admin in ADMIN_IDS:
 
         try:
+
             bot.send_message(
                 admin,
                 text
@@ -163,6 +174,7 @@ def start(message):
 
 
 
+
 # ================= MAIN SUPPORT =================
 
 
@@ -174,6 +186,7 @@ def support(message):
     text = message.text.lower()
 
 
+
     # Balance
 
     if "balance" in text:
@@ -183,12 +196,14 @@ def support(message):
             0
         )
 
+
         bot.send_message(
             message.chat.id,
             f"💰 Balance: ${bal}"
         )
 
         return
+
 
 
 
@@ -201,12 +216,14 @@ def support(message):
             0
         )
 
+
         bot.send_message(
             message.chat.id,
             f"👥 Referrals: {invited}"
         )
 
         return
+
 
 
 
@@ -219,10 +236,12 @@ def support(message):
 
             users[uid]["banned"] = True
 
+
             save_json(
                 USERS_FILE,
                 users
             )
+
 
 
         bot.send_message(
@@ -231,6 +250,7 @@ def support(message):
         )
 
         return
+
 
 
 
@@ -250,7 +270,9 @@ def support(message):
             "✅ Request sent to admin."
         )
 
+
         return
+
 
 
 
@@ -268,12 +290,15 @@ def support(message):
 
         if bal < 1:
 
+
             bot.send_message(
                 message.chat.id,
                 "❌ Minimum withdrawal is $1"
             )
 
+
             return
+
 
 
 
@@ -282,16 +307,19 @@ def support(message):
         )
 
 
+
         bot.send_message(
             message.chat.id,
             "✅ Withdrawal request sent."
         )
 
+
         return
 
 
 
-    # AI
+
+    # AI GROQ
 
 
     prompt = f"""
@@ -310,9 +338,11 @@ Question:
 
     try:
 
+
         response = client.chat.completions.create(
 
-            model="gpt-4.1-mini",
+            model="llama-3.3-70b-versatile",
+
 
             messages=[
 
@@ -321,29 +351,43 @@ Question:
                     "content":SYSTEM_PROMPT
                 },
 
+
                 {
                     "role":"user",
                     "content":prompt
                 }
 
-            ]
+            ],
+
+
+            temperature=0.3
 
         )
+
 
 
         bot.send_message(
+
             message.chat.id,
+
             response.choices[0].message.content
+
         )
+
 
 
     except Exception as e:
 
 
         bot.send_message(
+
             message.chat.id,
+
             f"AI Error: {e}"
+
         )
+
+
 
 
 
@@ -356,35 +400,52 @@ def run_support_bot():
 
         try:
 
+
             print(
                 "🤖 Support Bot Started..."
             )
 
 
             bot.infinity_polling(
+
                 skip_pending=True,
+
                 timeout=60,
+
                 long_polling_timeout=60
+
             )
 
 
         except Exception as e:
 
+
             print(
+
                 "Support Bot Restart:",
+
                 e
+
             )
+
 
             time.sleep(5)
 
 
 
+
+
 if __name__ == "__main__":
 
+
     thread = threading.Thread(
+
         target=run_support_bot
+
     )
 
+
     thread.start()
+
 
     thread.join()

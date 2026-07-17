@@ -11,3 +11,5 @@ fastapi
 uvicorn
 openai
 groq
+google-generativeai
+pillow

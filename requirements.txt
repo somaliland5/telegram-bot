@@ -9,3 +9,4 @@ telethon
 gunicorn
 fastapi
 uvicorn
+openai

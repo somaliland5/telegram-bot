@@ -2697,15 +2697,30 @@ def run_bot2():
         except Exception as e:
             print("Bot2 restart:", e)
 
+def run_support_bot():
+    while True:
+        try:
+            subprocess.call(
+                ["python", "support_bot.py"]
+            )
+
+        except Exception as e:
+            print("Support Bot restart:", e)
+
+            time.sleep(5)
+
 if __name__ == "__main__":
 
     tg_client.start()
 
     t1 = threading.Thread(target=run_bot1)
     t2 = threading.Thread(target=run_bot2)
+    t3 = threading.Thread(target=run_support_bot)
 
     t1.start()
     t2.start()
+    t3.start()
 
     t1.join()
     t2.join()
+    t3.join()

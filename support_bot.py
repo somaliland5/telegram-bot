@@ -262,3 +262,18 @@ Question:
             message.chat.id,
             str(e)
         )
+
+# ========= START BOT =========
+
+if __name__ == "__main__":
+    print("🤖 AI Support Bot is running...")
+
+    try:
+        bot.infinity_polling(
+            skip_pending=True,
+            timeout=60,
+            long_polling_timeout=60
+        )
+
+    except Exception as e:
+        print("Bot stopped:", e)

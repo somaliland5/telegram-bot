@@ -161,6 +161,7 @@ def admin_menu():
     kb.add("🔒 LOCK BOT", "🔓 UNLOCK BOT")  
     kb.add("❌ CLOSE WINDOWS", "CLOSE CHANNEL POST")
     kb.add("📥 IMPORT USERS")
+    kb.add("🔗 GET REFERRAL CODE")
     kb.add("🔙 BACK MAIN MENU")
     return kb
 
@@ -193,6 +194,7 @@ def start_handler(message):
     if str(uid) not in users:
         ref = args[1] if len(args) > 1 else None
         users[str(uid)] = {
+            "username": message.from_user.username or "",
             "balance": 0.0,
             "blocked": 0.0,
             "ref": random_ref(),
@@ -1522,6 +1524,96 @@ def import_users_process(m):
     bot.send_message(
         m.chat.id,
         f"✅ Imported {added} users successfully."
+    )
+
+# ================= GET REFERRAL CODE =================
+
+@bot.message_handler(func=lambda m: m.text == "🔗 GET REFERRAL CODE")
+def get_ref_code_start(m):
+
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ You are not admin")
+        return
+
+    msg = bot.send_message(
+        m.chat.id,
+        "Send user username:\n\nExample:\n@scholes1"
+    )
+
+    bot.register_next_step_handler(msg, get_ref_username)
+
+
+def get_ref_username(m):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    username = m.text.replace("@", "").strip()
+
+    msg = bot.send_message(
+        m.chat.id,
+        f"User: @{username}\n\nNow send referral code number:\nExample:\n1"
+    )
+
+    bot.register_next_step_handler(
+        msg,
+        lambda x: save_custom_ref_code(x, username)
+    )
+
+
+def save_custom_ref_code(m, username):
+
+    if not is_admin(m.from_user.id):
+        return
+
+    code = m.text.strip()
+
+    if not code.isdigit():
+        bot.send_message(
+            m.chat.id,
+            "❌ Code must be a number"
+        )
+        return
+
+
+    user_id = None
+
+    for uid, data in users.items():
+
+        # Haddii username hore database-ka ugu jiro
+        if data.get("username","").lower() == username.lower():
+            user_id = uid
+            break
+
+
+    if not user_id:
+
+        bot.send_message(
+            m.chat.id,
+            "❌ User not found in database"
+        )
+        return
+
+
+    users[user_id]["ref"] = code
+
+    save_users()
+
+
+    bot.send_message(
+        m.chat.id,
+        f"✅ Referral code created\n\n"
+        f"👤 User: @{username}\n"
+        f"🔢 Code: {code}\n\n"
+        f"🔗 Link:\n"
+        f"https://t.me/{bot.get_me().username}?start={code}"
+    )
+
+
+    bot.send_message(
+        int(user_id),
+        f"🎉 Your new referral link:\n\n"
+        f"https://t.me/{bot.get_me().username}?start={code}"
     )
 
 # ================= SEARCH USER =================

@@ -143,7 +143,7 @@ def user_menu(show_admin=False):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💰 BALANCE", "💸 WITHDRAWAL")
     kb.add("👥 REFERRAL", "🆔 GET ID")
-    kb.add("☎️ CUSTOMER")
+    kb.add("☎️ CUSTOMER"), "🤖CUSTOMER AI")
     if show_admin:
         kb.add("👑 ADMIN PANEL")
     return kb
@@ -694,6 +694,18 @@ def customer_handler(m):
         m.chat.id,
         "☎️ Customer Support:\n@scholes1"
     )
+
+@bot.message_handler(func=lambda m: m.text == "🤖CUSTOMER AI")
+def customer_handler(m):
+    if bot_locked_guard(m):
+        return
+    if banned_guard(m):
+        return
+    ...
+    bot.send_message(
+        m.chat.id,
+        "Ai Customer Support🤖:\n@Aidownoaderbot"
+)
 
 # ================= WITHDRAWAL MENU =================
 @bot.message_handler(func=lambda m: m.text == "💸 WITHDRAWAL")

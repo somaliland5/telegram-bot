@@ -7,8 +7,11 @@ import threading
 
 import telebot
 
-from openai import OpenAI
-import base64
+from groq import Groq
+
+import google.generativeai as genai
+
+from PIL import Image
 
 
 
@@ -16,7 +19,9 @@ import base64
 
 BOT_TOKEN = os.getenv("SUPPORT_BOT_TOKEN")
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 
@@ -24,8 +29,12 @@ if not BOT_TOKEN:
     raise Exception("❌ SUPPORT_BOT_TOKEN missing")
 
 
-if not OPENROUTER_API_KEY:
-    raise Exception("❌ OPENROUTER_API_KEY missing")
+if not GROQ_API_KEY:
+    raise Exception("❌ GROQ_API_KEY missing")
+
+
+if not GEMINI_API_KEY:
+    raise Exception("❌ GEMINI_API_KEY missing")
 
 
 
@@ -44,9 +53,23 @@ bot = telebot.TeleBot(
 # ================= AI SETUP =================
 
 
-client = OpenAI(
-    api_key=OPENROUTER_API_KEY,
-    base_url="https://openrouter.ai/api/v1"
+# Groq AI (Text)
+
+groq_client = Groq(
+    api_key=GROQ_API_KEY
+)
+
+
+
+# Gemini AI (Vision)
+
+genai.configure(
+    api_key=GEMINI_API_KEY
+)
+
+
+vision_model = genai.GenerativeModel(
+    "gemini-2.0-flash"
 )
 
 
@@ -232,24 +255,38 @@ def notify_admin(text):
 # ================= GROQ TEXT AI =================
 
 
-def ask_ai(question):
+def ask_groq(question):
 
-    response = client.chat.completions.create(
 
-        model="openai/gpt-4.1",
+    response = groq_client.chat.completions.create(
+
+
+        model="llama-3.3-70b-versatile",
+
 
         messages=[
+
+
             {
-                "role": "system",
-                "content": SYSTEM_PROMPT
+                "role":"system",
+                "content":SYSTEM_PROMPT
             },
+
+
             {
-                "role": "user",
-                "content": question
+                "role":"user",
+                "content":question
             }
-        ]
+
+
+        ],
+
+
+        temperature=0.3
 
     )
+
+
 
     return response.choices[0].message.content
 
@@ -289,7 +326,8 @@ def start(message):
     bot.send_message(
         message.chat.id,
         "🤖 Welcome to AI Support.\n\n"
-        "Send your problem or screenshot and I will help you."
+        "Send your problem and I will help you.\n\n"
+        "Ai assist for @Downloadvedioytibot"
     )
 
 
@@ -574,7 +612,7 @@ User Question:
     try:
 
 
-        answer = ask_ai(
+        answer = ask_groq(
             prompt
         )
 

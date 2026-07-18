@@ -9,10 +9,6 @@ import telebot
 
 from groq import Groq
 
-import google.generativeai as genai
-
-from PIL import Image
-
 
 
 # ================= ENV =================
@@ -20,8 +16,6 @@ from PIL import Image
 BOT_TOKEN = os.getenv("SUPPORT_BOT_TOKEN")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 
@@ -32,9 +26,6 @@ if not BOT_TOKEN:
 if not GROQ_API_KEY:
     raise Exception("❌ GROQ_API_KEY missing")
 
-
-if not GEMINI_API_KEY:
-    raise Exception("❌ GEMINI_API_KEY missing")
 
 
 
@@ -50,27 +41,14 @@ bot = telebot.TeleBot(
 
 
 
+
 # ================= AI SETUP =================
 
-
-# Groq AI (Text)
 
 groq_client = Groq(
     api_key=GROQ_API_KEY
 )
 
-
-
-# Gemini AI (Vision)
-
-genai.configure(
-    api_key=GEMINI_API_KEY
-)
-
-
-vision_model = genai.GenerativeModel(
-    "gemini-2.0-flash"
-)
 
 
 
@@ -98,6 +76,7 @@ VIDEOS_FILE = "videos.json"
 
 
 
+
 def load_json(path, default):
 
     if not os.path.exists(path):
@@ -119,6 +98,7 @@ def load_json(path, default):
 
 
 
+
 def save_json(path, data):
 
     with open(path, "w") as f:
@@ -128,6 +108,7 @@ def save_json(path, data):
             f,
             indent=4
         )
+
 
 
 
@@ -150,6 +131,7 @@ withdraws = load_json(
 videos = load_json(
     VIDEOS_FILE,
     {}
+
 )
 
 
@@ -183,6 +165,8 @@ Never invent balance.
 Use database information only.
 
 Be professional and friendly.
+
+Answer in the user's language.
 
 """
 
@@ -248,10 +232,6 @@ def notify_admin(text):
 
             pass
 
-
-
-
-
 # ================= GROQ TEXT AI =================
 
 
@@ -268,14 +248,14 @@ def ask_groq(question):
 
 
             {
-                "role":"system",
-                "content":SYSTEM_PROMPT
+                "role": "system",
+                "content": SYSTEM_PROMPT
             },
 
 
             {
-                "role":"user",
-                "content":question
+                "role": "user",
+                "content": question
             }
 
 
@@ -294,28 +274,6 @@ def ask_groq(question):
 
 
 
-# ================= GEMINI IMAGE AI =================
-
-
-def analyze_image(image_path, question):
-
-
-    image = Image.open(
-        image_path
-    )
-
-
-    response = vision_model.generate_content(
-
-        [
-            question,
-            image
-        ]
-
-    )
-
-
-    return response.text
 
 # ================= START =================
 
@@ -324,104 +282,125 @@ def analyze_image(image_path, question):
 def start(message):
 
     bot.send_message(
+
         message.chat.id,
+
         "🤖 Welcome to AI Support.\n\n"
         "Send your problem and I will help you.\n\n"
-        "Ai assist for @Downloadvedioytibot"
+        "AI Support for @Downloadvedioytibot"
+
     )
 
 
 
 
 
-# ================= IMAGE SUPPORT =================
+
+
+# ================= IMAGE BLOCK =================
 
 
 @bot.message_handler(content_types=["photo"])
-def image_support(message):
+def image_block(message):
 
     try:
 
-        uid = str(message.from_user.id)
+        user_lang = "en"
+
+
+        if message.from_user.language_code:
+
+            user_lang = message.from_user.language_code.lower()
+
+
+
+        responses = {
+
+
+            "so": """
+❌ Sawir la iima fasixin inaan arko.
+
+Fadlan wixii sawir ah ama cabasho weyn u dir:
+@scholes1
+""",
+
+
+
+            "en": """
+❌ I am not allowed to view images.
+
+Please send any image or major complaint to:
+@scholes1
+""",
+
+
+
+            "ar": """
+❌ لا يُسمح لي برؤية الصور.
+
+لأي صورة أو شكوى كبيرة يرجى التواصل مع:
+@scholes1
+""",
+
+
+
+            "tr": """
+❌ Görsellere bakmama izin verilmiyor.
+
+Herhangi bir resim veya büyük şikayet için:
+@scholes1
+""",
+
+
+
+            "es": """
+❌ No tengo permiso para ver imágenes.
+
+Para cualquier imagen o problema importante:
+@scholes1
+""",
+
+
+
+            "fr": """
+❌ Je ne suis pas autorisé à voir les images.
+
+Pour toute image ou réclamation importante:
+@scholes1
+"""
+
+        }
+
+
+
+        reply = responses.get(
+
+            user_lang,
+
+            responses["en"]
+
+        )
+
 
 
         bot.send_message(
+
             message.chat.id,
-            "🔍 AI is checking your image..."
-        )
 
-
-        file_info = bot.get_file(
-            message.photo[-1].file_id
-        )
-
-
-        downloaded = bot.download_file(
-            file_info.file_path
-        )
-
-
-        image_path = f"error_{uid}.jpg"
-
-
-
-        with open(image_path,"wb") as f:
-
-            f.write(downloaded)
-
-
-
-        result = analyze_image(
-
-            image_path,
-
-            """
-            Analyze this screenshot.
-
-            If it is a Video Downloader Bot problem:
-            - Find the error
-            - Explain the reason
-            - Give the solution
-
-            Answer in simple language.
-            """
+            reply
 
         )
 
+
+
+    except Exception:
 
 
         bot.send_message(
 
             message.chat.id,
 
-            "🤖 AI Analysis:\n\n" + result
-
-        )
-
-
-
-        notify_admin(
-
-            f"📸 Image Error Report\n\nUser: {uid}"
-
-        )
-
-
-
-        os.remove(
-            image_path
-        )
-
-
-
-    except Exception as e:
-
-
-        bot.send_message(
-
-            message.chat.id,
-
-            f"❌ Image AI Error: {e}"
+            "❌ Image processing error."
 
         )
 
@@ -439,6 +418,7 @@ def support(message):
 
     uid = str(message.from_user.id)
 
+
     text = message.text.lower()
 
 
@@ -449,8 +429,11 @@ def support(message):
 
 
         bal = users.get(uid,{}).get(
+
             "balance",
+
             0
+
         )
 
 
@@ -469,6 +452,7 @@ def support(message):
 
 
 
+
     # Referral
 
 
@@ -476,8 +460,11 @@ def support(message):
 
 
         invited = users.get(uid,{}).get(
+
             "invited",
+
             0
+
         )
 
 
@@ -492,10 +479,6 @@ def support(message):
 
         return
 
-
-
-
-
     # Withdraw
 
 
@@ -503,8 +486,11 @@ def support(message):
 
 
         bal = users.get(uid,{}).get(
+
             "balance",
+
             0
+
         )
 
 
@@ -568,8 +554,11 @@ Balance: ${bal}
 
 
             save_json(
+
                 USERS_FILE,
+
                 users
+
             )
 
 
@@ -584,6 +573,7 @@ Balance: ${bal}
 
 
         return
+
 
 
 
@@ -613,7 +603,9 @@ User Question:
 
 
         answer = ask_groq(
+
             prompt
+
         )
 
 
@@ -644,6 +636,8 @@ User Question:
 
 
 
+
+
 # ================= RUN =================
 
 
@@ -657,7 +651,9 @@ def run_support_bot():
 
 
             print(
+
                 "🤖 AI Support Bot Started..."
+
             )
 
 
@@ -678,12 +674,16 @@ def run_support_bot():
 
 
             print(
+
                 "Bot Restart:",
+
                 e
+
             )
 
 
             time.sleep(5)
+
 
 
 

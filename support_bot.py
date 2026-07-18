@@ -7,11 +7,8 @@ import threading
 
 import telebot
 
-from groq import Groq
-
-import google.generativeai as genai
-
-from PIL import Image
+from openai import OpenAI
+import base64
 
 
 
@@ -19,9 +16,7 @@ from PIL import Image
 
 BOT_TOKEN = os.getenv("SUPPORT_BOT_TOKEN")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
 
@@ -29,12 +24,8 @@ if not BOT_TOKEN:
     raise Exception("❌ SUPPORT_BOT_TOKEN missing")
 
 
-if not GROQ_API_KEY:
-    raise Exception("❌ GROQ_API_KEY missing")
-
-
-if not GEMINI_API_KEY:
-    raise Exception("❌ GEMINI_API_KEY missing")
+if not OPENROUTER_API_KEY:
+    raise Exception("❌ OPENROUTER_API_KEY missing")
 
 
 
@@ -53,23 +44,9 @@ bot = telebot.TeleBot(
 # ================= AI SETUP =================
 
 
-# Groq AI (Text)
-
-groq_client = Groq(
-    api_key=GROQ_API_KEY
-)
-
-
-
-# Gemini AI (Vision)
-
-genai.configure(
-    api_key=GEMINI_API_KEY
-)
-
-
-vision_model = genai.GenerativeModel(
-    "gemini-2.0-flash"
+client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1"
 )
 
 
@@ -255,38 +232,24 @@ def notify_admin(text):
 # ================= GROQ TEXT AI =================
 
 
-def ask_groq(question):
+def ask_ai(question):
 
+    response = client.chat.completions.create(
 
-    response = groq_client.chat.completions.create(
-
-
-        model="llama-3.3-70b-versatile",
-
+        model="openai/gpt-4.1",
 
         messages=[
-
-
             {
-                "role":"system",
-                "content":SYSTEM_PROMPT
+                "role": "system",
+                "content": SYSTEM_PROMPT
             },
-
-
             {
-                "role":"user",
-                "content":question
+                "role": "user",
+                "content": question
             }
-
-
-        ],
-
-
-        temperature=0.3
+        ]
 
     )
-
-
 
     return response.choices[0].message.content
 
@@ -611,7 +574,7 @@ User Question:
     try:
 
 
-        answer = ask_groq(
+        answer = ask_ai(
             prompt
         )
 
